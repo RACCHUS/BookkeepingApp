@@ -1,0 +1,51 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Users can only access their own data
+    function isOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+
+    // Transactions collection
+    match /transactions/{transactionId} {
+      allow read, write: if isOwner(resource.data.userId);
+      allow create: if isOwner(request.resource.data.userId) 
+        && request.auth.uid == request.resource.data.createdBy;
+    }
+
+    // Employees collection
+    match /employees/{employeeId} {
+      allow read, write: if isOwner(resource.data.userId);
+      allow create: if isOwner(request.resource.data.userId);
+    }
+
+    // Classification rules collection
+    match /classificationRules/{ruleId} {
+      allow read, write: if isOwner(resource.data.userId);
+      allow create: if isOwner(request.resource.data.userId);
+    }
+
+    // User profiles collection
+    match /userProfiles/{userId} {
+      allow read, write: if isOwner(userId);
+      allow create: if request.auth.uid == userId;
+    }
+
+    // Recurring transactions collection
+    match /recurringTransactions/{recurringId} {
+      allow read, write: if isOwner(resource.data.userId);
+      allow create: if isOwner(request.resource.data.userId);
+    }
+
+    // Report configurations collection
+    match /reportConfigs/{configId} {
+      allow read, write: if isOwner(resource.data.userId);
+      allow create: if isOwner(request.resource.data.userId);
+    }
+
+    // Deny all other access
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
