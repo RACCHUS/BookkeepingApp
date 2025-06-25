@@ -1,12 +1,11 @@
 import admin from '../config/firebaseAdmin.js';
 
-class FirebaseService {
-  constructor() {
+class FirebaseService {  constructor() {
     if (admin) {
       this.db = admin.firestore();
-      this.storage = admin.storage();
       this.auth = admin.auth();
       this.isInitialized = true;
+      console.log('✅ FirebaseService: Initialized with Firestore and Auth (Storage disabled)');
     } else {
       this.isInitialized = false;
       console.log('⚠️  FirebaseService: Running in mock mode without Firebase');
@@ -207,61 +206,85 @@ class FirebaseService {
     } catch (error) {
       console.error('Error getting classification rules:', error);
       throw error;
-    }
-  }
+    }  }
 
-  // File storage operations
+  // File storage operations (local file system replacement for Firebase Storage)
   async uploadFile(buffer, fileName, contentType, userId) {
     try {
-      const bucket = this.storage.bucket();
-      const file = bucket.file(`users/${userId}/uploads/${fileName}`);
-
-      const stream = file.createWriteStream({
-        metadata: {
-          contentType,
-          metadata: {
-            uploadedBy: userId,
-            uploadedAt: new Date().toISOString()
-          }
-        }
-      });
-
-      return new Promise((resolve, reject) => {
-        stream.on('error', reject);
-        stream.on('finish', async () => {
-          try {
-            // Make file publicly readable (or implement signed URLs)
-            await file.makePublic();
-            const publicUrl = `https://storage.googleapis.com/${bucket.name}/${file.name}`;
-            resolve({
-              fileId: file.name,
-              url: publicUrl,
-              fileName,
-              contentType
-            });
-          } catch (error) {
-            reject(error);
-          }
-        });
-        stream.end(buffer);
-      });
+      // Since Firebase Storage is not used, we'll save files locally
+      // In production, you might want to use a different storage solution
+      const fs = await import('fs');
+      const path = await import('path');
+      
+      const uploadDir = path.join(process.cwd(), 'uploads', userId);
+      
+      // Create directory if it doesn't exist
+      if (!fs.existsSync(uploadDir)) {
+        fs.mkdirSync(uploadDir, { recursive: true });
+      }
+      
+      const filePath = path.join(uploadDir, fileName);
+      fs.writeFileSync(filePath, buffer);
+      
+      return {
+        fileId: `${userId}/${fileName}`,
+        url: `/uploads/${userId}/${fileName}`,
+        fileName,
+        contentType,
+        localPath: filePath
+      };
     } catch (error) {
-      console.error('Error uploading file:', error);
+      console.error('Error uploading file locally:', error);
+      throw error;
+    }  }
+
+  // File storage operations (local file system replacement for Firebase Storage)
+  async uploadFile(buffer, fileName, contentType, userId) {
+    try {
+      // Since Firebase Storage is not used, we'll save files locally
+      const fs = await import('fs');
+      const path = await import('path');
+      
+      const uploadDir = path.join(process.cwd(), 'uploads', userId);
+      
+      // Create directory if it doesn't exist
+      if (!fs.existsSync(uploadDir)) {
+        fs.mkdirSync(uploadDir, { recursive: true });
+      }
+      
+      const filePath = path.join(uploadDir, fileName);
+      fs.writeFileSync(filePath, buffer);
+      
+      return {
+        fileId: `${userId}/${fileName}`,
+        url: `/uploads/${userId}/${fileName}`,
+        fileName,
+        contentType,
+        localPath: filePath
+      };
+    } catch (error) {
+      console.error('Error uploading file locally:', error);
       throw error;
     }
   }
 
   async deleteFile(fileId, userId) {
     try {
-      const bucket = this.storage.bucket();
-      const file = bucket.file(fileId);
-
+      // Local file system deletion
+      const fs = await import('fs');
+      const path = await import('path');
+      
+      const filePath = path.join(process.cwd(), 'uploads', fileId);
+      
       // Verify the file belongs to the user
-      if (!fileId.startsWith(`users/${userId}/`)) {
+      if (!fileId.startsWith(`${userId}/`)) {
         throw new Error('Access denied to file');
       }
-
-      await file.delete();
+      
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+      
       return true;
     } catch (error) {
       console.error('Error deleting file:', error);

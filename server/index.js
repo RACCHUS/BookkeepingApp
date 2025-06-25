@@ -8,8 +8,11 @@ import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 
-// Load environment variables
-dotenv.config();
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+// Load environment variables from root directory
+dotenv.config({ path: join(__dirname, '../.env') });
 
 // Import routes
 import pdfRoutes from './routes/pdfRoutes.js';
@@ -22,9 +25,6 @@ import authMiddleware from './middlewares/authMiddleware.js';
 
 // Initialize Firebase Admin
 import admin from './config/firebaseAdmin.js';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 5000;
