@@ -1,6 +1,12 @@
 import pdfParserService from '../services/pdfParser.js';
-import firebaseService from '../services/firebaseService.js';
+import firebaseService from '../services/cleanFirebaseService.js';
 import crypto from 'crypto';
+import fs from 'fs/promises';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // In-memory store for processing status (in production, use Redis or database)
 const processingStatus = new Map();
@@ -9,6 +15,7 @@ export const uploadPDF = async (req, res) => {
   try {
     const { file } = req;
     const { uid: userId } = req.user;
+    const { bankType = 'chase' } = req.body;
 
     if (!file) {
       return res.status(400).json({
@@ -17,24 +24,41 @@ export const uploadPDF = async (req, res) => {
       });
     }
 
-    // Upload file to Firebase Storage
-    const fileName = `${Date.now()}-${file.originalname}`;
-    const uploadResult = await firebaseService.uploadFile(
-      file.buffer,
+    // Generate unique filename
+    const uploadId = crypto.randomUUID();
+    const fileName = `${uploadId}-${file.originalname}`;
+    const uploadsDir = path.join(__dirname, '../../uploads');
+    const filePath = path.join(uploadsDir, fileName);
+
+    // Ensure uploads directory exists
+    await fs.mkdir(uploadsDir, { recursive: true });
+
+    // Save file to local storage
+    await fs.writeFile(filePath, file.buffer);
+
+    // Save file metadata to Firestore
+    const fileDoc = await firebaseService.createDocument('uploads', uploadId, {
+      userId,
+      originalName: file.originalname,
       fileName,
-      file.mimetype,
-      userId
-    );
+      filePath,
+      bankType,
+      size: file.size,
+      mimetype: file.mimetype,
+      uploadedAt: new Date(),
+      status: 'uploaded'
+    });
 
     res.json({
       success: true,
       message: 'File uploaded successfully',
+      uploadId,
       file: {
-        id: uploadResult.fileId,
+        id: uploadId,
         name: file.originalname,
         size: file.size,
         type: file.mimetype,
-        url: uploadResult.url,
+        bankType,
         uploadedAt: new Date().toISOString()
       }
     });
@@ -52,26 +76,43 @@ export const processPDF = async (req, res) => {
   try {
     const { fileId } = req.params;
     const { uid: userId } = req.user;
-    const { autoSave = false } = req.body;    // Generate processing ID
-    const processId = crypto.randomUUID();
+    const { autoSave = true } = req.body;
+
+    // Get file metadata from Firestore
+    const fileDoc = await firebaseService.getDocument('uploads', fileId);
     
-    // Set initial status
-    processingStatus.set(processId, {
-      status: 'processing',
-      progress: 0,
-      message: 'Starting PDF processing...',
-      startTime: new Date().toISOString()
+    if (!fileDoc || fileDoc.userId !== userId) {
+      return res.status(404).json({
+        error: 'File not found',
+        message: 'The specified file does not exist or you do not have access to it'
+      });
+    }
+
+    if (fileDoc.status === 'processed') {
+      return res.status(400).json({
+        error: 'Already processed',
+        message: 'This file has already been processed'
+      });
+    }
+
+    // Process PDF directly (synchronous for now, can be made async later)
+    const processResult = await processFileSynchronously(fileDoc, userId, autoSave);
+
+    // Update file status
+    await firebaseService.updateDocument('uploads', fileId, {
+      status: 'processed',
+      processedAt: new Date(),
+      transactionsCount: processResult.transactions.length
     });
 
-    // Return processing ID immediately
     res.json({
       success: true,
-      processId,
-      message: 'PDF processing started'
+      message: 'PDF processed successfully',
+      data: {
+        transactionsProcessed: processResult.transactions.length,
+        transactions: processResult.transactions.slice(0, 5) // Return first 5 for preview
+      }
     });
-
-    // Process PDF asynchronously
-    processAsyncPDF(processId, fileId, userId, autoSave);
 
   } catch (error) {
     console.error('PDF processing error:', error);
@@ -82,22 +123,122 @@ export const processPDF = async (req, res) => {
   }
 };
 
-const processAsyncPDF = async (processId, fileId, userId, autoSave) => {
+const processFileSynchronously = async (fileDoc, userId, autoSave) => {
   try {
-    // Update status
-    processingStatus.set(processId, {
-      status: 'processing',
-      progress: 25,
-      message: 'Downloading PDF file...',
-      startTime: processingStatus.get(processId).startTime
+    // Read file from local storage
+    const buffer = await fs.readFile(fileDoc.filePath);
+
+    // Parse PDF
+    const parseResult = await pdfParserService.parsePDF(buffer, {
+      bankType: fileDoc.bankType || 'chase'
     });
 
-    // Download file from Firebase Storage
-    const bucket = firebaseService.storage.bucket();
-    const file = bucket.file(fileId);
-    const [buffer] = await file.download();
+    if (!parseResult.success) {
+      throw new Error(parseResult.error || 'Failed to parse PDF');
+    }
 
-    // Update status
+    const transactions = parseResult.transactions || [];
+
+    // If autoSave is true, save transactions to Firestore
+    if (autoSave && transactions.length > 0) {
+      const savedTransactions = [];
+      
+      for (const transaction of transactions) {
+        const transactionData = {
+          ...transaction,
+          userId,
+          sourceFile: fileDoc.fileName,
+          sourceFileId: fileDoc.id,
+          importedAt: new Date(),
+          // Add default classification if not present
+          category: transaction.category || 'Uncategorized',
+          isClassified: !!transaction.category
+        };
+
+        const savedTransaction = await firebaseService.createDocument(
+          'transactions',
+          crypto.randomUUID(),
+          transactionData
+        );
+        
+        savedTransactions.push(savedTransaction);
+      }
+
+      return { transactions: savedTransactions };
+    }
+
+    return { transactions };
+
+  } catch (error) {
+    console.error('Error processing file:', error);
+    throw error;
+  }
+};
+
+export const getPDFStatus = async (req, res) => {
+  try {
+    const { processId } = req.params;
+    
+    const status = processingStatus.get(processId);
+    
+    if (!status) {
+      return res.status(404).json({
+        error: 'Process not found',
+        message: 'The specified process ID does not exist'
+      });
+    }
+
+    res.json({
+      success: true,
+      status
+    });
+
+  } catch (error) {
+    console.error('Error getting PDF status:', error);
+    res.status(500).json({
+      error: 'Status check failed',
+      message: error.message
+    });
+  }
+};
+
+export const getUserUploads = async (req, res) => {
+  try {
+    const { uid: userId } = req.user;
+    const { limit = 20, offset = 0 } = req.query;
+
+    // Get user's uploaded files from Firestore
+    const uploads = await firebaseService.queryDocuments('uploads', [
+      { field: 'userId', operator: '==', value: userId }
+    ], {
+      orderBy: 'uploadedAt',
+      order: 'desc',
+      limit: parseInt(limit),
+      offset: parseInt(offset)
+    });
+
+    res.json({
+      success: true,
+      uploads: uploads.map(upload => ({
+        id: upload.id,
+        name: upload.originalName,
+        size: upload.size,
+        bankType: upload.bankType,
+        status: upload.status,
+        uploadedAt: upload.uploadedAt,
+        processedAt: upload.processedAt,
+        transactionsCount: upload.transactionsCount || 0
+      }))
+    });
+
+  } catch (error) {
+    console.error('Error getting user uploads:', error);
+    res.status(500).json({
+      error: 'Failed to get uploads',
+      message: error.message
+    });
+  }
+};
     processingStatus.set(processId, {
       status: 'processing',
       progress: 50,

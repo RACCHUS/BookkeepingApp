@@ -4,8 +4,9 @@ import {
   uploadPDF, 
   processPDF, 
   getPDFStatus,
-  getUserUploads 
-} from '../controllers/pdfController.js';
+  getUserUploads,
+  testChasePDF
+} from '../controllers/realPdfController.js';
 
 const router = express.Router();
 
@@ -30,5 +31,8 @@ router.post('/upload', upload.single('pdf'), uploadPDF);
 router.post('/process/:fileId', processPDF);
 router.get('/status/:processId', getPDFStatus);
 router.get('/uploads', getUserUploads);
+
+// Test endpoint for Chase PDF parsing
+router.get('/test-chase', testChasePDF);
 
 export default router;

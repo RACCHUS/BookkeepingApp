@@ -1,5 +1,6 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { apiClient } from '../../services/api';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import {
@@ -11,6 +12,8 @@ import {
 } from '@heroicons/react/24/outline';
 
 const Dashboard = () => {
+  const navigate = useNavigate();
+  
   // Get current month's data
   const currentDate = new Date();
   const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
@@ -176,9 +179,10 @@ const Dashboard = () => {
         <div className="card">
           <div className="card-body text-center">
             <ChartBarIcon className="w-12 h-12 mx-auto mb-4 text-primary-600" />
-            <h3 className="text-lg font-semibold mb-2">Upload PDF</h3>
-            <p className="text-gray-600 mb-4">Import transactions from bank statements</p>
-            <button className="btn btn-primary">
+            <h3 className="text-lg font-semibold mb-2">Upload PDF</h3>            <p className="text-gray-600 mb-4">Import transactions from bank statements</p>            <button 
+              className="btn btn-primary"
+              onClick={() => navigate('/upload')}
+            >
               Upload Now
             </button>
           </div>

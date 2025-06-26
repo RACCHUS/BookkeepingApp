@@ -21,9 +21,8 @@ const Sidebar = () => {
   ];
 
   return (
-    <div className="flex flex-col w-64 bg-white shadow-sm">
-      {/* Logo */}
-      <div className="flex items-center justify-center h-16 px-4 bg-primary-600">
+    <div className="flex flex-col w-64 bg-white shadow-sm">      {/* Logo */}
+      <div className="flex items-center justify-center h-16 px-4 bg-blue-600">
         <h1 className="text-xl font-bold text-white">BookKeeper</h1>
       </div>
 
@@ -36,10 +35,9 @@ const Sidebar = () => {
           return (
             <NavLink
               key={item.name}
-              to={item.href}
-              className={`flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+              to={item.href}              className={`flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors ${
                 isActive
-                  ? 'bg-primary-100 text-primary-700 border-r-2 border-primary-600'
+                  ? 'bg-blue-100 text-blue-700 border-r-2 border-blue-600'
                   : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
               }`}
             >

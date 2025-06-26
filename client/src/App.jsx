@@ -9,11 +9,12 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 // Components
 import Layout from './components/Layout';
 import LoadingSpinner from './components/LoadingSpinner';
+import TestPage from './components/TestPage';
 
 // Feature components
 import Login from './features/Auth/Login';
 import Dashboard from './features/Dashboard/Dashboard';
-import TransactionTable from './features/TransactionTable/TransactionTable';
+import TransactionList from './features/Transactions/TransactionList';
 import PDFUpload from './features/PDFUpload/PDFUpload';
 import Classification from './features/Classification/Classification';
 import Reports from './features/Reports/Reports';
@@ -86,8 +87,21 @@ function App() {
                 },
               }}
             />
-            
             <Routes>
+              {/* Test routes */}
+              <Route path="/test" element={<TestPage />} />
+              <Route 
+                path="/api-test" 
+                element={
+                  <div className="p-8">
+                    <h1 className="text-2xl font-bold">Simple Test Page</h1>
+                    <p>If you can see this, the React app is working!</p>
+                    <a href="/login" className="text-blue-600 underline block mt-4">Go to Login</a>
+                    <a href="/test" className="text-blue-600 underline block mt-2">Go to Full Test Page</a>
+                  </div>
+                } 
+              />
+              
               {/* Public routes */}
               <Route 
                 path="/login" 
@@ -98,7 +112,7 @@ function App() {
                 } 
               />
               
-              {/* Protected routes */}
+              {/* Protected routes with Layout */}
               <Route 
                 path="/" 
                 element={
@@ -109,7 +123,7 @@ function App() {
               >
                 <Route index element={<Navigate to="/dashboard" replace />} />
                 <Route path="dashboard" element={<Dashboard />} />
-                <Route path="transactions" element={<TransactionTable />} />
+                <Route path="transactions" element={<TransactionList />} />
                 <Route path="upload" element={<PDFUpload />} />
                 <Route path="classification" element={<Classification />} />
                 <Route path="reports" element={<Reports />} />

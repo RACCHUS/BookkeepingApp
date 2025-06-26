@@ -23,13 +23,14 @@ api.interceptors.request.use(async (config) => {
 
 // Add response interceptor for error handling
 api.interceptors.response.use(
-  (response) => response,
+  (response) => response.data, // Extract just the data from axios response
   (error) => {
     if (error.response?.status === 401) {
       // Handle unauthorized access
       console.error('Unauthorized access - redirecting to login');
       // You might want to redirect to login here
     }
+    // For errors, we still want to reject with the full error object
     return Promise.reject(error);
   }
 );
@@ -46,17 +47,12 @@ export const apiClient = {
     bulkUpdate: (transactions) => api.patch('/transactions/bulk', { transactions }),
     getSummary: (params) => api.get('/transactions/summary', { params })
   },
-
   // PDF methods
   pdf: {
-    upload: (file) => {
-      const formData = new FormData();
-      formData.append('pdf', file);
-      return api.post('/pdf/upload', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
-    },
-    process: (fileId, options) => api.post(`/pdf/process/${fileId}`, options),
+    upload: (formData) => api.post('/pdf/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    }),
+    process: (fileId, options = {}) => api.post(`/pdf/process/${fileId}`, options),
     getStatus: (processId) => api.get(`/pdf/status/${processId}`),
     getUploads: (params) => api.get('/pdf/uploads', { params })
   },

@@ -1,9 +1,8 @@
 {
   "name": "bookkeeping-client",
   "version": "1.0.0",
-  "type": "module",
-  "scripts": {
-    "dev": "vite",
+  "type": "module",  "scripts": {
+    "dev": "vite --port 3000 --host localhost",
     "build": "vite build",
     "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview"
