@@ -5,6 +5,7 @@ import { Toaster } from 'react-hot-toast';
 
 // Context providers
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { ThemeProvider } from './context/ThemeContext';
 
 // Components
 import Layout from './components/Layout';
@@ -63,77 +64,82 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <Router>
-          <div className="min-h-screen bg-gray-50">
-            <Toaster
-              position="top-right"
-              toastOptions={{
-                duration: 4000,
-                style: {
-                  background: '#363636',
-                  color: '#fff',
-                },
-                success: {
-                  duration: 3000,
-                  theme: {
-                    primary: '#4aed88',
+        <ThemeProvider>
+          <Router>
+            <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors">
+              <Toaster
+                position="top-right"
+                toastOptions={{
+                  duration: 4000,
+                  className: 'dark:bg-gray-800 dark:text-white',
+                  style: {
+                    background: 'var(--toast-bg, #363636)',
+                    color: 'var(--toast-color, #fff)',
                   },
-                },
-                error: {
-                  duration: 5000,
-                  theme: {
-                    primary: '#ff6b6b',
+                  success: {
+                    duration: 3000,
+                    iconTheme: {
+                      primary: '#10b981',
+                      secondary: '#ffffff',
+                    },
                   },
-                },
-              }}
-            />
-            <Routes>
-              {/* Test routes */}
-              <Route path="/test" element={<TestPage />} />
-              <Route 
-                path="/api-test" 
-                element={
-                  <div className="p-8">
-                    <h1 className="text-2xl font-bold">Simple Test Page</h1>
-                    <p>If you can see this, the React app is working!</p>
-                    <a href="/login" className="text-blue-600 underline block mt-4">Go to Login</a>
-                    <a href="/test" className="text-blue-600 underline block mt-2">Go to Full Test Page</a>
-                  </div>
-                } 
+                  error: {
+                    duration: 5000,
+                    iconTheme: {
+                      primary: '#ef4444',
+                      secondary: '#ffffff',
+                    },
+                  },
+                }}
               />
-              
-              {/* Public routes */}
-              <Route 
-                path="/login" 
-                element={
-                  <PublicRoute>
-                    <Login />
-                  </PublicRoute>
-                } 
-              />
-              
-              {/* Protected routes with Layout */}
-              <Route 
-                path="/" 
-                element={
-                  <ProtectedRoute>
-                    <Layout />
-                  </ProtectedRoute>
-                }
-              >
-                <Route index element={<Navigate to="/dashboard" replace />} />
-                <Route path="dashboard" element={<Dashboard />} />
-                <Route path="transactions" element={<TransactionList />} />
-                <Route path="upload" element={<PDFUpload />} />
-                <Route path="classification" element={<Classification />} />
-                <Route path="reports" element={<Reports />} />
-              </Route>
-              
-              {/* Catch all route */}
-              <Route path="*" element={<Navigate to="/dashboard" replace />} />
-            </Routes>
-          </div>
-        </Router>
+              <Routes>
+                {/* Test routes */}
+                <Route path="/test" element={<TestPage />} />
+                <Route 
+                  path="/api-test" 
+                  element={
+                    <div className="p-8 dark:text-white">
+                      <h1 className="text-2xl font-bold">Simple Test Page</h1>
+                      <p>If you can see this, the React app is working!</p>
+                      <a href="/login" className="text-blue-600 dark:text-blue-400 underline block mt-4">Go to Login</a>
+                      <a href="/test" className="text-blue-600 dark:text-blue-400 underline block mt-2">Go to Full Test Page</a>
+                    </div>
+                  } 
+                />
+                
+                {/* Public routes */}
+                <Route 
+                  path="/login" 
+                  element={
+                    <PublicRoute>
+                      <Login />
+                    </PublicRoute>
+                  } 
+                />
+                
+                {/* Protected routes with Layout */}
+                <Route 
+                  path="/" 
+                  element={
+                    <ProtectedRoute>
+                      <Layout />
+                    </ProtectedRoute>
+                  }
+                >
+                  <Route index element={<Navigate to="/dashboard" replace />} />
+                  <Route path="dashboard" element={<Dashboard />} />
+                  <Route path="transactions" element={<TransactionList />} />
+                  <Route path="upload" element={<PDFUpload />} />
+                  <Route path="classification" element={<Classification />} />
+                  <Route path="reports" element={<Reports />} />
+                </Route>
+                
+                {/* Catch all route */}
+                <Route path="*" element={<Navigate to="/dashboard" replace />} />
+              </Routes>
+            </div>
+          </Router>
+        </ThemeProvider>
       </AuthProvider>
     </QueryClientProvider>
   );

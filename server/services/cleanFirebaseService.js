@@ -174,14 +174,25 @@ class FirebaseService {
   async getTransactions(userId, filters = {}) {
     if (this.isInitialized) {
       try {
+        console.log(`🔥 Firebase: Querying transactions for userId: ${userId}`);
+        
         // Start with simple query to avoid index requirements
         let query = this.db.collection('transactions').where('userId', '==', userId);
         
-        // For now, let's keep it simple and do filtering in memory
-        // Later we can add proper indexes for more complex queries
+        // For development: also check for dev-user-123 transactions if user is authenticated
+        let devQuery = null;
+        if (userId !== 'dev-user-123') {
+          devQuery = this.db.collection('transactions').where('userId', '==', 'dev-user-123');
+        }
         
-        const snapshot = await query.get();
+        const [snapshot, devSnapshot] = await Promise.all([
+          query.get(),
+          devQuery ? devQuery.get() : Promise.resolve({ empty: true, forEach: () => {} })
+        ]);
+        
         let transactions = [];
+        
+        // Get user's own transactions
         snapshot.forEach(doc => {
           const data = doc.data();
           transactions.push({ 
@@ -192,6 +203,23 @@ class FirebaseService {
             updatedAt: data.updatedAt?.toDate?.() || data.updatedAt
           });
         });
+        
+        // If no transactions found for user, temporarily show dev transactions
+        if (transactions.length === 0 && !devSnapshot.empty) {
+          console.log('🔧 No transactions found for user, showing dev transactions as fallback');
+          devSnapshot.forEach(doc => {
+            const data = doc.data();
+            transactions.push({ 
+              id: doc.id, 
+              ...data,
+              // Mark these as dev transactions
+              _isDevTransaction: true,
+              // Convert Firestore timestamps to Date objects
+              createdAt: data.createdAt?.toDate?.() || data.createdAt,
+              updatedAt: data.updatedAt?.toDate?.() || data.updatedAt
+            });
+          });
+        }
 
         // Apply filters in memory for now
         if (filters.startDate) {
@@ -450,6 +478,65 @@ class FirebaseService {
     const mode = this.isInitialized ? 'Firebase' : 'Mock';
     console.log(`📊 ${mode}: Generated summary for user ${userId}`);
     return summary;
+  }
+
+  // Migration helper: Move dev transactions to authenticated user
+  async migrateDevTransactions(newUserId) {
+    if (!this.isInitialized || newUserId === 'dev-user-123') {
+      return { migrated: 0, message: 'No migration needed' };
+    }
+
+    try {
+      console.log(`🔄 Migrating dev transactions to user: ${newUserId}`);
+      
+      // Get all dev transactions
+      const devQuery = this.db.collection('transactions').where('userId', '==', 'dev-user-123');
+      const devSnapshot = await devQuery.get();
+      
+      if (devSnapshot.empty) {
+        return { migrated: 0, message: 'No dev transactions to migrate' };
+      }
+
+      // Check if user already has transactions
+      const userQuery = this.db.collection('transactions').where('userId', '==', newUserId).limit(1);
+      const userSnapshot = await userQuery.get();
+      
+      if (!userSnapshot.empty) {
+        console.log('🔄 User already has transactions, skipping migration');
+        return { migrated: 0, message: 'User already has transactions' };
+      }
+
+      // Migrate transactions in batches
+      const batch = this.db.batch();
+      let migratedCount = 0;
+      
+      devSnapshot.forEach(doc => {
+        const data = doc.data();
+        const newDocRef = this.db.collection('transactions').doc();
+        batch.set(newDocRef, {
+          ...data,
+          userId: newUserId,
+          migratedFrom: 'dev-user-123',
+          migratedAt: admin.firestore.FieldValue.serverTimestamp(),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+        
+        // Delete the old dev transaction
+        batch.delete(doc.ref);
+        migratedCount++;
+      });
+
+      await batch.commit();
+      console.log(`✅ Migrated ${migratedCount} transactions to user ${newUserId}`);
+      
+      return { 
+        migrated: migratedCount, 
+        message: `Successfully migrated ${migratedCount} transactions` 
+      };
+    } catch (error) {
+      console.error('Migration error:', error);
+      throw error;
+    }
   }
 
   isUsingFirebase() {

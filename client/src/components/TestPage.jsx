@@ -73,13 +73,13 @@ const TestPage = () => {
               {testResult.message && (
                 <p className="text-green-600 mb-2">{testResult.message}</p>
               )}
-              <pre className="bg-gray-100 p-2 rounded text-sm overflow-auto">
+              <pre className="bg-gray-100 dark:bg-gray-800 p-2 rounded text-sm overflow-auto text-gray-900 dark:text-gray-100 transition-colors">
                 {JSON.stringify(testResult.data, null, 2)}
               </pre>
             </div>
           ) : (
             <div>
-              <p className="text-red-600">Error: {testResult.error}</p>
+              <p className="text-red-600 dark:text-red-400 transition-colors">Error: {testResult.error}</p>
             </div>
           )}
         </div>

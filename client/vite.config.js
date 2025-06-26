@@ -8,6 +8,9 @@ export default defineConfig({
     port: 3000,
     host: 'localhost',
     strictPort: true,
+    hmr: {
+      overlay: false // Disable error overlay if needed
+    },
     proxy: {
       '/api': {
         target: 'http://localhost:5000',

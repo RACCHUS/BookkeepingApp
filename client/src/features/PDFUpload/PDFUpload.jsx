@@ -76,41 +76,37 @@ const PDFUpload = () => {
   // Process PDF mutation
   const processMutation = useMutation({
     mutationFn: (uploadId) => apiClient.pdf.process(uploadId, { autoSave: true }),
-    onSuccess: (data, uploadId) => {
+    onSuccess: async (data, uploadId) => {
       console.log('🔍 Process success response:', data);
       
-      // Backend returns: { success: true, data: { transactionsProcessed: X, transactions: [...] } }
+      // Backend returns: { success: true, data: { processId: '...', status: 'processing' } }
       const result = data.data || {};
-      const processedCount = result.transactionsProcessed || 0;
-      const transactions = result.transactions || [];
+      const processId = result.processId;
       
-      console.log('🔍 Processed count:', processedCount);
-      console.log('🔍 Sample transactions:', transactions.slice(0, 3));
+      console.log('🔍 Process ID:', processId);
+      console.log('🔍 Processing status:', result.status);
       
-      if (processedCount > 0) {
-        toast.success(`Processed and saved ${processedCount} transactions successfully!`);
+      if (processId) {
+        // Start polling for results
+        toast.loading('Processing PDF... This may take 30-60 seconds.', { id: `processing-${uploadId}` });
+        
+        // Update file status to show processing
+        setUploadedFiles(prev => prev.map(f => 
+          f.id === uploadId 
+            ? { 
+                ...f, 
+                status: 'processing', 
+                processId,
+                startTime: new Date().toISOString()
+              }
+            : f
+        ));
+        
+        // Start polling for completion
+        pollProcessingStatus(processId, uploadId);
       } else {
-        toast.error('PDF processed but no transactions were found.');
+        toast.error('PDF processing started but no process ID returned.');
       }
-      
-      setUploadedFiles(prev => prev.map(f => 
-        f.id === uploadId 
-          ? { 
-              ...f, 
-              status: 'processed', 
-              transactionsCount: processedCount,
-              savedCount: processedCount
-            }
-          : f
-      ));
-      setProcessingFiles(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(uploadId);
-        return newSet;
-      });
-      // Force refresh transactions list
-      queryClient.invalidateQueries(['transactions']);
-      queryClient.refetchQueries(['transactions']);
     },
     onError: (error, uploadId) => {
       toast.error(`Failed to process PDF: ${error.response?.data?.message || error.message}`);
@@ -126,6 +122,98 @@ const PDFUpload = () => {
       });
     }
   });
+
+  // Function to poll processing status
+  const pollProcessingStatus = async (processId, uploadId) => {
+    const maxAttempts = 60; // 5 minutes max (5 second intervals)
+    let attempts = 0;
+    
+    const pollInterval = setInterval(async () => {
+      try {
+        attempts++;
+        console.log(`🔄 Polling attempt ${attempts} for process ${processId}`);
+        
+        const statusData = await apiClient.pdf.getStatus(processId);
+        console.log('🔄 Status response:', statusData);
+        
+        const status = statusData.data?.status || statusData.status;
+        const result = statusData.data?.result || statusData.result;
+        
+        if (status === 'completed') {
+          clearInterval(pollInterval);
+          
+          const transactionCount = result?.transactionCount || 0;
+          const savedCount = result?.savedTransactionIds?.length || 0;
+          
+          console.log('✅ Processing completed:', { transactionCount, savedCount });
+          
+          // Dismiss loading toast and show success
+          toast.dismiss(`processing-${uploadId}`);
+          
+          if (savedCount > 0) {
+            toast.success(`Successfully processed and saved ${savedCount} transactions!`);
+            
+            // Update file status
+            setUploadedFiles(prev => prev.map(f => 
+              f.id === uploadId 
+                ? { 
+                    ...f, 
+                    status: 'completed', 
+                    transactionsCount: transactionCount,
+                    savedCount: savedCount,
+                    result: result
+                  }
+                : f
+            ));
+            
+            // Refresh transactions list
+            queryClient.invalidateQueries(['transactions']);
+            queryClient.refetchQueries(['transactions']);
+          } else {
+            toast.error('PDF processed but no transactions were saved.');
+            setUploadedFiles(prev => prev.map(f => 
+              f.id === uploadId 
+                ? { ...f, status: 'no-transactions', result: result }
+                : f
+            ));
+          }
+          
+        } else if (status === 'error') {
+          clearInterval(pollInterval);
+          toast.dismiss(`processing-${uploadId}`);
+          toast.error(`Processing failed: ${result?.message || 'Unknown error'}`);
+          
+          setUploadedFiles(prev => prev.map(f => 
+            f.id === uploadId 
+              ? { ...f, status: 'error', error: result?.message || 'Processing failed' }
+              : f
+          ));
+        } else if (attempts >= maxAttempts) {
+          // Timeout
+          clearInterval(pollInterval);
+          toast.dismiss(`processing-${uploadId}`);
+          toast.error('Processing timeout. Please try again.');
+          
+          setUploadedFiles(prev => prev.map(f => 
+            f.id === uploadId 
+              ? { ...f, status: 'timeout', error: 'Processing timeout' }
+              : f
+          ));
+        }
+        // Continue polling if status is still 'processing'
+        
+      } catch (error) {
+        console.error('Status polling error:', error);
+        attempts++; // Count as attempt
+        
+        if (attempts >= maxAttempts) {
+          clearInterval(pollInterval);
+          toast.dismiss(`processing-${uploadId}`);
+          toast.error('Failed to check processing status. Please refresh and try again.');
+        }
+      }
+    }, 5000); // Poll every 5 seconds
+  };
 
   const onDrop = useCallback((acceptedFiles) => {
     acceptedFiles.forEach(file => {
@@ -198,8 +286,8 @@ const PDFUpload = () => {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">PDF Upload & Processing</h1>
-        <p className="text-gray-600">Upload bank statements to automatically import transactions</p>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">PDF Upload & Processing</h1>
+        <p className="text-gray-600 dark:text-gray-300">Upload bank statements to automatically import transactions</p>
       </div>
 
       {/* Upload Area */}
@@ -207,17 +295,17 @@ const PDFUpload = () => {
         {...getRootProps()}
         className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
           isDragActive
-            ? 'border-blue-500 bg-blue-50'
-            : 'border-gray-300 hover:border-gray-400'
+            ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 dark:border-blue-400'
+            : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500 dark:bg-gray-700/50'
         }`}
       >
         <input {...getInputProps()} />
-        <CloudArrowUpIcon className="mx-auto h-12 w-12 text-gray-400" />
+        <CloudArrowUpIcon className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" />
         <div className="mt-4">
-          <p className="text-lg font-medium text-gray-900">
+          <p className="text-lg font-medium text-gray-900 dark:text-white">
             {isDragActive ? 'Drop files here' : 'Drag & drop PDF files here'}
           </p>
-          <p className="text-sm text-gray-500 mt-1">
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
             or click to browse (PDF files only, max 10MB each)
           </p>
         </div>
@@ -225,8 +313,8 @@ const PDFUpload = () => {
 
       {/* Uploaded Files List */}
       {uploadedFiles.length > 0 && (
-        <div className="bg-white shadow overflow-hidden sm:rounded-md">
-          <ul className="divide-y divide-gray-200">
+        <div className="bg-white dark:bg-gray-800 shadow overflow-hidden sm:rounded-md transition-colors">
+          <ul className="divide-y divide-gray-200 dark:divide-gray-700">
             {uploadedFiles.map((file, index) => (
               <li key={file.tempId || file.id || index}>
                 <div className="px-4 py-4 sm:px-6">
@@ -236,10 +324,10 @@ const PDFUpload = () => {
                         {getStatusIcon(file.status)}
                       </div>
                       <div className="ml-4 min-w-0 flex-1">
-                        <p className="text-sm font-medium text-gray-900 truncate">
+                        <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
                           {file.name}
                         </p>
-                        <p className="text-sm text-gray-500">
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
                           {getStatusText(file)} • {(file.size / 1024 / 1024).toFixed(2)} MB
                         </p>
                       </div>
@@ -249,7 +337,7 @@ const PDFUpload = () => {
                         <button
                           onClick={() => handleProcess(file.id)}
                           disabled={processingFiles.has(file.id)}
-                          className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+                          className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 transition-colors"
                         >
                           {processingFiles.has(file.id) ? (
                             <>
@@ -263,7 +351,7 @@ const PDFUpload = () => {
                       )}
                       <button
                         onClick={() => handleRemove(index)}
-                        className="p-2 text-gray-400 hover:text-red-500"
+                        className="p-2 text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 transition-colors"
                       >
                         <TrashIcon className="h-4 w-4" />
                       </button>
@@ -277,9 +365,9 @@ const PDFUpload = () => {
       )}
 
       {/* Instructions */}
-      <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
-        <h3 className="text-sm font-medium text-blue-800">Instructions</h3>
-        <div className="mt-2 text-sm text-blue-700">
+      <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md p-4">
+        <h3 className="text-sm font-medium text-blue-800 dark:text-blue-200">Instructions</h3>
+        <div className="mt-2 text-sm text-blue-700 dark:text-blue-300">
           <ol className="list-decimal list-inside space-y-1">
             <li>Upload your bank statement PDF files (currently supports Chase Bank format)</li>
             <li>Wait for upload to complete, then click "Process" for each file</li>

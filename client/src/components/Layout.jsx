@@ -5,7 +5,7 @@ import Header from './Header';
 
 const Layout = () => {
   return (
-    <div className="flex h-screen bg-gray-100">
+    <div className="flex h-screen bg-gray-100 dark:bg-gray-900 transition-colors">
       {/* Sidebar */}
       <Sidebar />
       
@@ -15,7 +15,7 @@ const Layout = () => {
         <Header />
         
         {/* Page content */}
-        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50 p-6">
+        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50 dark:bg-gray-800 p-6 transition-colors">
           <Outlet />
         </main>
       </div>

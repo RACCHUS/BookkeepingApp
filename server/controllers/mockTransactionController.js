@@ -13,6 +13,9 @@ export const getTransactions = async (req, res) => {
     }
 
     const { uid: userId } = req.user;
+    console.log('🔍 getTransactions called for userId:', userId);
+    console.log('🔍 req.user:', req.user);
+    
     const {
       limit = 50,
       offset = 0,
@@ -38,6 +41,35 @@ export const getTransactions = async (req, res) => {
     if (payee) filters.payee = payee;
 
     const result = await firebaseService.getTransactions(userId, filters);
+
+    console.log('🔍 Firebase result:', result);
+    console.log('🔍 Transaction count returned:', result.transactions?.length || 0);
+
+    // Auto-migrate dev transactions for new users (one-time migration)
+    if (result.transactions.length === 0 && userId !== 'dev-user-123') {
+      try {
+        console.log('🔄 Attempting to migrate dev transactions...');
+        const migrationResult = await firebaseService.migrateDevTransactions(userId);
+        console.log('🔄 Migration result:', migrationResult);
+        
+        if (migrationResult.migrated > 0) {
+          // Re-fetch transactions after migration
+          const updatedResult = await firebaseService.getTransactions(userId, filters);
+          console.log('🔍 After migration - Transaction count:', updatedResult.transactions?.length || 0);
+          
+          res.json({
+            success: true,
+            data: updatedResult,
+            filters,
+            migration: migrationResult
+          });
+          return;
+        }
+      } catch (migrationError) {
+        console.error('Migration failed:', migrationError);
+        // Continue with original empty result
+      }
+    }
 
     res.json({
       success: true,
@@ -228,6 +260,74 @@ export const getTransactionSummary = async (req, res) => {
     console.error('Error generating transaction summary:', error);
     res.status(500).json({
       error: 'Failed to generate transaction summary',
+      message: error.message
+    });
+  }
+};
+
+export const testTransactionStructure = async (req, res) => {
+  try {
+    const { uid: userId } = req.user;
+    console.log('🧪 Test endpoint called for user:', userId);
+    
+    // Return a simple test response to verify structure
+    const testResponse = {
+      success: true,
+      data: {
+        transactions: [
+          {
+            id: 'test-1',
+            date: '2025-06-26',
+            amount: 100,
+            description: 'Test Transaction',
+            category: 'Test',
+            type: 'income'
+          }
+        ],
+        total: 1,
+        hasMore: false
+      },
+      test: true
+    };
+    
+    console.log('🧪 Sending test response:', testResponse);
+    res.json(testResponse);
+  } catch (error) {
+    console.error('🧪 Test endpoint error:', error);
+    res.status(500).json({
+      error: 'Test failed',
+      message: error.message
+    });
+  }
+};
+
+export const debugGetAllTransactions = async (req, res) => {
+  try {
+    console.log('🔍 Debug: Getting ALL transactions regardless of user');
+    
+    const result = await firebaseService.getTransactions('dev-user-123', {});
+    console.log('🔍 Debug: Dev transactions found:', result.transactions?.length || 0);
+    
+    // Also try to get the authenticated user's transactions
+    const { uid: userId } = req.user;
+    const userResult = await firebaseService.getTransactions(userId, {});
+    console.log('🔍 Debug: User transactions found:', userResult.transactions?.length || 0);
+    
+    res.json({
+      success: true,
+      debug: true,
+      data: {
+        devTransactions: result,
+        userTransactions: userResult,
+        devUserId: 'dev-user-123',
+        authUserId: userId,
+        userMatch: userId === 'dev-user-123'
+      }
+    });
+  } catch (error) {
+    console.error('🔍 Debug endpoint error:', error);
+    res.status(500).json({
+      error: 'Debug failed',
       message: error.message
     });
   }

@@ -14,8 +14,17 @@ const processingStatus = new Map();
 export const uploadPDF = async (req, res) => {
   try {
     const { file } = req;
-    const { uid: userId } = req.user || { uid: 'dev-user-123' };
+    const { uid: userId } = req.user; // Remove fallback to force proper auth
     const { bankType = 'chase', autoProcess = false } = req.body;
+
+    if (!userId) {
+      return res.status(401).json({
+        error: 'Authentication required',
+        message: 'User must be authenticated to upload PDFs'
+      });
+    }
+
+    console.log('📄 PDF upload by user:', userId);
 
     if (!file) {
       return res.status(400).json({
@@ -107,7 +116,16 @@ export const processPDF = async (req, res) => {
   try {
     const { fileId } = req.params;
     const { autoSave = true, classification = 'auto' } = req.body;
-    const { uid: userId } = req.user || { uid: 'dev-user-123' };
+    const { uid: userId } = req.user; // Remove fallback to force proper auth
+
+    if (!userId) {
+      return res.status(401).json({
+        error: 'Authentication required',
+        message: 'User must be authenticated to process PDFs'
+      });
+    }
+
+    console.log('📄 PDF processing by user:', userId);
 
     // Find the uploaded file
     const uploadsDir = path.join(__dirname, '../../uploads');
@@ -282,7 +300,14 @@ export const getPDFStatus = async (req, res) => {
 
 export const getUserUploads = async (req, res) => {
   try {
-    const { uid: userId } = req.user || { uid: 'dev-user-123' };
+    const { uid: userId } = req.user; // Remove fallback to force proper auth
+    
+    if (!userId) {
+      return res.status(401).json({
+        error: 'Authentication required',
+        message: 'User must be authenticated to view uploads'
+      });
+    }
     
     // Get list of uploaded files for this user
     const uploadsDir = path.join(__dirname, '../../uploads');

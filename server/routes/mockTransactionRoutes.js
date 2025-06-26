@@ -7,7 +7,9 @@ import {
   deleteTransaction,
   getTransactionById,
   bulkUpdateTransactions,
-  getTransactionSummary
+  getTransactionSummary,
+  testTransactionStructure,
+  debugGetAllTransactions
 } from '../controllers/mockTransactionController.js';
 
 const router = express.Router();
@@ -40,6 +42,12 @@ const queryValidation = [
 ];
 
 // Routes
+// GET /api/transactions/debug - Debug endpoint for comparing transactions
+router.get('/debug', debugGetAllTransactions);
+
+// GET /api/transactions/test - Test endpoint for debugging
+router.get('/test', testTransactionStructure);
+
 // GET /api/transactions - Get all transactions for user
 router.get('/', queryValidation, getTransactions);
 

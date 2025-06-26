@@ -72,8 +72,8 @@ const Dashboard = () => {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-        <p className="text-gray-600">Overview of your bookkeeping data (Demo Mode)</p>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white transition-colors">Dashboard</h1>
+        <p className="text-gray-600 dark:text-gray-300 transition-colors">Overview of your bookkeeping data (Demo Mode)</p>
       </div>
 
       {/* Stats Grid */}
@@ -91,7 +91,7 @@ const Dashboard = () => {
                   </div>
                   <div className="ml-5 w-0 flex-1">
                     <dl>
-                      <dt className="text-sm font-medium text-gray-500 truncate">
+                      <dt className="text-sm font-medium text-gray-500 dark:text-gray-400 truncate transition-colors">
                         {stat.name}
                       </dt>
                       <dd className={`text-lg font-medium ${stat.color}`}>
@@ -109,11 +109,11 @@ const Dashboard = () => {
       {/* Recent Transactions */}
       <div className="bg-white shadow rounded-lg">
         <div className="px-6 py-4 border-b border-gray-200">
-          <h3 className="text-lg font-medium text-gray-900">Recent Transactions</h3>
+          <h3 className="text-lg font-medium text-gray-900 dark:text-white transition-colors">Recent Transactions</h3>
         </div>
         <div className="px-6 py-4">
           {transactions.length === 0 ? (
-            <p className="text-gray-500 text-center py-8">No transactions found.</p>
+            <p className="text-gray-500 dark:text-gray-400 text-center py-8 transition-colors">No transactions found.</p>
           ) : (
             <div className="space-y-4">
               {transactions.map((transaction) => (
@@ -127,10 +127,10 @@ const Dashboard = () => {
                       {transaction.type === 'income' ? '+' : '-'}
                     </div>
                     <div className="ml-4">
-                      <div className="text-sm font-medium text-gray-900">
+                      <div className="text-sm font-medium text-gray-900 dark:text-white transition-colors">
                         {transaction.description}
                       </div>
-                      <div className="text-sm text-gray-500">
+                      <div className="text-sm text-gray-500 dark:text-gray-400 transition-colors">
                         {transaction.payee && `${transaction.payee} • `}
                         {transaction.category}
                       </div>
@@ -142,7 +142,7 @@ const Dashboard = () => {
                     }`}>
                       {transaction.type === 'income' ? '+' : ''}${Math.abs(transaction.amount).toLocaleString()}
                     </div>
-                    <div className="text-sm text-gray-500">
+                    <div className="text-sm text-gray-500 dark:text-gray-400 transition-colors">
                       {new Date(transaction.date).toLocaleDateString()}
                     </div>
                   </div>
@@ -156,7 +156,7 @@ const Dashboard = () => {
       {/* Quick Actions */}
       <div className="bg-white shadow rounded-lg">
         <div className="px-6 py-4 border-b border-gray-200">
-          <h3 className="text-lg font-medium text-gray-900">Quick Actions</h3>
+          <h3 className="text-lg font-medium text-gray-900 dark:text-white transition-colors">Quick Actions</h3>
         </div>
         <div className="px-6 py-4">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">

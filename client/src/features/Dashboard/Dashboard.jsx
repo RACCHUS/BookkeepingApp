@@ -43,7 +43,7 @@ const Dashboard = () => {
   if (error) {
     return (
       <div className="text-center py-12">
-        <p className="text-red-600">Error loading dashboard data: {error.message}</p>
+        <p className="text-red-600 dark:text-red-400">Error loading dashboard data: {error.message}</p>
       </div>
     );
   }
@@ -86,8 +86,8 @@ const Dashboard = () => {
     <div className="space-y-6">
       {/* Page header */}
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-        <p className="text-gray-600">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white transition-colors">Dashboard</h1>
+        <p className="text-gray-600 dark:text-gray-300 transition-colors">
           Overview for {startOfMonth.toLocaleDateString()} - {endOfMonth.toLocaleDateString()}
         </p>
       </div>
@@ -104,7 +104,7 @@ const Dashboard = () => {
                     <Icon className={`w-6 h-6 ${stat.color}`} />
                   </div>
                   <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-600">{stat.name}</p>
+                    <p className="text-sm font-medium text-gray-600 dark:text-gray-300 transition-colors">{stat.name}</p>
                     <p className={`text-2xl font-bold ${stat.color}`}>
                       {stat.value}
                     </p>
@@ -119,7 +119,7 @@ const Dashboard = () => {
       {/* Recent transactions */}
       <div className="card">
         <div className="card-header">
-          <h2 className="text-lg font-semibold text-gray-900">Recent Transactions</h2>
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white transition-colors">Recent Transactions</h2>
         </div>
         <div className="card-body p-0">
           {transactions.length > 0 ? (
@@ -143,12 +143,12 @@ const Dashboard = () => {
                         <div>
                           <p className="font-medium">{transaction.description}</p>
                           {transaction.payee && (
-                            <p className="text-sm text-gray-500">{transaction.payee}</p>
+                            <p className="text-sm text-gray-500 dark:text-gray-400 transition-colors">{transaction.payee}</p>
                           )}
                         </div>
                       </td>
                       <td className="table-cell">
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 transition-colors">
                           {transaction.category}
                         </span>
                       </td>
@@ -166,8 +166,8 @@ const Dashboard = () => {
               </table>
             </div>
           ) : (
-            <div className="p-8 text-center text-gray-500">
-              <DocumentTextIcon className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+            <div className="p-8 text-center text-gray-500 dark:text-gray-400 transition-colors">
+              <DocumentTextIcon className="w-12 h-12 mx-auto mb-4 text-gray-300 dark:text-gray-600 transition-colors" />
               <p>No transactions found</p>
             </div>
           )}
@@ -178,8 +178,8 @@ const Dashboard = () => {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="card">
           <div className="card-body text-center">
-            <ChartBarIcon className="w-12 h-12 mx-auto mb-4 text-primary-600" />
-            <h3 className="text-lg font-semibold mb-2">Upload PDF</h3>            <p className="text-gray-600 mb-4">Import transactions from bank statements</p>            <button 
+            <ChartBarIcon className="w-12 h-12 mx-auto mb-4 text-primary-600 dark:text-primary-400 transition-colors" />
+            <h3 className="text-lg font-semibold mb-2">Upload PDF</h3>            <p className="text-gray-600 dark:text-gray-300 mb-4 transition-colors">Import transactions from bank statements</p>            <button 
               className="btn btn-primary"
               onClick={() => navigate('/upload')}
             >
@@ -190,9 +190,9 @@ const Dashboard = () => {
         
         <div className="card">
           <div className="card-body text-center">
-            <DocumentTextIcon className="w-12 h-12 mx-auto mb-4 text-primary-600" />
+            <DocumentTextIcon className="w-12 h-12 mx-auto mb-4 text-primary-600 dark:text-primary-400 transition-colors" />
             <h3 className="text-lg font-semibold mb-2">Add Transaction</h3>
-            <p className="text-gray-600 mb-4">Manually enter a new transaction</p>
+            <p className="text-gray-600 dark:text-gray-300 mb-4 transition-colors">Manually enter a new transaction</p>
             <button className="btn btn-primary">
               Add Transaction
             </button>
@@ -201,9 +201,9 @@ const Dashboard = () => {
         
         <div className="card">
           <div className="card-body text-center">
-            <ChartBarIcon className="w-12 h-12 mx-auto mb-4 text-primary-600" />
+            <ChartBarIcon className="w-12 h-12 mx-auto mb-4 text-primary-600 dark:text-primary-400 transition-colors" />
             <h3 className="text-lg font-semibold mb-2">Generate Report</h3>
-            <p className="text-gray-600 mb-4">Create profit/loss and tax reports</p>
+            <p className="text-gray-600 dark:text-gray-300 mb-4 transition-colors">Create profit/loss and tax reports</p>
             <button className="btn btn-primary">
               View Reports
             </button>
