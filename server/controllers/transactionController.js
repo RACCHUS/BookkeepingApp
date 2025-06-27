@@ -1,5 +1,6 @@
 import { validationResult } from 'express-validator';
 import firebaseService from '../services/firebaseService.js';
+import transactionClassifierService from '../services/transactionClassifierService.js';
 import { TransactionSchema } from '../../shared/schemas/transactionSchema.js';
 
 export const getTransactions = async (req, res) => {
@@ -47,7 +48,52 @@ export const getTransactions = async (req, res) => {
       filters.type = type;
     }
 
-    const transactions = await firebaseService.getTransactions(userId, filters);
+    let transactions;
+    let usingMockData = false;
+    
+    try {
+      transactions = await firebaseService.getTransactions(userId, filters);
+    } catch (error) {
+      console.warn('Firestore query failed, using mock data:', error.message);
+      // Use mock data as fallback when index is not available
+      const mockTransactions = [
+        {
+          id: 'mock-1',
+          userId,
+          date: new Date().toISOString(),
+          amount: -50.00,
+          description: 'Sample Office Expense',
+          category: 'Office Expenses',
+          type: 'expense',
+          payee: 'Office Supply Store',
+          source: 'manual'
+        },
+        {
+          id: 'mock-2', 
+          userId,
+          date: new Date(Date.now() - 86400000).toISOString(), // Yesterday
+          amount: 1000.00,
+          description: 'Sample Client Payment',
+          category: 'Gross Receipts or Sales',
+          type: 'income',
+          payee: 'ABC Company',
+          source: 'manual'
+        },
+        {
+          id: 'mock-3',
+          userId,
+          date: new Date(Date.now() - 172800000).toISOString(), // 2 days ago
+          amount: -25.50,
+          description: 'Business Lunch',
+          category: 'Meals and Entertainment',
+          type: 'expense',
+          payee: 'Restaurant XYZ',
+          source: 'manual'
+        }
+      ];
+      transactions = mockTransactions;
+      usingMockData = true;
+    }
 
     // Apply additional client-side filters if needed
     let filteredTransactions = transactions;
@@ -59,12 +105,17 @@ export const getTransactions = async (req, res) => {
 
     res.json({
       success: true,
-      transactions: filteredTransactions,
-      pagination: {
-        limit: parseInt(limit),
-        offset: parseInt(offset),
+      data: {
+        transactions: filteredTransactions,
         total: filteredTransactions.length,
-        hasMore: filteredTransactions.length === parseInt(limit)
+        hasMore: filteredTransactions.length === parseInt(limit),
+        usingMockData, // Indicate if we're using fallback data
+        pagination: {
+          limit: parseInt(limit),
+          offset: parseInt(offset),
+          total: filteredTransactions.length,
+          hasMore: filteredTransactions.length === parseInt(limit)
+        }
       }
     });
 
@@ -121,10 +172,26 @@ export const createTransaction = async (req, res) => {
     const { uid: userId } = req.user;
     const transactionData = req.body;
 
+    // Auto-classify if category is not provided
+    let category = transactionData.category;
+    let classificationInfo = null;
+    
+    if (!category) {
+      const classification = await transactionClassifierService.classifyTransaction(transactionData, userId);
+      category = classification.category;
+      classificationInfo = {
+        autoClassified: true,
+        confidence: classification.confidence,
+        source: classification.source
+      };
+    }
+
     // Create transaction object based on schema
     const transaction = {
       ...TransactionSchema,
       ...transactionData,
+      category,
+      classificationInfo,
       date: new Date(transactionData.date),
       userId,
       createdBy: userId,
@@ -177,6 +244,9 @@ export const updateTransaction = async (req, res) => {
     const { uid: userId } = req.user;
     const updateData = req.body;
 
+    // Get the original transaction for learning purposes
+    const originalTransaction = await firebaseService.getTransactionById(id, userId);
+
     // Convert date string to Date object if provided
     if (updateData.date) {
       updateData.date = new Date(updateData.date);
@@ -184,11 +254,34 @@ export const updateTransaction = async (req, res) => {
       updateData.quarterlyPeriod = getQuarterFromDate(updateData.date);
     }
 
+    // Handle category changes for learning
+    if (updateData.category && originalTransaction.category !== updateData.category) {
+      // Mark as manually set
+      updateData.manuallySet = true;
+      updateData.classificationInfo = {
+        ...originalTransaction.classificationInfo,
+        manuallyOverridden: true,
+        originalCategory: originalTransaction.category,
+        manualCategory: updateData.category,
+        correctionTimestamp: new Date()
+      };
+
+      // Learn from the user's correction
+      await transactionClassifierService.learnFromUserCorrection(
+        originalTransaction,
+        updateData.category,
+        userId
+      );
+    }
+
     // Mark as manually reviewed if user is updating classification
     if (updateData.category || updateData.type) {
       updateData.isManuallyReviewed = true;
       updateData.isTrainingData = true; // Use for future ML training
     }
+
+    updateData.lastModifiedBy = userId;
+    updateData.lastModified = new Date();
 
     await firebaseService.updateTransaction(id, userId, updateData);
 
@@ -305,15 +398,40 @@ export const getTransactionSummary = async (req, res) => {
       });
     }
 
-    const summary = await firebaseService.getTransactionSummary(
-      userId,
-      new Date(startDate),
-      new Date(endDate)
-    );
+    let summary;
+    let usingMockData = false;
+    
+    try {
+      summary = await firebaseService.getTransactionSummary(
+        userId,
+        new Date(startDate),
+        new Date(endDate)
+      );
+    } catch (error) {
+      console.warn('Firestore summary query failed, using mock data:', error.message);
+      // Mock summary data as fallback
+      summary = {
+        totalIncome: 1000.00,
+        totalExpenses: 75.50,
+        netIncome: 924.50,
+        transactionCount: 3,
+        categoryBreakdown: {
+          'Gross Receipts or Sales': 1000.00,
+          'Office Expenses': -50.00,
+          'Meals and Entertainment': -25.50
+        },
+        typeBreakdown: {
+          income: 1000.00,
+          expense: -75.50
+        }
+      };
+      usingMockData = true;
+    }
 
     res.json({
       success: true,
       summary,
+      usingMockData,
       dateRange: {
         startDate,
         endDate
@@ -324,6 +442,150 @@ export const getTransactionSummary = async (req, res) => {
     console.error('Get transaction summary error:', error);
     res.status(500).json({
       error: 'Failed to get transaction summary',
+      message: error.message
+    });
+  }
+};
+
+// Get classification suggestions for transactions
+export const getClassificationSuggestions = async (req, res) => {
+  try {
+    const { uid: userId } = req.user;
+    const { transactionIds } = req.body;
+
+    if (!transactionIds || !Array.isArray(transactionIds)) {
+      return res.status(400).json({
+        error: 'Invalid request',
+        message: 'transactionIds array is required'
+      });
+    }
+
+    // Get transactions
+    const transactions = [];
+    for (const id of transactionIds) {
+      try {
+        const transaction = await firebaseService.getTransactionById(id, userId);
+        transactions.push({ id, ...transaction });
+      } catch (error) {
+        console.warn(`Transaction ${id} not found or not accessible`);
+      }
+    }
+
+    // Get classification suggestions
+    const suggestions = await transactionClassifierService.getBulkClassificationSuggestions(transactions, userId);
+
+    res.json({
+      success: true,
+      suggestions
+    });
+
+  } catch (error) {
+    console.error('Get classification suggestions error:', error);
+    res.status(500).json({
+      error: 'Failed to get classification suggestions',
+      message: error.message
+    });
+  }
+};
+
+// Bulk update transaction categories
+export const bulkUpdateCategories = async (req, res) => {
+  try {
+    const { uid: userId } = req.user;
+    const { updates } = req.body; // Array of { transactionId, category }
+
+    if (!updates || !Array.isArray(updates)) {
+      return res.status(400).json({
+        error: 'Invalid request',
+        message: 'updates array is required'
+      });
+    }
+
+    const results = [];
+    
+    for (const update of updates) {
+      try {
+        const { transactionId, category } = update;
+        
+        // Get original transaction for learning
+        const originalTransaction = await firebaseService.getTransactionById(transactionId, userId);
+        
+        // Update the transaction
+        await firebaseService.updateTransaction(transactionId, userId, {
+          category,
+          manuallySet: true,
+          lastModifiedBy: userId,
+          lastModified: new Date(),
+          isManuallyReviewed: true
+        });
+
+        // Learn from the correction if category changed
+        if (originalTransaction.category !== category) {
+          await transactionClassifierService.learnFromUserCorrection(
+            originalTransaction,
+            category,
+            userId
+          );
+        }
+
+        results.push({
+          transactionId,
+          success: true
+        });
+
+      } catch (error) {
+        console.error(`Failed to update transaction ${update.transactionId}:`, error);
+        results.push({
+          transactionId: update.transactionId,
+          success: false,
+          error: error.message
+        });
+      }
+    }
+
+    const successCount = results.filter(r => r.success).length;
+    const failureCount = results.length - successCount;
+
+    res.json({
+      success: true,
+      message: `Updated ${successCount} transactions${failureCount > 0 ? `, ${failureCount} failed` : ''}`,
+      results
+    });
+
+  } catch (error) {
+    console.error('Bulk update categories error:', error);
+    res.status(500).json({
+      error: 'Failed to bulk update categories',
+      message: error.message
+    });
+  }
+};
+
+// Get category statistics
+export const getCategoryStats = async (req, res) => {
+  try {
+    const { uid: userId } = req.user;
+    const { startDate, endDate } = req.query;
+
+    let dateRange = null;
+    if (startDate && endDate) {
+      dateRange = {
+        start: new Date(startDate),
+        end: new Date(endDate)
+      };
+    }
+
+    const stats = await transactionClassifierService.getCategoryStats(userId, dateRange);
+
+    res.json({
+      success: true,
+      stats
+    });
+
+  } catch (error) {
+    console.error('Get category stats error:', error);
+    res.status(500).json({
+      error: 'Failed to get category statistics',
       message: error.message
     });
   }

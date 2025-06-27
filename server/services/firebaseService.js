@@ -37,23 +37,11 @@ class FirebaseService {  constructor() {
 
   async getTransactions(userId, filters = {}) {
     try {
+      // Start with base query
       let query = this.db.collection('transactions').where('userId', '==', userId);
 
-      // Apply filters
-      if (filters.startDate && filters.endDate) {
-        query = query.where('date', '>=', filters.startDate)
-                    .where('date', '<=', filters.endDate);
-      }
-
-      if (filters.category) {
-        query = query.where('category', '==', filters.category);
-      }
-
-      if (filters.type) {
-        query = query.where('type', '==', filters.type);
-      }
-
-      // Apply ordering
+      // For now, use a simple query to avoid index requirements
+      // Apply ordering first (most important for UI)
       query = query.orderBy(filters.orderBy || 'date', filters.order || 'desc');
 
       // Apply limit
@@ -62,19 +50,35 @@ class FirebaseService {  constructor() {
       }
 
       const snapshot = await query.get();
-      const transactions = [];
+      let transactions = [];
 
       snapshot.forEach(doc => {
+        const data = doc.data();
         transactions.push({
           id: doc.id,
-          ...doc.data(),
-          // Convert Firestore timestamps to JavaScript dates
-          date: doc.data().date?.toDate(),
-          createdAt: doc.data().createdAt?.toDate(),
-          updatedAt: doc.data().updatedAt?.toDate()
+          ...data,
+          // Ensure date is properly formatted
+          date: data.date?.toDate ? data.date.toDate().toISOString() : data.date
         });
       });
 
+      // Apply client-side filtering for now (until we set up proper indexes)
+      if (filters.startDate && filters.endDate) {
+        transactions = transactions.filter(t => {
+          const transactionDate = new Date(t.date);
+          return transactionDate >= filters.startDate && transactionDate <= filters.endDate;
+        });
+      }
+
+      if (filters.category) {
+        transactions = transactions.filter(t => t.category === filters.category);
+      }
+
+      if (filters.type) {
+        transactions = transactions.filter(t => t.type === filters.type);
+      }
+
+      console.log(`✅ Retrieved ${transactions.length} transactions for user ${userId}`);
       return transactions;
     } catch (error) {
       console.error('Error getting transactions:', error);
@@ -185,28 +189,65 @@ class FirebaseService {  constructor() {
   }
 
   async getClassificationRules(userId) {
+    this._checkInitialized();
     try {
-      const snapshot = await this.db.collection('classificationRules')
+      const query = this.db.collection('classificationRules')
         .where('userId', '==', userId)
-        .where('isActive', '==', true)
-        .orderBy('confidence', 'desc')
-        .get();
+        .orderBy('createdAt', 'desc');
 
-      const rules = [];
-      snapshot.forEach(doc => {
-        rules.push({
-          id: doc.id,
-          ...doc.data(),
-          createdAt: doc.data().createdAt?.toDate(),
-          updatedAt: doc.data().updatedAt?.toDate()
-        });
-      });
-
-      return rules;
+      const snapshot = await query.get();
+      return snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
     } catch (error) {
       console.error('Error getting classification rules:', error);
+      // Return empty array if no rules exist or error occurs
+      return [];
+    }
+  }
+
+  async updateClassificationRule(userId, ruleId, updateData) {
+    this._checkInitialized();
+    try {
+      const docRef = this.db.collection('classificationRules').doc(ruleId);
+      
+      // Verify ownership
+      const doc = await docRef.get();
+      if (!doc.exists || doc.data().userId !== userId) {
+        throw new Error('Rule not found or access denied');
+      }
+
+      await docRef.update({
+        ...updateData,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+
+      return ruleId;
+    } catch (error) {
+      console.error('Error updating classification rule:', error);
       throw error;
-    }  }
+    }
+  }
+
+  async deleteClassificationRule(userId, ruleId) {
+    this._checkInitialized();
+    try {
+      const docRef = this.db.collection('classificationRules').doc(ruleId);
+      
+      // Verify ownership
+      const doc = await docRef.get();
+      if (!doc.exists || doc.data().userId !== userId) {
+        throw new Error('Rule not found or access denied');
+      }
+
+      await docRef.delete();
+      return true;
+    } catch (error) {
+      console.error('Error deleting classification rule:', error);
+      throw error;
+    }
+  }
 
   // File storage operations (local file system replacement for Firebase Storage)
   async uploadFile(buffer, fileName, contentType, userId) {
@@ -369,6 +410,41 @@ class FirebaseService {  constructor() {
     } catch (error) {
       console.error('Error getting transaction summary:', error);
       throw error;
+    }
+  }
+
+  async getUncategorizedTransactions(userId, limit = 50) {
+    this._checkInitialized();
+    try {
+      const query = this.db.collection('transactions')
+        .where('userId', '==', userId)
+        .where('category', 'in', ['', 'Uncategorized', null])
+        .orderBy('date', 'desc')
+        .limit(limit);
+
+      const snapshot = await query.get();
+      return snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+    } catch (error) {
+      console.error('Error getting uncategorized transactions:', error);
+      // If we can't use the compound query due to index constraints, fall back to simple query
+      const query = this.db.collection('transactions')
+        .where('userId', '==', userId)
+        .orderBy('date', 'desc')
+        .limit(limit * 2); // Get more to filter
+
+      const snapshot = await query.get();
+      const transactions = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+
+      // Filter uncategorized transactions manually
+      return transactions
+        .filter(t => !t.category || t.category === '' || t.category === 'Uncategorized')
+        .slice(0, limit);
     }
   }
 }

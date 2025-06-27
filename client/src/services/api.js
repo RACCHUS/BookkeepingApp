@@ -45,7 +45,14 @@ export const apiClient = {
     update: (id, data) => api.put(`/transactions/${id}`, data),
     delete: (id) => api.delete(`/transactions/${id}`),
     bulkUpdate: (transactions) => api.patch('/transactions/bulk', { transactions }),
-    getSummary: (params) => api.get('/transactions/summary', { params })
+    getSummary: (startDate, endDate) => api.get('/transactions/summary', { 
+      params: { startDate, endDate } 
+    }),
+    getClassificationSuggestions: (transactionIds) => api.post('/transactions/classify', { transactionIds }),
+    bulkUpdateCategories: (updates) => api.post('/transactions/bulk-categorize', { updates }),
+    getCategoryStats: (startDate, endDate) => api.get('/transactions/stats', {
+      params: { startDate, endDate }
+    })
   },
   // PDF methods
   pdf: {
@@ -60,8 +67,12 @@ export const apiClient = {
   // Classification methods
   classification: {
     classify: (transaction) => api.post('/classification/classify', { transaction }),
+    testClassification: (transaction) => api.post('/classification/test', { transaction }),
     train: (transactions) => api.post('/classification/train', { transactions }),
+    bulkReclassify: (filters = {}) => api.post('/classification/bulk-reclassify', { filters }),
+    getStats: () => api.get('/classification/stats'),
     getRules: () => api.get('/classification/rules'),
+    getUncategorized: () => api.get('/classification/uncategorized'),
     createRule: (rule) => api.post('/classification/rules', rule),
     updateRule: (id, rule) => api.put(`/classification/rules/${id}`, rule),
     deleteRule: (id) => api.delete(`/classification/rules/${id}`)
@@ -69,6 +80,18 @@ export const apiClient = {
 
   // Report methods
   reports: {
+    generateSummaryPDF: (params) => api.post('/reports/summary-pdf', params, {
+      responseType: 'blob'
+    }),
+    generateTaxSummaryPDF: (params) => api.post('/reports/tax-summary-pdf', params, {
+      responseType: 'blob'
+    }),
+    generateCategoryBreakdownPDF: (params) => api.post('/reports/category-breakdown-pdf', params, {
+      responseType: 'blob'
+    }),
+    download: (fileName) => api.get(`/reports/download/${fileName}`, {
+      responseType: 'blob'
+    }),
     profitLoss: (params) => api.get('/reports/profit-loss', { params }),
     expenseSummary: (params) => api.get('/reports/expense-summary', { params }),
     employeeSummary: (params) => api.get('/reports/employee-summary', { params }),

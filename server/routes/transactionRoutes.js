@@ -7,7 +7,10 @@ import {
   deleteTransaction,
   getTransactionById,
   bulkUpdateTransactions,
-  getTransactionSummary
+  getTransactionSummary,
+  getClassificationSuggestions,
+  bulkUpdateCategories,
+  getCategoryStats
 } from '../controllers/transactionController.js';
 
 const router = express.Router();
@@ -40,8 +43,11 @@ const getTransactionsValidation = [
 // Routes
 router.get('/', getTransactionsValidation, getTransactions);
 router.get('/summary', getTransactionSummary);
+router.get('/stats', getCategoryStats);
 router.get('/:id', getTransactionById);
 router.post('/', createTransactionValidation, createTransaction);
+router.post('/classify', getClassificationSuggestions);
+router.post('/bulk-categorize', bulkUpdateCategories);
 router.put('/:id', updateTransactionValidation, updateTransaction);
 router.delete('/:id', deleteTransaction);
 router.patch('/bulk', bulkUpdateTransactions);

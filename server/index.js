@@ -38,9 +38,13 @@ import optionalAuthMiddleware from './middlewares/optionalAuthMiddleware.js';
 
 // Import transaction routes  
 import mockTransactionRoutes from './routes/mockTransactionRoutes.js';
+import transactionRoutes from './routes/transactionRoutes.js';
 
 // Import PDF routes
 import pdfRoutes from './routes/pdfRoutes.js';
+
+// Import classification routes
+import classificationRoutes from './routes/classificationRoutes.js';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -193,10 +197,13 @@ app.use('/api/*', (req, res, next) => {
 });
 
 // Add full transaction routes with optional auth
-app.use('/api/transactions', optionalAuthMiddleware, mockTransactionRoutes);
+app.use('/api/transactions', optionalAuthMiddleware, transactionRoutes);
 
 // Add PDF routes with optional auth
 app.use('/api/pdf', optionalAuthMiddleware, pdfRoutes);
+
+// Add classification routes with optional auth
+app.use('/api/classification', optionalAuthMiddleware, classificationRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

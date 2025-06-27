@@ -214,16 +214,32 @@ async function processUploadedFile(fileId, filePath, userId, bankType, processId
     // Auto-save transactions if requested
     let savedTransactionIds = [];
     if (autoSave && parseResult.transactions.length > 0) {
-      // Prepare transactions for saving
-      const transactionsToSave = parseResult.transactions.map(transaction => ({
-        ...transaction,
-        source: 'chase_pdf_import',
-        sourceFile: path.basename(filePath),
-        sourceFileId: fileId,
-        isManuallyReviewed: false,
-        createdBy: userId,
-        importedAt: new Date().toISOString()
-      }));
+      // Prepare transactions for saving with advanced classification
+      const transactionsToSave = [];
+      
+      for (const transaction of parseResult.transactions) {
+        // Use advanced classification
+        const classificationResult = await chasePDFParser.classifyTransactionAdvanced(transaction, userId);
+        
+        const enhancedTransaction = {
+          ...transaction,
+          category: classificationResult.category,
+          classificationInfo: {
+            autoClassified: true,
+            confidence: classificationResult.confidence,
+            source: classificationResult.source,
+            needsReview: classificationResult.needsReview
+          },
+          source: 'chase_pdf_import',
+          sourceFile: path.basename(filePath),
+          sourceFileId: fileId,
+          isManuallyReviewed: false,
+          createdBy: userId,
+          importedAt: new Date().toISOString()
+        };
+        
+        transactionsToSave.push(enhancedTransaction);
+      }
 
       // Save transactions one by one to get IDs
       for (const transaction of transactionsToSave) {

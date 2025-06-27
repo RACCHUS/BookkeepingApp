@@ -1,7 +1,14 @@
 import { validationResult } from 'express-validator';
 import firebaseService from '../services/firebaseService.js';
 import reportGenerator from '../services/reportGenerator.js';
+import reportService from '../services/reportService.js';
 import { CATEGORY_GROUPS, IRS_CATEGORIES } from '../../shared/constants/categories.js';
+import fs from 'fs/promises';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 export const generateProfitLossReport = async (req, res) => {
   try {
@@ -413,6 +420,233 @@ export const getReportHistory = async (req, res) => {
     console.error('Get report history error:', error);
     res.status(500).json({
       error: 'Failed to get report history',
+      message: error.message
+    });
+  }
+};
+
+// Generate summary report as PDF
+export const generateSummaryReportPDF = async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        error: 'Validation failed',
+        details: errors.array()
+      });
+    }
+
+    const { uid: userId } = req.user;
+    const { startDate, endDate, includeDetails = true } = req.body;
+
+    // Get transactions and summary
+    const transactions = await firebaseService.getTransactions(userId, {
+      startDate: new Date(startDate),
+      endDate: new Date(endDate),
+      limit: 10000 // Large limit to get all transactions
+    });
+
+    const summary = await firebaseService.getTransactionSummary(
+      userId,
+      new Date(startDate),
+      new Date(endDate)
+    );
+
+    // Generate PDF
+    const reportResult = await reportService.generateTransactionSummaryPDF(
+      transactions.transactions || [],
+      summary,
+      {
+        title: 'Transaction Summary Report',
+        dateRange: {
+          start: new Date(startDate).toLocaleDateString(),
+          end: new Date(endDate).toLocaleDateString()
+        },
+        userId,
+        includeDetails
+      }
+    );
+
+    res.json({
+      success: true,
+      message: 'Report generated successfully',
+      fileName: reportResult.fileName,
+      filePath: reportResult.filePath
+    });
+
+  } catch (error) {
+    console.error('Generate summary report PDF error:', error);
+    res.status(500).json({
+      error: 'Failed to generate summary report',
+      message: error.message
+    });
+  }
+};
+
+// Generate tax summary report as PDF
+export const generateTaxSummaryReportPDF = async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        error: 'Validation failed',
+        details: errors.array()
+      });
+    }
+
+    const { uid: userId } = req.user;
+    const { startDate, endDate, taxYear, includeTransactionDetails = false } = req.body;
+
+    // Get transactions for the tax year
+    const transactions = await firebaseService.getTransactions(userId, {
+      startDate: new Date(startDate),
+      endDate: new Date(endDate),
+      limit: 10000
+    });
+
+    const summary = await firebaseService.getTransactionSummary(
+      userId,
+      new Date(startDate),
+      new Date(endDate)
+    );
+
+    // Generate PDF
+    const reportResult = await reportService.generateTaxSummaryPDF(
+      transactions.transactions || [],
+      summary,
+      taxYear || new Date(startDate).getFullYear(),
+      {
+        userId,
+        includeTransactionDetails
+      }
+    );
+
+    res.json({
+      success: true,
+      message: 'Tax report generated successfully',
+      fileName: reportResult.fileName,
+      filePath: reportResult.filePath
+    });
+
+  } catch (error) {
+    console.error('Generate tax summary report PDF error:', error);
+    res.status(500).json({
+      error: 'Failed to generate tax report',
+      message: error.message
+    });
+  }
+};
+
+// Generate category breakdown report as PDF
+export const generateCategoryBreakdownReportPDF = async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        error: 'Validation failed',
+        details: errors.array()
+      });
+    }
+
+    const { uid: userId } = req.user;
+    const { startDate, endDate } = req.body;
+
+    // Get transactions and summary
+    const transactions = await firebaseService.getTransactions(userId, {
+      startDate: new Date(startDate),
+      endDate: new Date(endDate),
+      limit: 10000
+    });
+
+    const summary = await firebaseService.getTransactionSummary(
+      userId,
+      new Date(startDate),
+      new Date(endDate)
+    );
+
+    // Generate PDF with detailed category breakdown
+    const reportResult = await reportService.generateTransactionSummaryPDF(
+      transactions.transactions || [],
+      summary,
+      {
+        title: 'Category Breakdown Report',
+        dateRange: {
+          start: new Date(startDate).toLocaleDateString(),
+          end: new Date(endDate).toLocaleDateString()
+        },
+        userId,
+        includeDetails: true
+      }
+    );
+
+    res.json({
+      success: true,
+      message: 'Category breakdown report generated successfully',
+      fileName: reportResult.fileName,
+      filePath: reportResult.filePath
+    });
+
+  } catch (error) {
+    console.error('Generate category breakdown report PDF error:', error);
+    res.status(500).json({
+      error: 'Failed to generate category breakdown report',
+      message: error.message
+    });
+  }
+};
+
+// Download generated report
+export const downloadReport = async (req, res) => {
+  try {
+    const { fileName } = req.params;
+    const { uid: userId } = req.user;
+
+    // Security: Ensure the file name doesn't contain path traversal
+    if (fileName.includes('..') || fileName.includes('/') || fileName.includes('\\')) {
+      return res.status(400).json({
+        error: 'Invalid file name'
+      });
+    }
+
+    // Check if file belongs to the user
+    if (!fileName.includes(userId)) {
+      return res.status(403).json({
+        error: 'Access denied'
+      });
+    }
+
+    const filePath = path.join(__dirname, '../../reports', fileName);
+    
+    // Check if file exists
+    try {
+      await fs.access(filePath);
+    } catch (error) {
+      return res.status(404).json({
+        error: 'File not found'
+      });
+    }
+
+    // Set appropriate headers
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+
+    // Stream the file
+    const fileStream = fs.createReadStream(filePath);
+    fileStream.pipe(res);
+
+    fileStream.on('error', (error) => {
+      console.error('File stream error:', error);
+      if (!res.headersSent) {
+        res.status(500).json({
+          error: 'Failed to download file'
+        });
+      }
+    });
+
+  } catch (error) {
+    console.error('Download report error:', error);
+    res.status(500).json({
+      error: 'Failed to download report',
       message: error.message
     });
   }

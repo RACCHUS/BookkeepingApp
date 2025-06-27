@@ -21,10 +21,10 @@ const Dashboard = () => {
 
   const { data: summary, isLoading, error } = useQuery({
     queryKey: ['transaction-summary', startOfMonth, endOfMonth],
-    queryFn: () => apiClient.transactions.getSummary({
-      startDate: startOfMonth.toISOString(),
-      endDate: endOfMonth.toISOString()
-    }),
+    queryFn: () => apiClient.transactions.getSummary(
+      startOfMonth.toISOString(),
+      endOfMonth.toISOString()
+    ),
   });
 
   const { data: recentTransactions } = useQuery({

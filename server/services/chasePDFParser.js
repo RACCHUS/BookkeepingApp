@@ -1,5 +1,6 @@
 import pdfParse from 'pdf-parse';
 import fs from 'fs/promises';
+import transactionClassifierService from './transactionClassifierService.js';
 
 class ChasePDFParser {
   constructor() {
@@ -595,6 +596,29 @@ class ChasePDFParser {
     } catch (error) {
       console.error('Error creating transaction:', error);
       return null;
+    }
+  }
+
+  async classifyTransactionAdvanced(transaction, userId) {
+    try {
+      // Use the advanced classification service
+      const classification = await transactionClassifierService.classifyTransaction(transaction, userId);
+      return {
+        category: classification.category,
+        confidence: classification.confidence,
+        source: classification.source,
+        needsReview: classification.confidence < 80
+      };
+    } catch (error) {
+      console.warn('Advanced classification failed, falling back to basic classification:', error);
+      // Fall back to basic classification
+      const category = this.classifyTransaction(transaction.description, transaction.type);
+      return {
+        category,
+        confidence: 60,
+        source: 'fallback',
+        needsReview: category === 'Uncategorized'
+      };
     }
   }
 }
