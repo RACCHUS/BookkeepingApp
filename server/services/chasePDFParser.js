@@ -1,6 +1,11 @@
 import pdfParse from 'pdf-parse';
 import fs from 'fs/promises';
 import transactionClassifierService from './transactionClassifierService.js';
+import ChaseSectionExtractor from './parsers/ChaseSectionExtractor.js';
+import ChaseTransactionParser from './parsers/ChaseTransactionParser.js';
+import ChaseDateUtils from './parsers/ChaseDateUtils.js';
+import ChaseClassifier from './parsers/ChaseClassifier.js';
+import ChaseSummary from './parsers/ChaseSummary.js';
 
 class ChasePDFParser {
   constructor() {
@@ -420,150 +425,47 @@ class ChasePDFParser {
   }
 
   extractDeposits(text, year) {
+    // Use new section extractor and transaction parser
+    const sectionText = ChaseSectionExtractor.extractDepositsSection(text);
     const deposits = [];
-    
-    // Look for the deposits section (case insensitive)
-    const depositMatch = text.match(/DEPOSITS AND ADDITIONS[\s\S]*?Total Deposits and Additions[\s\S]*?\$[\d,]+\.?\d{2}/i);
-    
-    this.extractionLog.push(`Deposit section found: ${depositMatch ? 'YES' : 'NO'}`);
-    
-    if (depositMatch) {
-      const sectionText = depositMatch[0];
-      this.extractionLog.push(`Deposit section length: ${sectionText.length}`);
-      
+    if (sectionText) {
       const lines = sectionText.split('\n');
       for (const line of lines) {
-        // Skip header and total lines
-        if (line.includes('DATE') || line.includes('DESCRIPTION') || line.includes('Total')) {
-          continue;
-        }
-        
-        // Pattern: 01/08Remote Online Deposit 1$3,640.00 or 01/19Remote Online Deposit 12,500.00
-        // Look for date followed by description and amount (with or without $)
-        const match = line.match(/(\d{2}\/\d{2})(.+?)\$?([\d,]+\.\d{2})/);
-        if (match) {
-          const [, dateStr, description, amountStr] = match;
-          
-          // Clean up description and validate it looks like a deposit
-          const cleanDescription = description.trim();
-          if (cleanDescription.length > 0) {
-            this.extractionLog.push(`Found deposit: ${dateStr} ${cleanDescription} $${amountStr}`);
-            
-            const transaction = this.createTransaction(
-              dateStr, 
-              cleanDescription, 
-              amountStr, 
-              'income', 
-              year
-            );
-            
-            if (transaction) {
-              deposits.push(transaction);
-            }
-          }
-        }
+        if (line.includes('DATE') || line.includes('DESCRIPTION') || line.includes('Total')) continue;
+        const tx = ChaseTransactionParser.parseDepositLine(line, year);
+        if (tx) deposits.push(tx);
       }
     }
-    
     this.extractionLog.push(`Extracted ${deposits.length} deposits`);
     return deposits;
   }
 
   extractChecks(text, year) {
+    // Use new section extractor and transaction parser
+    const sectionText = ChaseSectionExtractor.extractChecksSection(text);
     const checks = [];
-    const checkSection = text.match(/CHECKS PAID[\s\S]*?Total Checks Paid/i);
-    
-    if (checkSection) {
-      // More precise pattern: 529^01/03$1,000.00 or 530^01/031,500.00
-      const lines = checkSection[0].split('\n');
+    if (sectionText) {
+      const lines = sectionText.split('\n');
       for (const line of lines) {
-        // Improved: match check number, optional symbols/spaces, ^, date(s), optional $, amount
-        // Handles lines like: 533 ^ 01/03 01/03 400.00 and 538 * ^ 01/19 2,500.00
-        const match = line.match(/(\d+)\s*[^\d\s]?[\^]?\s*(\d{2}\/\d{2})(?:\s*(\d{2}\/\d{2}))?\s*\$?([\d,]+\.\d{2})/);
-        if (match) {
-          const checkNum = match[1];
-          // Use the second date if present (for double-date lines), else the first
-          const dateStr = match[3] ? match[3] : match[2];
-          const amountStr = match[4];
-          // Validate amount is reasonable (under $100,000)
-          const amount = parseFloat(amountStr.replace(/,/g, ''));
-          if (amount > 0 && amount < 100000) {
-            const transaction = this.createTransaction(
-              dateStr,
-              `CHECK #${checkNum}`,
-              amountStr,
-              'expense',
-              year
-            );
-            if (transaction) {
-              checks.push(transaction);
-            }
-          }
-        }
+        if (line.includes('DATE') || line.includes('DESCRIPTION') || line.includes('Total')) continue;
+        const tx = ChaseTransactionParser.parseCheckLine ? ChaseTransactionParser.parseCheckLine(line, year) : null;
+        if (tx) checks.push(tx);
       }
     }
-    
+    this.extractionLog.push(`Extracted ${checks.length} checks`);
     return checks;
   }
 
   extractCardTransactions(text, year) {
+    // Use new section extractor and transaction parser
+    const sectionText = ChaseSectionExtractor.extractCardSection(text);
     const cardTransactions = [];
-    // Look for the detailed transaction section with DATE DESCRIPTION AMOUNT header
-    const cardSection = text.match(/ATM\s*&\s*DEBIT CARD WITHDRAWALS\s*\n\s*DATE\s*DESCRIPTION\s*AMOUNT[\s\S]*?Total ATM\s*&\s*DEBIT CARD WITHDRAWALS/i);
-    
-    this.extractionLog.push(`Card section found: ${cardSection ? 'YES' : 'NO'}`);
-    
-    if (cardSection) {
-      const lines = cardSection[0].split('\n');
-      this.extractionLog.push(`Card section has ${lines.length} lines`);
+    if (sectionText) {
+      const lines = sectionText.split('\n');
       for (const line of lines) {
-        // Skip header lines and total lines
-        if (line.includes('DATE') || line.includes('DESCRIPTION') || line.includes('Total')) {
-          continue;
-        }
-        // Pattern for the actual format: 01/02Card Purchase 12/29 Chevron 0202648 Plantation FL Card 1819$38.80
-        // Note: Card number is always 4 digits (1819), amount follows immediately with optional $
-        const match = line.match(/(\d{2}\/\d{2})Card Purchase.*?Card\s*1819\$?([\d,]+\.\d{2})$/);
-        if (match) {
-          const [, dateStr, amountStr] = match;
-          this.extractionLog.push(`Matched card transaction: ${dateStr} $${amountStr}`);
-          // Validate amount is reasonable
-          const amount = parseFloat(amountStr.replace(/,/g, ''));
-          if (amount > 0 && amount < 50000) {
-            // Extract merchant info - everything between "Card Purchase" and "Card 1819"
-            const merchantMatch = line.match(/Card Purchase\s*(?:\d{2}\/\d{2}\s+)?(.+?)\s+Card\s*1819/);
-            let merchantName = 'Card Purchase';
-            if (merchantMatch && merchantMatch[1]) {
-              // Clean up merchant name
-              merchantName = merchantMatch[1]
-                .replace(/\s+/g, ' ')
-                .replace(/\d{7,}/, '') // Remove long number sequences like store IDs
-                .replace(/\s+[A-Z]{2}\s*$/, '') // Remove state codes like "FL"
-                .trim();
-              // Take first few words if it's too long
-              const words = merchantName.split(' ');
-              if (words.length > 4) {
-                merchantName = words.slice(0, 4).join(' ');
-              }
-            }
-            this.extractionLog.push(`Creating card transaction: ${dateStr} ${merchantName} $${amountStr}`);
-            const transaction = this.createTransaction(
-              dateStr,
-              merchantName,
-              amountStr,
-              'expense',
-              year
-            );
-            if (transaction) {
-              cardTransactions.push(transaction);
-              this.extractionLog.push(`Successfully created card transaction`);
-            } else {
-              this.extractionLog.push(`Failed to create card transaction`);
-            }
-          } else {
-            this.extractionLog.push(`Invalid amount: ${amount}`);
-          }
-        }
+        if (line.includes('DATE') || line.includes('DESCRIPTION') || line.includes('Total')) continue;
+        const tx = ChaseTransactionParser.parseCardLine ? ChaseTransactionParser.parseCardLine(line, year) : null;
+        if (tx) cardTransactions.push(tx);
       }
     }
     this.extractionLog.push(`Extracted ${cardTransactions.length} card transactions`);
@@ -571,63 +473,18 @@ class ChasePDFParser {
   }
 
   extractElectronicTransactions(text, year) {
+    // Use new section extractor and transaction parser
+    const sectionText = ChaseSectionExtractor.extractElectronicSection(text);
     const electronicTransactions = [];
-    const electronicSection = text.match(/ELECTRONIC WITHDRAWALS[\s\S]*?Total Electronic Withdrawals/i);
-    
-    if (electronicSection) {
-      const sectionText = electronicSection[0];
-      
-      // Look for patterns like: 01/11 Orig CO Name:Home Depot ... $389.20
-      // Sometimes the amount is on the same line, sometimes on next line
+    if (sectionText) {
       const lines = sectionText.split('\n');
-      
-      for (let i = 0; i < lines.length; i++) {
-        const line = lines[i];
-        
-        // Match date and company name pattern
-        const dateCompanyMatch = line.match(/(\d{2}\/\d{2})\s+Orig CO Name:([^O]+?)(?:Orig|$)/);
-        if (dateCompanyMatch) {
-          const [, dateStr, companyName] = dateCompanyMatch;
-          
-          // Look for amount on current line or next few lines
-          let amount = null;
-          let amountStr = '';
-          
-          // Check current line first
-          const amountMatch = line.match(/\$?([\d,]+\.\d{2})/);
-          if (amountMatch) {
-            amountStr = amountMatch[1];
-            amount = parseFloat(amountStr.replace(/,/g, ''));
-          } else {
-            // Check next 2 lines for amount
-            for (let j = i + 1; j < Math.min(i + 3, lines.length); j++) {
-              const nextLineMatch = lines[j].match(/\$?([\d,]+\.\d{2})/);
-              if (nextLineMatch) {
-                amountStr = nextLineMatch[1];
-                amount = parseFloat(amountStr.replace(/,/g, ''));
-                break;
-              }
-            }
-          }
-          
-          // Only create transaction if we found a reasonable amount
-          if (amount && amount > 0 && amount < 50000) {
-            const transaction = this.createTransaction(
-              dateStr, 
-              `Electronic Payment: ${companyName.trim()}`, 
-              amountStr, 
-              'expense', 
-              year
-            );
-            
-            if (transaction) {
-              electronicTransactions.push(transaction);
-            }
-          }
-        }
+      for (const line of lines) {
+        if (line.includes('DATE') || line.includes('DESCRIPTION') || line.includes('Total')) continue;
+        const tx = ChaseTransactionParser.parseElectronicLine ? ChaseTransactionParser.parseElectronicLine(line, year) : null;
+        if (tx) electronicTransactions.push(tx);
       }
     }
-    
+    this.extractionLog.push(`Extracted ${electronicTransactions.length} electronic transactions`);
     return electronicTransactions;
   }
 
