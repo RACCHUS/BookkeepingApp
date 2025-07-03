@@ -476,8 +476,9 @@ class ChasePDFParser {
       // More precise pattern: 529^01/03$1,000.00 or 530^01/031,500.00
       const lines = checkSection[0].split('\n');
       for (const line of lines) {
-        // Previous: only match checkNum^date$amount (less forgiving)
-        const match = line.match(/(\d+)\^(\d{2}\/\d{2})(?:\d{2}\/\d{2})?\$?([\d,]+\.\d{2})/);
+        // Improved: match check number, optional symbols/spaces, ^, date, optional second date, optional $, amount
+        // Handles lines like: 538 * ^ 01/19 2,500.00
+        const match = line.match(/(\d+)\s*[^\d\s]?[\^]?\s*(\d{2}\/\d{2})(?:\s*\d{2}\/\d{2})?\s*\$?([\d,]+\.\d{2})/);
         if (match) {
           const [, checkNum, dateStr, amountStr] = match;
           // Validate amount is reasonable (under $100,000)
