@@ -19,7 +19,18 @@ const TransactionRow = memo(({
   deletingId
 }) => {
   const formatDate = (date) => {
-    return new Date(date).toLocaleDateString('en-US', {
+    if (!date) return '';
+    // Defensive: ensure date is in YYYY-MM-DD format
+    let isoDate = date;
+    // If date is not in YYYY-MM-DD, try to parse and reformat
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      const d = new Date(date);
+      if (!isNaN(d)) {
+        isoDate = d.toISOString().split('T')[0];
+      }
+    }
+    // Always parse as local date at noon to avoid timezone shift
+    return new Date(isoDate + 'T12:00:00').toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
       year: 'numeric'
