@@ -10,6 +10,7 @@ import {
   ArrowTrendingUpIcon,
   ArrowTrendingDownIcon
 } from '@heroicons/react/24/outline';
+import TransactionModal from '../../components/TransactionModal';
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -35,6 +36,8 @@ const Dashboard = () => {
       order: 'desc'
     }),
   });
+
+  const [showAddModal, setShowAddModal] = React.useState(false);
 
   if (isLoading) {
     return <LoadingSpinner text="Loading dashboard..." />;
@@ -81,6 +84,13 @@ const Dashboard = () => {
       bgColor: 'bg-blue-100'
     },
   ];
+
+  // Add transaction handler
+  const handleAddTransaction = async (data) => {
+    await apiClient.transactions.create(data);
+    setShowAddModal(false);
+    // Optionally refetch queries here if needed
+  };
 
   return (
     <div className="space-y-6">
@@ -179,7 +189,9 @@ const Dashboard = () => {
         <div className="card">
           <div className="card-body text-center">
             <ChartBarIcon className="w-12 h-12 mx-auto mb-4 text-primary-600 dark:text-primary-400 transition-colors" />
-            <h3 className="text-lg font-semibold mb-2">Upload PDF</h3>            <p className="text-gray-600 dark:text-gray-300 mb-4 transition-colors">Import transactions from bank statements</p>            <button 
+            <h3 className="text-lg font-semibold mb-2">Upload PDF</h3>
+            <p className="text-gray-600 dark:text-gray-300 mb-4 transition-colors">Import transactions from bank statements</p>
+            <button 
               className="btn btn-primary"
               onClick={() => navigate('/upload')}
             >
@@ -193,7 +205,7 @@ const Dashboard = () => {
             <DocumentTextIcon className="w-12 h-12 mx-auto mb-4 text-primary-600 dark:text-primary-400 transition-colors" />
             <h3 className="text-lg font-semibold mb-2">Add Transaction</h3>
             <p className="text-gray-600 dark:text-gray-300 mb-4 transition-colors">Manually enter a new transaction</p>
-            <button className="btn btn-primary">
+            <button className="btn btn-primary" onClick={() => setShowAddModal(true)}>
               Add Transaction
             </button>
           </div>
@@ -210,6 +222,13 @@ const Dashboard = () => {
           </div>
         </div>
       </div>
+
+      <TransactionModal
+        isOpen={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        onSave={handleAddTransaction}
+        mode="create"
+      />
     </div>
   );
 };
