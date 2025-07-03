@@ -164,15 +164,9 @@ export const createTransaction = async (req, res) => {
       lastModifiedBy: userId,
       taxYear: new Date(transactionData.date).getFullYear(),
       quarterlyPeriod: getQuarterFromDate(new Date(transactionData.date))
-    };
 
-    // Validate business purpose for business expenses
-    if (transaction.type === 'expense' && transaction.category !== 'Personal Expense' && !transaction.businessPurpose) {
-      return res.status(400).json({
-        error: 'Business purpose required',
-        message: 'Business purpose is required for business expenses'
-      });
-    }
+    };
+    // Business purpose is now optional for business expenses
 
     const transactionId = await firebaseService.createTransaction(userId, transaction);
 
