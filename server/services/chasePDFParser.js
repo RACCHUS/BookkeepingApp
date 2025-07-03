@@ -174,7 +174,7 @@ class ChasePDFParser {
 
     this.extractionLog.push(`Using statement year: ${statementYear}`);
 
-    // Extract different types of transactions
+    // Extract different types of transactions (section-based)
     const deposits = this.extractDeposits(text, statementYear);
     const checks = this.extractChecks(text, statementYear);
     const cardTransactions = this.extractCardTransactions(text, statementYear);
@@ -182,10 +182,97 @@ class ChasePDFParser {
 
     transactions.push(...deposits, ...checks, ...cardTransactions, ...electronicTransactions);
 
+    // Fallback: line-by-line extraction if total is suspiciously low (< 25)
+    if (transactions.length < 25) {
+      this.extractionLog.push('⚠️ Low transaction count, running line-by-line fallback extraction');
+      const fallbackTxs = this.extractTransactionsLineByLine(text, statementYear);
+      // Only add transactions not already present (by date, amount, description)
+      for (const tx of fallbackTxs) {
+        if (!transactions.some(t => t.date === tx.date && t.amount === tx.amount && t.description === tx.description)) {
+          transactions.push(tx);
+        }
+      }
+      this.extractionLog.push(`Fallback extraction added ${transactions.length} total transactions`);
+    }
+
     this.extractionLog.push(`Total transactions extracted: ${transactions.length}`);
 
     // Sort transactions by date
     return transactions.sort((a, b) => new Date(a.date) - new Date(b.date));
+  }
+  // Fallback: line-by-line extraction logic from improvedChasePDFParser.js
+  extractTransactionsLineByLine(text, year) {
+    const transactions = [];
+    const lines = text.split('\n');
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (!line) continue;
+      // Deposits: 01/08Remote Online Deposit 1$3,640.00
+      const depositMatch = line.match(/^(\d{2}\/\d{2})Remote Online Deposit \d+\$?([\d,]+\.?\d{2})$/);
+      if (depositMatch) {
+        const transaction = this.createTransaction(
+          depositMatch[1],
+          'Remote Online Deposit',
+          depositMatch[2],
+          'income',
+          year
+        );
+        if (transaction) transactions.push(transaction);
+        continue;
+      }
+      // Card Purchases: 01/02Card Purchase 12/29 Chevron 0202648 Plantation FL Card 1819$38.80
+      const cardMatch = line.match(/^(\d{2}\/\d{2})Card Purchase(?: With Pin)?(?: \d{2}\/\d{2})?\s+(.+?)\s+Card \d+\$?([\d,]+\.?\d{2})$/);
+      if (cardMatch) {
+        const transaction = this.createTransaction(
+          cardMatch[1],
+          cardMatch[2].trim(),
+          cardMatch[3],
+          'expense',
+          year
+        );
+        if (transaction) transactions.push(transaction);
+        continue;
+      }
+      // Electronic Withdrawals (multi-line): 01/11Orig CO Name:Home Depot...
+      const electronicMatch = line.match(/^(\d{2}\/\d{2})Orig CO Name:(.+?)(?:Orig ID|$)/);
+      if (electronicMatch) {
+        let amount = null;
+        let description = electronicMatch[2].trim();
+        for (let j = i; j < Math.min(i + 3, lines.length); j++) {
+          const nextLine = lines[j];
+          const amountMatch = nextLine.match(/\$?([\d,]+\.?\d{2})/);
+          if (amountMatch && !nextLine.includes('CO Name')) {
+            amount = amountMatch[1];
+            break;
+          }
+        }
+        if (amount) {
+          const transaction = this.createTransaction(
+            electronicMatch[1],
+            `Electronic Payment: ${description}`,
+            amount,
+            'expense',
+            year
+          );
+          if (transaction) transactions.push(transaction);
+        }
+        continue;
+      }
+      // Checks: 01/19 CHECK #538 $2,500.00 or similar
+      const checkMatch = line.match(/^(\d{2}\/\d{2}).*CHECK.*#?(\d+).*$([\d,]+\.?\d{2})$/i);
+      if (checkMatch) {
+        const transaction = this.createTransaction(
+          checkMatch[1],
+          `Check #${checkMatch[2]}`,
+          checkMatch[3],
+          'expense',
+          year
+        );
+        if (transaction) transactions.push(transaction);
+        continue;
+      }
+    }
+    return transactions;
   }
 
   parseTransactionLine(line, year) {
@@ -389,22 +476,20 @@ class ChasePDFParser {
       // More precise pattern: 529^01/03$1,000.00 or 530^01/031,500.00
       const lines = checkSection[0].split('\n');
       for (const line of lines) {
-        // Match check number, date, and amount more precisely
+        // Previous: only match checkNum^date$amount (less forgiving)
         const match = line.match(/(\d+)\^(\d{2}\/\d{2})(?:\d{2}\/\d{2})?\$?([\d,]+\.\d{2})/);
         if (match) {
           const [, checkNum, dateStr, amountStr] = match;
-          
           // Validate amount is reasonable (under $100,000)
           const amount = parseFloat(amountStr.replace(/,/g, ''));
           if (amount > 0 && amount < 100000) {
             const transaction = this.createTransaction(
-              dateStr, 
-              `CHECK #${checkNum}`, 
-              amountStr, 
-              'expense', 
+              dateStr,
+              `CHECK #${checkNum}`,
+              amountStr,
+              'expense',
               year
             );
-            
             if (transaction) {
               checks.push(transaction);
             }
@@ -426,27 +511,23 @@ class ChasePDFParser {
     if (cardSection) {
       const lines = cardSection[0].split('\n');
       this.extractionLog.push(`Card section has ${lines.length} lines`);
-      
       for (const line of lines) {
         // Skip header lines and total lines
         if (line.includes('DATE') || line.includes('DESCRIPTION') || line.includes('Total')) {
           continue;
         }
-        
         // Pattern for the actual format: 01/02Card Purchase 12/29 Chevron 0202648 Plantation FL Card 1819$38.80
         // Note: Card number is always 4 digits (1819), amount follows immediately with optional $
-        const match = line.match(/^(\d{2}\/\d{2})Card Purchase.*?Card\s*1819\$?([\d,]+\.\d{2})$/);
+        const match = line.match(/(\d{2}\/\d{2})Card Purchase.*?Card\s*1819\$?([\d,]+\.\d{2})$/);
         if (match) {
           const [, dateStr, amountStr] = match;
           this.extractionLog.push(`Matched card transaction: ${dateStr} $${amountStr}`);
-          
           // Validate amount is reasonable
           const amount = parseFloat(amountStr.replace(/,/g, ''));
           if (amount > 0 && amount < 50000) {
             // Extract merchant info - everything between "Card Purchase" and "Card 1819"
             const merchantMatch = line.match(/Card Purchase\s*(?:\d{2}\/\d{2}\s+)?(.+?)\s+Card\s*1819/);
             let merchantName = 'Card Purchase';
-            
             if (merchantMatch && merchantMatch[1]) {
               // Clean up merchant name
               merchantName = merchantMatch[1]
@@ -454,24 +535,20 @@ class ChasePDFParser {
                 .replace(/\d{7,}/, '') // Remove long number sequences like store IDs
                 .replace(/\s+[A-Z]{2}\s*$/, '') // Remove state codes like "FL"
                 .trim();
-              
               // Take first few words if it's too long
               const words = merchantName.split(' ');
               if (words.length > 4) {
                 merchantName = words.slice(0, 4).join(' ');
               }
             }
-            
             this.extractionLog.push(`Creating card transaction: ${dateStr} ${merchantName} $${amountStr}`);
-            
             const transaction = this.createTransaction(
-              dateStr, 
-              merchantName, 
-              amountStr, 
-              'expense', 
+              dateStr,
+              merchantName,
+              amountStr,
+              'expense',
               year
             );
-            
             if (transaction) {
               cardTransactions.push(transaction);
               this.extractionLog.push(`Successfully created card transaction`);
@@ -484,7 +561,6 @@ class ChasePDFParser {
         }
       }
     }
-    
     this.extractionLog.push(`Extracted ${cardTransactions.length} card transactions`);
     return cardTransactions;
   }

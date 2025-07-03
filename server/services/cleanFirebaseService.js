@@ -15,7 +15,8 @@ class FirebaseService {
         this.auth = admin.auth();
         this.isInitialized = true;
         console.log('🔥 FirebaseService: Initialized with Firestore and Auth');
-        this._seedInitialData();
+        // Note: Auto-seeding disabled to prevent unwanted sample data
+        // this._seedInitialData();
       } catch (error) {
         console.error('FirebaseService initialization error:', error);
         this.isInitialized = false;
@@ -95,34 +96,9 @@ class FirebaseService {
   }
 
   _initMockData() {
-    const sampleTransactions = [
-      {
-        id: this._generateId(),
-        date: '2025-06-01',
-        amount: 3500.00,
-        description: 'Software Development Consulting',
-        category: 'Business Income',
-        type: 'income',
-        payee: 'Tech Corp Ltd',
-        userId: 'dev-user-123',
-        createdAt: new Date('2025-06-01'),
-        updatedAt: new Date('2025-06-01')
-      },
-      {
-        id: this._generateId(),
-        date: '2025-06-02',
-        amount: 85.50,
-        description: 'Office Supplies - Staples',
-        category: 'Office Expenses',
-        type: 'expense',
-        payee: 'Staples',
-        userId: 'dev-user-123',
-        createdAt: new Date('2025-06-02'),
-        updatedAt: new Date('2025-06-02')
-      }
-    ];
-
-    this.mockData.transactions = sampleTransactions;
+    // Initialize with empty data instead of sample transactions
+    this.mockData.transactions = [];
+    console.log('🎭 Firebase: Initialized with empty mock data');
   }
 
   _generateId() {
@@ -175,24 +151,10 @@ class FirebaseService {
     if (this.isInitialized) {
       try {
         console.log(`🔥 Firebase: Querying transactions for userId: ${userId}`);
-        
-        // Start with simple query to avoid index requirements
+        // Only query the authenticated user's transactions (no dev fallback)
         let query = this.db.collection('transactions').where('userId', '==', userId);
-        
-        // For development: also check for dev-user-123 transactions if user is authenticated
-        let devQuery = null;
-        if (userId !== 'dev-user-123') {
-          devQuery = this.db.collection('transactions').where('userId', '==', 'dev-user-123');
-        }
-        
-        const [snapshot, devSnapshot] = await Promise.all([
-          query.get(),
-          devQuery ? devQuery.get() : Promise.resolve({ empty: true, forEach: () => {} })
-        ]);
-        
+        const snapshot = await query.get();
         let transactions = [];
-        
-        // Get user's own transactions
         snapshot.forEach(doc => {
           const data = doc.data();
           transactions.push({ 
@@ -203,23 +165,6 @@ class FirebaseService {
             updatedAt: data.updatedAt?.toDate?.() || data.updatedAt
           });
         });
-        
-        // If no transactions found for user, temporarily show dev transactions
-        if (transactions.length === 0 && !devSnapshot.empty) {
-          console.log('🔧 No transactions found for user, showing dev transactions as fallback');
-          devSnapshot.forEach(doc => {
-            const data = doc.data();
-            transactions.push({ 
-              id: doc.id, 
-              ...data,
-              // Mark these as dev transactions
-              _isDevTransaction: true,
-              // Convert Firestore timestamps to Date objects
-              createdAt: data.createdAt?.toDate?.() || data.createdAt,
-              updatedAt: data.updatedAt?.toDate?.() || data.updatedAt
-            });
-          });
-        }
 
         // Apply filters in memory for now
         if (filters.startDate) {
@@ -409,13 +354,17 @@ class FirebaseService {
         const docRef = this.db.collection('transactions').doc(transactionId);
         const doc = await docRef.get();
 
+        // Idempotent: If not found, treat as success
         if (!doc.exists) {
-          throw new Error('Transaction not found');
+          console.log(`🔥 Firebase: Transaction ${transactionId} not found (already deleted)`);
+          return { id: transactionId, deleted: true };
         }
 
         const data = doc.data();
         if (data.userId !== userId) {
-          throw new Error('Transaction not found');
+          // Idempotent: If not owned by user, treat as success
+          console.log(`🔥 Firebase: Transaction ${transactionId} not owned by user (already deleted)`);
+          return { id: transactionId, deleted: true };
         }
 
         await docRef.delete();
@@ -431,8 +380,10 @@ class FirebaseService {
         t => t.id === transactionId && t.userId === userId
       );
 
+      // Idempotent: If not found, treat as success
       if (index === -1) {
-        throw new Error('Transaction not found');
+        console.log(`🎭 Mock: Transaction ${transactionId} not found (already deleted)`);
+        return { id: transactionId, deleted: true };
       }
 
       const deleted = this.mockData.transactions.splice(index, 1)[0];

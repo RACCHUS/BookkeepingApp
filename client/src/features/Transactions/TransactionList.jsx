@@ -181,6 +181,8 @@ const TransactionList = () => {
 
   // Bulk operation handlers
   const handleSelectAll = () => {
+    if (!Array.isArray(filteredTransactions)) return;
+    
     if (selectedTransactions.size === filteredTransactions.length) {
       setSelectedTransactions(new Set());
     } else {
@@ -249,9 +251,14 @@ const TransactionList = () => {
 
   // Filtered transactions based on search and filters - moved before conditional returns
   const filteredTransactions = useMemo(() => {
-    if (!data?.data?.transactions) return [];
+    // Ensure we have a valid array of transactions
+    const transactions = data?.data?.transactions;
+    if (!transactions || !Array.isArray(transactions)) {
+      console.log('TransactionList: No valid transactions array found', { data, transactions });
+      return [];
+    }
     
-    let filtered = data.data.transactions;
+    let filtered = [...transactions]; // Create a copy to avoid mutations
 
     // Search filter
     if (searchTerm) {
@@ -290,8 +297,12 @@ const TransactionList = () => {
 
   // Available categories for filters - moved before conditional returns
   const availableCategories = useMemo(() => {
-    if (!data?.data?.transactions) return [];
-    return [...new Set(data.data.transactions
+    const transactions = data?.data?.transactions;
+    if (!transactions || !Array.isArray(transactions)) {
+      console.log('TransactionList: No valid transactions for categories', { data, transactions });
+      return [];
+    }
+    return [...new Set(transactions
       .map(t => t.category)
       .filter(Boolean)
       .sort()
@@ -331,10 +342,26 @@ const TransactionList = () => {
   }
 
   // Extract transaction data from the API response
-  const transactions = filteredTransactions;
+  const transactions = filteredTransactions || [];
   const totalCount = data?.data?.total || 0;
   const hasMore = data?.data?.hasMore || false;
-  const usingMockData = data?.data?.usingMockData || false;
+
+  // Add additional safety check for transactions array
+  if (!Array.isArray(transactions)) {
+    console.error('TransactionList: transactions is not an array!', { transactions, filteredTransactions, data });
+    // Force it to be an empty array
+    const safeTransactions = [];
+    return (
+      <div className="bg-white dark:bg-gray-800 shadow rounded-lg">
+        <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+          <h3 className="text-lg font-medium text-gray-900 dark:text-white">Transactions</h3>
+        </div>
+        <div className="p-6 text-center">
+          <p className="text-gray-500 dark:text-gray-400">Unable to load transactions. Please refresh the page.</p>
+        </div>
+      </div>
+    );
+  }
 
   // Inline category editing handlers
   const handleStartCategoryEdit = (transaction) => {
@@ -378,24 +405,6 @@ const TransactionList = () => {
 
   return (
     <div className="space-y-6">
-      {/* Mock Data Notice */}
-      {usingMockData && (
-        <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md p-4">
-          <div className="flex">
-            <div className="flex-shrink-0">
-              <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-              </svg>
-            </div>
-            <div className="ml-3">
-              <p className="text-sm text-yellow-800 dark:text-yellow-200">
-                <strong>Development Mode:</strong> Showing sample data while database indexes are being set up. Real transaction data will be available once the database is properly configured.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
@@ -572,19 +581,19 @@ const TransactionList = () => {
                 <label className="flex items-center">
                   <input
                     type="checkbox"
-                    checked={selectedTransactions.size === transactions.length && transactions.length > 0}
+                    checked={Array.isArray(transactions) && selectedTransactions.size === transactions.length && transactions.length > 0}
                     onChange={handleSelectAll}
                     className="h-4 w-4 text-blue-600 border-gray-300 dark:border-gray-600 rounded focus:ring-blue-500 dark:focus:ring-blue-400"
                   />
                   <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
-                    Select All ({transactions.length})
+                    Select All ({Array.isArray(transactions) ? transactions.length : 0})
                   </span>
                 </label>
               </div>
             )}
             
             <ul className="divide-y divide-gray-200 dark:divide-gray-700">
-            {transactions.map((transaction) => (
+            {Array.isArray(transactions) ? transactions.map((transaction) => (
               <li key={transaction.id}>
                 <div className="px-4 py-4 sm:px-6">
                   <div className="flex items-center justify-between">
@@ -718,7 +727,11 @@ const TransactionList = () => {
                   </div>
                 </div>
               </li>
-            ))}
+            )) : (
+              <li className="px-4 py-4 text-center text-gray-500 dark:text-gray-400">
+                No transactions available
+              </li>
+            )}
           </ul>
           </>
         )}

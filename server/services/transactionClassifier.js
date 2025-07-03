@@ -1,6 +1,6 @@
 import { CLASSIFICATION_KEYWORDS, PAYEE_PATTERNS } from '../../shared/constants/keywords.js';
 import { IRS_CATEGORIES } from '../../shared/constants/categories.js';
-import firebaseService from './firebaseService.js';
+import firebaseService from './cleanFirebaseService.js';
 
 class TransactionClassifier {
   constructor() {

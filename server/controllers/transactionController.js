@@ -1,5 +1,5 @@
 import { validationResult } from 'express-validator';
-import firebaseService from '../services/firebaseService.js';
+import firebaseService from '../services/cleanFirebaseService.js';
 import transactionClassifierService from '../services/transactionClassifierService.js';
 import { TransactionSchema } from '../../shared/schemas/transactionSchema.js';
 
@@ -52,47 +52,13 @@ export const getTransactions = async (req, res) => {
     let usingMockData = false;
     
     try {
-      transactions = await firebaseService.getTransactions(userId, filters);
+      const result = await firebaseService.getTransactions(userId, filters);
+      transactions = result.transactions || result || [];
     } catch (error) {
-      console.warn('Firestore query failed, using mock data:', error.message);
-      // Use mock data as fallback when index is not available
-      const mockTransactions = [
-        {
-          id: 'mock-1',
-          userId,
-          date: new Date().toISOString(),
-          amount: -50.00,
-          description: 'Sample Office Expense',
-          category: 'Office Expenses',
-          type: 'expense',
-          payee: 'Office Supply Store',
-          source: 'manual'
-        },
-        {
-          id: 'mock-2', 
-          userId,
-          date: new Date(Date.now() - 86400000).toISOString(), // Yesterday
-          amount: 1000.00,
-          description: 'Sample Client Payment',
-          category: 'Gross Receipts or Sales',
-          type: 'income',
-          payee: 'ABC Company',
-          source: 'manual'
-        },
-        {
-          id: 'mock-3',
-          userId,
-          date: new Date(Date.now() - 172800000).toISOString(), // 2 days ago
-          amount: -25.50,
-          description: 'Business Lunch',
-          category: 'Meals and Entertainment',
-          type: 'expense',
-          payee: 'Restaurant XYZ',
-          source: 'manual'
-        }
-      ];
-      transactions = mockTransactions;
-      usingMockData = true;
+      console.warn('Firestore query failed:', error.message);
+      // Return empty transactions instead of mock data
+      transactions = [];
+      usingMockData = false; // Don't indicate mock data usage
     }
 
     // Apply additional client-side filters if needed
@@ -312,7 +278,10 @@ export const deleteTransaction = async (req, res) => {
     const { id } = req.params;
     const { uid: userId } = req.user;
 
-    await firebaseService.deleteTransaction(id, userId);
+    // Debug log for tracing delete issues
+    console.log('[DEBUG] Attempting to delete transaction', { userId, transactionId: id });
+
+    await firebaseService.deleteTransaction(userId, id);
 
     res.json({
       success: true,
@@ -408,24 +377,20 @@ export const getTransactionSummary = async (req, res) => {
         new Date(endDate)
       );
     } catch (error) {
-      console.warn('Firestore summary query failed, using mock data:', error.message);
-      // Mock summary data as fallback
+      console.warn('Firestore summary query failed:', error.message);
+      // Return empty summary instead of mock data
       summary = {
-        totalIncome: 1000.00,
-        totalExpenses: 75.50,
-        netIncome: 924.50,
-        transactionCount: 3,
-        categoryBreakdown: {
-          'Gross Receipts or Sales': 1000.00,
-          'Office Expenses': -50.00,
-          'Meals and Entertainment': -25.50
-        },
+        totalIncome: 0,
+        totalExpenses: 0,
+        netIncome: 0,
+        transactionCount: 0,
+        categoryBreakdown: {},
         typeBreakdown: {
-          income: 1000.00,
-          expense: -75.50
+          income: 0,
+          expense: 0
         }
       };
-      usingMockData = true;
+      usingMockData = false; // Don't indicate mock data usage
     }
 
     res.json({

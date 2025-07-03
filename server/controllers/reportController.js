@@ -1,5 +1,5 @@
 import { validationResult } from 'express-validator';
-import firebaseService from '../services/firebaseService.js';
+import firebaseService from '../services/cleanFirebaseService.js';
 import reportGenerator from '../services/reportGenerator.js';
 import reportService from '../services/reportService.js';
 import { CATEGORY_GROUPS, IRS_CATEGORIES } from '../../shared/constants/categories.js';

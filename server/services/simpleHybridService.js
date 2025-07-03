@@ -135,7 +135,7 @@ class SimpleHybridService {
     }
   }
 
-  _createMockTransaction(userId, transactionData) {  _createMockTransaction(userId, transactionData) {
+  _createMockTransaction(userId, transactionData) {
     const id = this._generateId();
     const transaction = {
       id,
@@ -144,7 +144,6 @@ class SimpleHybridService {
       createdAt: new Date(),
       updatedAt: new Date()
     };
-    
     this.mockData.transactions.push(transaction);
     console.log(`🎭 Mock: Created transaction ${id}`);
     return { id, data: transaction };

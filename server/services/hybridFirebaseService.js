@@ -147,24 +147,9 @@ class HybridFirebaseService {  constructor() {
       createdAt: new Date(),
       updatedAt: new Date()
     };
-    
     this.mockData.transactions.push(transaction);
     console.log(`🎭 Mock: Created transaction ${id}`);
     return { id, data: transaction };
-  }
-      const id = this._generateId();
-      const transaction = {
-        id,
-        ...transactionData,
-        userId,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      };
-      
-      this.mockData.transactions.push(transaction);
-      console.log(`🎭 Mock: Created transaction ${id}`);
-      return { id, data: transaction };
-    }
   }
 
   async getTransactions(userId, filters = {}) {
@@ -375,7 +360,6 @@ class HybridFirebaseService {  constructor() {
       if (index === -1) {
         throw new Error('Transaction not found');
       }
-
       const deleted = this.mockData.transactions.splice(index, 1)[0];
       console.log(`🎭 Mock: Deleted transaction ${transactionId}`);
       return deleted;

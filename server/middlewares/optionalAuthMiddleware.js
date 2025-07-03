@@ -13,15 +13,15 @@ const optionalAuthMiddleware = async (req, res, next) => {
       console.log('Firebase not available, using mock user');
     }
 
-    if (!admin || isDevelopment) {
-      // Mock user for development
+    if (!admin) {
+      // Mock user ONLY if Firebase is not available (not just for development)
       req.user = {
         uid: 'dev-user-123',
         email: 'dev@example.com',
         email_verified: true,
         name: 'Development User'
       };
-      console.log('🔓 Using mock authentication for development');
+      console.log('🔓 Using mock authentication because Firebase is not available');
       return next();
     }
 

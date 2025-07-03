@@ -37,7 +37,6 @@ initializeFirebase();
 import optionalAuthMiddleware from './middlewares/optionalAuthMiddleware.js';
 
 // Import transaction routes  
-import mockTransactionRoutes from './routes/mockTransactionRoutes.js';
 import transactionRoutes from './routes/transactionRoutes.js';
 
 // Import PDF routes
