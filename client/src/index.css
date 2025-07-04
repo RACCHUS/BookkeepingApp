@@ -86,4 +86,42 @@
   .table-cell {
     @apply px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100;
   }
+  
+  /* Sorting Controls Styles */
+  .sort-control {
+    @apply transition-all duration-200 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:focus:ring-blue-400 dark:focus:border-blue-400;
+  }
+  
+  .sort-control:hover {
+    @apply border-blue-400 dark:border-blue-500;
+  }
+  
+  .sort-preset {
+    @apply cursor-pointer transition-colors duration-150 hover:bg-blue-50 dark:hover:bg-blue-900/20 active:bg-blue-100 dark:active:bg-blue-900/40;
+  }
+  
+  .sort-indicator {
+    @apply inline-flex items-center px-2 py-1 rounded-full text-xs font-medium;
+  }
+  
+  .sort-indicator-current {
+    @apply bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 border border-blue-200 dark:border-blue-700;
+  }
+  
+  /* Transaction badges */
+  .badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+  
+  .badge-income {
+    @apply bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200;
+  }
+  
+  .badge-expense {
+    @apply bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200;
+  }
+  
+  .badge-section {
+    @apply bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200;
+  }
 }

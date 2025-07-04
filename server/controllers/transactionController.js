@@ -23,6 +23,7 @@ export const getTransactions = async (req, res) => {
       category,
       type,
       payee,
+      sectionCode,
       orderBy = 'date',
       order = 'desc'
     } = req.query;
@@ -48,6 +49,10 @@ export const getTransactions = async (req, res) => {
       filters.type = type;
     }
 
+    if (sectionCode) {
+      filters.sectionCode = sectionCode;
+    }
+
     let transactions;
     let usingMockData = false;
     
@@ -64,8 +69,14 @@ export const getTransactions = async (req, res) => {
     // Apply additional client-side filters if needed
     let filteredTransactions = transactions;
     if (payee) {
-      filteredTransactions = transactions.filter(t => 
-        t.payee.toLowerCase().includes(payee.toLowerCase())
+      filteredTransactions = filteredTransactions.filter(t => 
+        t.payee && t.payee.toLowerCase().includes(payee.toLowerCase())
+      );
+    }
+
+    if (sectionCode) {
+      filteredTransactions = filteredTransactions.filter(t => 
+        t.sectionCode === sectionCode
       );
     }
 

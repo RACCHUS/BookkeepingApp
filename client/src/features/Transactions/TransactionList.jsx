@@ -8,6 +8,7 @@ import LoadingSpinner from '../../components/LoadingSpinner';
 import TransactionModal from '../../components/TransactionModal';
 import { IRS_CATEGORIES, CATEGORY_GROUPS } from '@shared/constants/categories';
 import { SECTION_OPTIONS, getSectionDisplayName } from '@shared/constants/sections';
+import { SORT_OPTIONS, SORT_DIRECTIONS, SORT_PRESETS, getSortOptionByValue, getSortDirectionByValue } from '@shared/constants/sorting';
 
 // Improved, user-friendly transaction types
 const TRANSACTION_TYPES = [
@@ -49,7 +50,8 @@ import {
   CheckIcon,
   XMarkIcon,
   TagIcon,
-  CheckCircleIcon
+  CheckCircleIcon,
+  ArrowsUpDownIcon
 } from '@heroicons/react/24/outline';
 
 const TransactionList = () => {
@@ -552,6 +554,9 @@ const TransactionList = () => {
     setTypeFilter('');
     setSectionFilter('');
     setDateRange({ start: '', end: '' });
+    setStatementFilter('');
+    // Reset sorting to default
+    setFilters(prev => ({ ...prev, orderBy: 'date', order: 'desc' }));
   };
 
   return (
@@ -630,22 +635,24 @@ const TransactionList = () => {
       </div>
 
       {/* Search and Filters */}
-      <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
-        {/* Search */}
-        <div className="relative">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <MagnifyingGlassIcon className="h-5 w-5 text-gray-400 dark:text-gray-500" />
+      <div className="space-y-4">
+        {/* Primary Filters Row */}
+        <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
+          {/* Search */}
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <MagnifyingGlassIcon className="h-5 w-5 text-gray-400 dark:text-gray-500" />
+            </div>
+            <input
+              type="text"
+              className="block w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md leading-5 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:placeholder-gray-400 dark:focus:placeholder-gray-500 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+              placeholder="Search transactions..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
           </div>
-          <input
-            type="text"
-            className="block w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md leading-5 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:placeholder-gray-400 dark:focus:placeholder-gray-500 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-            placeholder="Search transactions..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
 
-        {/* Category Filter (grouped, user-friendly) */}
+          {/* Category Filter (grouped, user-friendly) */}
         <div>
           <select
             value={categoryFilter}
@@ -720,6 +727,90 @@ const TransactionList = () => {
             Reset
           </button>
         </div>
+        </div>
+
+        {/* Sorting Controls */}
+        <div className="bg-gray-50 dark:bg-gray-700 rounded-lg overflow-hidden">
+          <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-600">
+            <h3 className="text-lg font-medium text-gray-900 dark:text-white flex items-center">
+              <ArrowsUpDownIcon className="h-5 w-5 mr-2" />
+              Sort Options
+            </h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+              Choose how to order your transactions
+            </p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Sort by
+            </label>
+            <select
+              value={filters.orderBy}
+              onChange={(e) => setFilters(prev => ({ ...prev, orderBy: e.target.value }))}
+              className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md leading-5 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+            >
+              {SORT_OPTIONS.map(option => (
+                <option key={option.value} value={option.value}>
+                  {option.icon} {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Direction
+            </label>
+            <select
+              value={filters.order}
+              onChange={(e) => setFilters(prev => ({ ...prev, order: e.target.value }))}
+              className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md leading-5 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+            >
+              {SORT_DIRECTIONS.map(direction => (
+                <option key={direction.value} value={direction.value}>
+                  {direction.icon} {direction.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Quick Sort
+            </label>
+            <select
+              onChange={(e) => {
+                if (e.target.value) {
+                  const preset = SORT_PRESETS.find(p => p.label === e.target.value);
+                  if (preset) {
+                    setFilters(prev => ({ ...prev, orderBy: preset.orderBy, order: preset.order }));
+                  }
+                }
+              }}
+              className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md leading-5 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+            >
+              <option value="">Select preset...</option>
+              {SORT_PRESETS.map(preset => (
+                <option key={preset.label} value={preset.label}>
+                  {preset.icon} {preset.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex items-end">
+            <div className="text-sm text-gray-500 dark:text-gray-400 p-2 bg-blue-50 dark:bg-blue-900/20 rounded border border-blue-200 dark:border-blue-800">
+              <div className="font-medium text-blue-900 dark:text-blue-100">
+                Current: {getSortOptionByValue(filters.orderBy).icon} {getSortOptionByValue(filters.orderBy).label}
+              </div>
+              <div className="text-blue-700 dark:text-blue-300">
+                {getSortDirectionByValue(filters.order).icon} {getSortDirectionByValue(filters.order).label}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
       </div>
 
       {/* Date Range Filter */}

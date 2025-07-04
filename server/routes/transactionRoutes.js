@@ -39,7 +39,9 @@ const getTransactionsValidation = [
   query('limit').optional().isInt({ min: 1, max: 1000 }).withMessage('Limit must be between 1 and 1000'),
   query('offset').optional().isInt({ min: 0 }).withMessage('Offset must be 0 or greater'),
   query('startDate').optional().isISO8601().withMessage('Start date must be a valid ISO 8601 date'),
-  query('endDate').optional().isISO8601().withMessage('End date must be a valid ISO 8601 date')
+  query('endDate').optional().isISO8601().withMessage('End date must be a valid ISO 8601 date'),
+  query('orderBy').optional().isIn(['date', 'amount', 'description', 'category', 'type', 'payee', 'sectionCode', 'createdAt', 'updatedAt']).withMessage('OrderBy must be a valid field'),
+  query('order').optional().isIn(['asc', 'desc']).withMessage('Order must be asc or desc')
 ];
 
 // Routes
