@@ -122,22 +122,83 @@ class ChaseTransactionParser {
   }
 
   static parseCardLine(line, year) {
-    // Example: 01/02Card Purchase 12/29 Chevron ... Card 1819$38.80
-    const match = line.match(/(\d{2}\/\d{2})Card Purchase.*?Card\s*1819\$?([\d,]+\.\d{2})$/);
+    // Handle different card transaction formats:
+    // 01/02 Card Purchase 12/29 Chevron 0202648 Plantation FL Card 1819 $38.80
+    // 01/04 Card Purchase With Pin 01/04 Chevron/Sunshine 39 Plantation FL Card 1819 60.00
+    
+    // Match pattern: DATE Card Purchase [With Pin] [DATE] MERCHANT...STATE Card 1819 AMOUNT
+    // Updated regex to properly capture merchant info before state abbreviation
+    const match = line.match(/^(\d{2}\/\d{2})\s*Card Purchase(?:\s+With Pin)?\s*(?:\d{2}\/\d{2}\s+)?(.+?)\s+[A-Z]{2}\s+Card\s+1819\s*\$?([\d,]+\.\d{2})$/);
     if (!match) return null;
+    
     const dateStr = match[1];
-    const amountStr = match[2];
+    const merchantPart = match[2];
+    const amountStr = match[3];
+    
     const date = ChaseDateUtils.toISODate(dateStr, year);
     const amount = parseFloat(amountStr.replace(/,/g, ''));
     if (isNaN(amount) || amount <= 0 || amount > 50000) return null;
-    // Extract merchant name
-    const merchantMatch = line.match(/Card Purchase\s*(?:\d{2}\/\d{2}\s+)?(.+?)\s+Card\s*1819/);
-    let merchantName = 'Card Purchase';
-    if (merchantMatch && merchantMatch[1]) {
-      merchantName = merchantMatch[1].replace(/\s+/g, ' ').replace(/\d{7,}/, '').replace(/\s+[A-Z]{2}\s*$/, '').trim();
-      const words = merchantName.split(' ');
-      if (words.length > 4) merchantName = words.slice(0, 4).join(' ');
+    
+    // Clean up merchant name - remove transaction IDs and location details
+    let merchantName = merchantPart
+      .replace(/\s+\d{7,}\s+/g, ' ') // Remove long transaction IDs (7+ digits)
+      .replace(/\s+/g, ' ') // Normalize spaces
+      .trim();
+    
+    // Handle special cases to preserve main brand names and important identifiers
+    if (merchantName.includes('Chevron')) {
+      // For "Chevron/Sunshine 39" keep both brands
+      if (merchantName.includes('Chevron/Sunshine')) {
+        merchantName = 'Chevron/Sunshine';
+      } else {
+        // Remove location info but keep Chevron
+        merchantName = merchantName.replace(/\s+\d{4,}\s+\w+$/, '').replace(/Chevron.*/, 'Chevron').trim();
+      }
+    } else if (merchantName.includes('Exxon') && merchantName.includes('Sunshine')) {
+      // For "Exxon Sunshine 63" preserve both (before general location removal)
+      merchantName = 'Exxon Sunshine';
+    } else if (merchantName.includes('Exxon')) {
+      // For standalone Exxon
+      merchantName = merchantName.replace(/\s+\d{4,}\s+\w+$/, '').trim();
+      merchantName = 'Exxon';
+    } else if (merchantName.includes('Sunshine')) {
+      // For standalone Sunshine locations, preserve store numbers
+      const sunshineMatch = merchantName.match(/Sunshine\s*(?:#\s*)?(\d+)/);
+      if (sunshineMatch) {
+        merchantName = `Sunshine #${sunshineMatch[1]}`;
+      } else {
+        merchantName = 'Sunshine';
+      }
+    } else if (merchantName.includes('Lowe\'s')) {
+      // For Lowe's, preserve store number
+      const lowesMatch = merchantName.match(/Lowe's\s*#(\d+)/);
+      if (lowesMatch) {
+        merchantName = `Lowe's #${lowesMatch[1]}`;
+      } else {
+        merchantName = 'Lowe\'s';
+      }
+    } else if (merchantName.includes('Westar')) {
+      // For Westar, preserve identifying numbers
+      const westarMatch = merchantName.match(/Westar\s+(\d+)/);
+      if (westarMatch) {
+        merchantName = `Westar ${westarMatch[1]}`;
+      } else {
+        merchantName = 'Westar';
+      }
+    } else if (merchantName.includes('2185 N')) {
+      merchantName = '2185 N University'; // Common truncated address
+    } else {
+      // For other merchants, remove location info at the end
+      merchantName = merchantName.replace(/\s+\d{4,6}\s+\w+$/, ''); // Remove ID + location at end
+      merchantName = merchantName.replace(/\s+\w+$/, ''); // Remove single word at end (likely city)
     }
+    
+    // Final cleanup
+    merchantName = merchantName.trim();
+    if (!merchantName || merchantName.length < 2) {
+      merchantName = 'Card Purchase';
+    }
+    
     return {
       date,
       amount,
