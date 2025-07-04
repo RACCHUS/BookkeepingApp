@@ -133,3 +133,82 @@ concatenatedLines.forEach((line, idx) => {
     console.log(`❌ Failed to parse`);
   }
 });
+
+// Test electronic withdrawals parsing
+console.log('\n🧪 Testing Electronic Withdrawals Parsing');
+console.log('==========================================');
+
+// Real PDF format electronic section
+const electronicSection = `ELECTRONIC WITHDRAWALS
+DATEDESCRIPTIONAMOUNT
+01/11Orig CO Name:Home Depot Orig ID:Citictp Desc Date:240110 CO Entry
+Descr:Online Pmtsec:Web Trace#:091409686796442 Eed:240111 Ind
+ID:611273035887559 Ind Name:Shamdatconstruction Trn: 0116796442Tc
+$389.20
+01/12Orig CO Name:Geico Orig ID:3530075853 Desc Date:240111 CO Entry Descr:Prem
+Coll Sec:PPD Trace#:021000028946089 Eed:240112 Ind ID: Ind
+Name:Shailendra Shamdat Trn: 0128946089Tc
+416.25
+Total Electronic Withdrawals`;
+
+const electronicSectionText = ChaseSectionExtractor.extractElectronicSection(electronicSection);
+let electronicTransactionCount = 0;
+
+if (electronicSectionText) {
+  console.log('✅ Electronic section extracted successfully');
+  
+  const lines = electronicSectionText.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+  
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    
+    // Skip headers and totals
+    if (line.includes('DATE') || line.includes('DESCRIPTION') || line.includes('AMOUNT') || line.includes('Total')) {
+      continue;
+    }
+    
+    // Look for electronic transaction pattern
+    const dateCompanyMatch = line.match(/^(\d{2}\/\d{2}).*?Orig CO Name:([^O\n]+?)(?:Orig|$)/);
+    if (dateCompanyMatch) {
+      const dateStr = dateCompanyMatch[1];
+      let companyName = dateCompanyMatch[2].trim();
+      companyName = companyName.replace(/\s+ID:.*$/, '').trim();
+      
+      // Find amount on same line or next lines
+      let amount = null;
+      const sameLineAmountMatch = line.match(/\$?([\d,]+\.\d{2})/);
+      if (sameLineAmountMatch) {
+        amount = parseFloat(sameLineAmountMatch[1].replace(/,/g, ''));
+      } else {
+        // Look ahead for amount
+        for (let j = i + 1; j < Math.min(i + 5, lines.length); j++) {
+          const nextLine = lines[j].trim();
+          if (nextLine.match(/^\d{2}\/\d{2}/) || nextLine.includes('Total')) break;
+          
+          const amountMatch = nextLine.match(/^\$?([\d,]+\.\d{2})$/);
+          if (amountMatch) {
+            amount = parseFloat(amountMatch[1].replace(/,/g, ''));
+            break;
+          }
+        }
+      }
+      
+      if (amount && amount > 0) {
+        electronicTransactionCount++;
+        console.log(`✅ Electronic transaction: ${dateStr} | ${companyName} | $${amount}`);
+      }
+    }
+  }
+  
+  console.log(`\n🎯 Electronic Results: Parsed ${electronicTransactionCount} electronic transactions`);
+  console.log('Expected: 2 electronic transactions (Home Depot $389.20, Geico $416.25)');
+  
+} else {
+  console.log('❌ Failed to extract electronic section');
+}
+
+console.log('\n🏁 COMPREHENSIVE TEST SUMMARY');
+console.log('==============================');
+console.log(`✅ Deposit transactions: ${parsedTransactions}/7 expected`);
+console.log(`✅ Electronic transactions: ${electronicTransactionCount || 0}/2 expected`);
+console.log(`🎯 Total transactions parsed: ${(parsedTransactions || 0) + (electronicTransactionCount || 0)}/9 expected`);
