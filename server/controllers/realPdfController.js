@@ -15,7 +15,8 @@ export const uploadPDF = async (req, res) => {
   try {
     const { file } = req;
     const { uid: userId } = req.user; // Remove fallback to force proper auth
-    const { bankType = 'chase', autoProcess = false } = req.body;
+    // Accept user-provided name for the statement (optional)
+    const { bankType = 'chase', autoProcess = false, name: userProvidedName } = req.body;
 
     if (!userId) {
       return res.status(401).json({
@@ -51,9 +52,11 @@ export const uploadPDF = async (req, res) => {
 
     console.log(`📄 PDF uploaded: ${fileName} (${file.size} bytes)`);
 
-    // Create upload record - we could save this to Firebase if needed
+    // Create upload record and persist it to disk before any processing
     const uploadRecord = {
-      fileId: uploadId,
+      id: uploadId,
+      fileId: uploadId, // for legacy compatibility
+      name: userProvidedName && typeof userProvidedName === 'string' && userProvidedName.trim() ? userProvidedName.trim() : file.originalname,
       originalName: file.originalname,
       fileName: fileName,
       filePath: filePath,
@@ -64,6 +67,22 @@ export const uploadPDF = async (req, res) => {
       status: 'uploaded',
       processed: false
     };
+    // Write metadata file before any processing (for robust statement listing)
+    const metaPath = filePath + '.meta.json';
+    try {
+      await fs.writeFile(metaPath, JSON.stringify({
+        id: uploadId,
+        fileId: uploadId,
+        name: uploadRecord.name,
+        originalName: uploadRecord.originalName,
+        fileName: uploadRecord.fileName,
+        uploadedAt: uploadRecord.uploadedAt,
+        bankType: uploadRecord.bankType,
+        uploadedBy: uploadRecord.uploadedBy
+      }, null, 2));
+    } catch (metaErr) {
+      console.error('Failed to write statement metadata file:', metaErr);
+    }
 
     // If autoProcess is enabled, start processing immediately
     if (autoProcess) {
@@ -90,7 +109,9 @@ export const uploadPDF = async (req, res) => {
       success: true,
       message: 'PDF uploaded successfully',
       data: {
+        id: uploadId,
         fileId: uploadId,
+        name: uploadRecord.name,
         fileName: file.originalname,
         size: file.size,
         status: 'uploaded',
@@ -216,11 +237,9 @@ async function processUploadedFile(fileId, filePath, userId, bankType, processId
     if (autoSave && parseResult.transactions.length > 0) {
       // Prepare transactions for saving with advanced classification
       const transactionsToSave = [];
-      
       for (const transaction of parseResult.transactions) {
         // Use advanced classification
         const classificationResult = await chasePDFParser.classifyTransactionAdvanced(transaction, userId);
-        
         const enhancedTransaction = {
           ...transaction,
           category: classificationResult.category,
@@ -233,14 +252,13 @@ async function processUploadedFile(fileId, filePath, userId, bankType, processId
           source: 'chase_pdf_import',
           sourceFile: path.basename(filePath),
           sourceFileId: fileId,
+          statementId: fileId, // <-- This is the key fix: always link to the statement/PDF
           isManuallyReviewed: false,
           createdBy: userId,
           importedAt: new Date().toISOString()
         };
-        
         transactionsToSave.push(enhancedTransaction);
       }
-
       // Save transactions one by one to get IDs
       for (const transaction of transactionsToSave) {
         try {
@@ -330,32 +348,51 @@ export const getUserUploads = async (req, res) => {
     
     try {
       const files = await fs.readdir(uploadsDir);
-      
-      const uploads = await Promise.all(files.map(async (fileName) => {
-        const filePath = path.join(uploadsDir, fileName);
-        const stats = await fs.stat(filePath);
-        
-        // Extract fileId from filename (format: uuid-originalname)
-        const fileId = fileName.split('-')[0];
-        
-        return {
-          fileId,
-          originalName: fileName.substring(fileId.length + 1), // Remove uuid prefix
-          fileName,
-          uploadedAt: stats.birthtime.toISOString(),
-          size: stats.size,
-          status: 'uploaded' // In a real app, this would come from database
-        };
-      }));
-
+      const uploads = await Promise.all(files
+        .filter(fileName => !fileName.endsWith('.meta.json')) // Skip metadata files
+        .map(async (fileName) => {
+          const filePath = path.join(uploadsDir, fileName);
+          const stats = await fs.stat(filePath);
+          
+          // Try to load metadata file first for robust ID
+          let fileId = null;
+          let userName = '';
+          const metaPath = filePath + '.meta.json';
+          try {
+            const metaRaw = await fs.readFile(metaPath, 'utf-8');
+            const meta = JSON.parse(metaRaw);
+            if (meta && meta.id) {
+              fileId = meta.id; // Use the robust ID from metadata
+              if (meta.name && typeof meta.name === 'string' && meta.name.trim()) {
+                userName = meta.name.trim();
+              }
+            }
+          } catch (e) {
+            // No metadata file, fallback to filename parsing
+            fileId = fileName.split('-')[0];
+          }
+          
+          // Skip if we couldn't determine a valid fileId
+          if (!fileId) return null;
+          
+          return {
+            id: fileId,
+            fileId,
+            name: userName || fileName.substring(fileId.length + 1),
+            originalName: fileName.substring(fileId.length + 1),
+            fileName,
+            uploadedAt: stats.birthtime.toISOString(),
+            size: stats.size,
+            status: 'uploaded'
+          };
+        }));
       res.status(200).json({
         success: true,
         data: {
-          uploads: uploads.reverse(), // Most recent first
-          total: uploads.length
+          uploads: uploads.filter(Boolean).reverse(), // Filter out null entries and reverse for newest first
+          total: uploads.filter(Boolean).length
         }
       });
-      
     } catch (error) {
       // Directory doesn't exist or is empty
       res.status(200).json({

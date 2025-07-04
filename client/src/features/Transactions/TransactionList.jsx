@@ -1,4 +1,5 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import StatementSelector from '../Statements/StatementSelector';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-hot-toast';
 import { apiClient } from '../../services/api';
@@ -6,9 +7,27 @@ import { useAuth } from '../../context/AuthContext';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import TransactionModal from '../../components/TransactionModal';
 import { IRS_CATEGORIES, CATEGORY_GROUPS } from '@shared/constants/categories';
+
+// Improved, user-friendly transaction types
+const TRANSACTION_TYPES = [
+  { value: '', label: 'All Types' },
+  { value: 'income', label: 'Income', color: 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300' },
+  { value: 'expense', label: 'Expense', color: 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300' },
+  { value: 'transfer', label: 'Transfer', color: 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300' },
+  { value: 'adjustment', label: 'Adjustment', color: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300' },
+];
+
+// Helper for category label with group
+const getCategoryLabel = (category) => {
+  for (const [group, cats] of Object.entries(CATEGORY_GROUPS)) {
+    if (cats.includes(category)) {
+      return `${group}: ${category}`;
+    }
+  }
+  return category;
+};
 import {
   PlusIcon,
-  FunnelIcon,
   MagnifyingGlassIcon,
   TrashIcon,
   PencilIcon,
@@ -38,6 +57,46 @@ const TransactionList = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState(null);
   const [modalMode, setModalMode] = useState('edit'); // 'edit' or 'create'
+
+  // Statement/PDF filter state
+  const [statements, setStatements] = useState([]);
+  const [statementFilter, setStatementFilter] = useState('');
+
+  // Fetch available statements/PDFs for filter dropdown
+  useEffect(() => {
+    let mounted = true;
+    apiClient.pdf.getUploads()
+      .then((res) => {
+        if (mounted && Array.isArray(res?.data?.uploads)) {
+          setStatements(res.data.uploads
+            .map((u, idx) => {
+              // Robust unique id fallback
+              const id = u.id || u._id || u.filename || u.originalname || `statement_${idx}`;
+              if (!id) return null;
+              let displayName = u.name && u.name !== 'undefined' ? u.name : '';
+              const uploadedAt = u.uploadedAt || u.createdAt || u.timestamp;
+              if (!displayName) {
+                if (uploadedAt) {
+                  displayName = `Statement (${new Date(uploadedAt).toLocaleDateString()}) [${String(id).slice(-6)}]`;
+                } else {
+                  displayName = `Statement [${id}]`;
+                }
+              } else {
+                displayName = `${displayName} (${uploadedAt ? new Date(uploadedAt).toLocaleDateString() : ''}) [${String(id).slice(-6)}]`;
+              }
+              return {
+                id: String(id),
+                name: displayName,
+                uploadedAt
+              };
+            })
+            .filter(Boolean)
+          );
+        }
+      })
+      .catch(() => setStatements([]));
+    return () => { mounted = false; };
+  }, []);
 
   // Bulk operations state
   const [selectedTransactions, setSelectedTransactions] = useState(new Set());
@@ -78,8 +137,10 @@ const TransactionList = () => {
   const createMutation = useMutation({
     mutationFn: (transactionData) => apiClient.transactions.create(transactionData),
     onSuccess: () => {
-      // Refresh the transactions list
+      // Refresh the transactions list so new transaction appears with correct Firestore id
       queryClient.invalidateQueries(['transactions']);
+      queryClient.invalidateQueries(['recent-transactions']);
+      queryClient.invalidateQueries(['transaction-summary']);
     },
     onError: (error) => {
       console.error('Create transaction error:', error);
@@ -152,7 +213,56 @@ const TransactionList = () => {
   };
 
   const handleEditTransaction = (transaction) => {
-    setSelectedTransaction(transaction);
+    // Defensive: If transaction is missing required fields, show error and do not open modal
+    if (!transaction || !transaction.id) {
+      toast.error('This transaction cannot be edited because it is missing an ID.');
+      return;
+    }
+
+    // Defensive: Fix and sanitize all fields to prevent modal crash
+    const safeTransaction = {
+      ...transaction,
+      amount:
+        typeof transaction.amount === 'number' && !isNaN(transaction.amount)
+          ? transaction.amount
+          : 0,
+      date: (() => {
+        // Accept Firestore Timestamp, JS Date, ISO string, yyyy-mm-dd, number, null, undefined
+        const d = transaction.date;
+        if (!d) return '';
+        if (typeof d === 'string') {
+          // Try ISO or yyyy-mm-dd
+          const parsed = new Date(d);
+          if (!isNaN(parsed)) return parsed.toISOString().slice(0, 10);
+        }
+        if (typeof d === 'number') {
+          // Assume ms timestamp
+          const parsed = new Date(d);
+          if (!isNaN(parsed)) return parsed.toISOString().slice(0, 10);
+        }
+        if (typeof d === 'object') {
+          // Firestore Timestamp
+          if (d.seconds && typeof d.seconds === 'number') {
+            const parsed = new Date(d.seconds * 1000);
+            if (!isNaN(parsed)) return parsed.toISOString().slice(0, 10);
+          }
+          // JS Date
+          if (d instanceof Date && !isNaN(d)) {
+            return d.toISOString().slice(0, 10);
+          }
+        }
+        // Fallback: blank
+        return '';
+      })(),
+      description: typeof transaction.description === 'string' && transaction.description.trim() ? transaction.description : 'No description',
+      category: typeof transaction.category === 'string' ? transaction.category : '',
+      type: typeof transaction.type === 'string' ? transaction.type : '',
+      payee: typeof transaction.payee === 'string' ? transaction.payee : '',
+      notes: typeof transaction.notes === 'string' ? transaction.notes : '',
+      statementId: typeof transaction.statementId === 'string' ? transaction.statementId : '', // Add statementId for grouping
+    };
+
+    setSelectedTransaction(safeTransaction);
     setModalMode('edit');
     setIsModalOpen(true);
   };
@@ -254,7 +364,6 @@ const TransactionList = () => {
     // Ensure we have a valid array of transactions
     const transactions = data?.data?.transactions;
     if (!transactions || !Array.isArray(transactions)) {
-      console.log('TransactionList: No valid transactions array found', { data, transactions });
       return [];
     }
     
@@ -275,6 +384,21 @@ const TransactionList = () => {
       filtered = filtered.filter(transaction => transaction.category === categoryFilter);
     }
 
+    // Statement/PDF filter
+    if (statementFilter) {
+      if (statementFilter === '__manual') {
+        // Show only transactions without a statementId (manual/unlinked)
+        filtered = filtered.filter(transaction => 
+          !transaction.statementId || transaction.statementId === ''
+        );
+      } else {
+        // Show only transactions with the specific statementId
+        filtered = filtered.filter(transaction => 
+          String(transaction.statementId) === String(statementFilter)
+        );
+      }
+    }
+
     // Type filter
     if (typeFilter) {
       filtered = filtered.filter(transaction => transaction.type === typeFilter);
@@ -293,13 +417,12 @@ const TransactionList = () => {
     }
 
     return filtered;
-  }, [data?.data?.transactions, searchTerm, categoryFilter, typeFilter, dateRange]);
+  }, [data?.data?.transactions, searchTerm, categoryFilter, statementFilter, typeFilter, dateRange]);
 
   // Available categories for filters - moved before conditional returns
   const availableCategories = useMemo(() => {
     const transactions = data?.data?.transactions;
     if (!transactions || !Array.isArray(transactions)) {
-      console.log('TransactionList: No valid transactions for categories', { data, transactions });
       return [];
     }
     return [...new Set(transactions
@@ -348,7 +471,6 @@ const TransactionList = () => {
 
   // Add additional safety check for transactions array
   if (!Array.isArray(transactions)) {
-    console.error('TransactionList: transactions is not an array!', { transactions, filteredTransactions, data });
     // Force it to be an empty array
     const safeTransactions = [];
     return (
@@ -459,17 +581,12 @@ const TransactionList = () => {
               </button>
             </>
           ) : (
-            <>
-              <button 
+            <>              <button
                 onClick={toggleSelectMode}
                 className="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
               >
                 <CheckCircleIcon className="h-4 w-4 mr-2" />
                 Select
-              </button>
-              <button className="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors">
-                <FunnelIcon className="h-4 w-4 mr-2" />
-                Filter
               </button>
               <button 
                 onClick={handleCreateTransaction}
@@ -484,7 +601,7 @@ const TransactionList = () => {
       </div>
 
       {/* Search and Filters */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
         {/* Search */}
         <div className="relative">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -499,7 +616,7 @@ const TransactionList = () => {
           />
         </div>
 
-        {/* Category Filter */}
+        {/* Category Filter (grouped, user-friendly) */}
         <div>
           <select
             value={categoryFilter}
@@ -507,23 +624,45 @@ const TransactionList = () => {
             className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md leading-5 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors"
           >
             <option value="">All Categories</option>
-            {availableCategories.map(category => (
-              <option key={category} value={category}>{category}</option>
+            {Object.entries(CATEGORY_GROUPS).map(([group, cats]) => (
+              <optgroup key={group} label={group}>
+                {cats.map(category => (
+                  <option key={category} value={category}>
+                    {category}
+                  </option>
+                ))}
+              </optgroup>
             ))}
           </select>
         </div>
 
-        {/* Type Filter */}
+        {/* Type Filter (user-friendly) */}
         <div>
           <select
             value={typeFilter}
             onChange={(e) => setTypeFilter(e.target.value)}
             className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md leading-5 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors"
           >
-            <option value="">All Types</option>
-            <option value="income">Income</option>
-            <option value="expense">Expense</option>
-            <option value="transfer">Transfer</option>
+            {TRANSACTION_TYPES.map(type => (
+              <option key={type.value} value={type.value}>{type.label}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Statement/PDF Filter */}
+        <div>
+          <select
+            value={statementFilter}
+            onChange={e => setStatementFilter(e.target.value)}
+            className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md leading-5 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+            style={{ minWidth: 0 }}
+            aria-label="Statement/PDF"
+          >
+            <option value="">All Statements</option>
+            <option value="__manual">Manual/Unlinked Only</option>
+            {statements.map(s => (
+              <option key={s.id} value={s.id}>{s.name}</option>
+            ))}
           </select>
         </div>
 
@@ -566,7 +705,7 @@ const TransactionList = () => {
 
       {/* Transactions Table */}
       <div className="bg-white dark:bg-gray-800 shadow overflow-hidden sm:rounded-md transition-colors">
-        {transactions.length === 0 ? (
+        {filteredTransactions.length === 0 ? (
           <div className="text-center py-12">
             <p className="text-gray-500 dark:text-gray-400">No transactions found.</p>
             <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">
@@ -581,153 +720,169 @@ const TransactionList = () => {
                 <label className="flex items-center">
                   <input
                     type="checkbox"
-                    checked={Array.isArray(transactions) && selectedTransactions.size === transactions.length && transactions.length > 0}
+                    checked={Array.isArray(filteredTransactions) && selectedTransactions.size === filteredTransactions.length && filteredTransactions.length > 0}
                     onChange={handleSelectAll}
                     className="h-4 w-4 text-blue-600 border-gray-300 dark:border-gray-600 rounded focus:ring-blue-500 dark:focus:ring-blue-400"
                   />
                   <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
-                    Select All ({Array.isArray(transactions) ? transactions.length : 0})
+                    Select All ({Array.isArray(filteredTransactions) ? filteredTransactions.length : 0})
                   </span>
                 </label>
               </div>
             )}
             
             <ul className="divide-y divide-gray-200 dark:divide-gray-700">
-            {Array.isArray(transactions) ? transactions.map((transaction) => (
-              <li key={transaction.id}>
-                <div className="px-4 py-4 sm:px-6">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center flex-1">
-                      {/* Selection checkbox */}
-                      {isSelectMode && (
-                        <div className="flex-shrink-0 mr-3">
-                          <input
-                            type="checkbox"
-                            checked={selectedTransactions.has(transaction.id)}
-                            onChange={() => handleSelectTransaction(transaction.id)}
-                            className="h-4 w-4 text-blue-600 border-gray-300 dark:border-gray-600 rounded focus:ring-blue-500 dark:focus:ring-blue-400"
-                          />
-                        </div>
-                      )}
-                      
-                      <div className="flex-shrink-0">
-                        <div className={`h-8 w-8 rounded-full flex items-center justify-center ${
-                          transaction.type === 'income' 
-                            ? 'bg-green-100 dark:bg-green-900 text-green-600 dark:text-green-400' 
-                            : transaction.type === 'expense'
-                            ? 'bg-red-100 dark:bg-red-900 text-red-600 dark:text-red-400'
-                            : 'bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400'
-                        }`}>
-                          {transaction.type === 'income' ? '+' : transaction.type === 'expense' ? '-' : '↔'}
-                        </div>
-                      </div>
-                      <div className="ml-4 flex-1">
-                        <div className="text-sm font-medium text-gray-900 dark:text-white">
-                          {transaction.description}
-                        </div>
-                        <div className="text-sm text-gray-500 dark:text-gray-400">
-                          {transaction.payee && `${transaction.payee} • `}
-                          <span className="inline-block">
-                            {editingCategoryId === transaction.id ? (
-                              <div className="flex items-center space-x-1">
-                                <select
-                                  value={editingCategoryValue}
-                                  onChange={(e) => setEditingCategoryValue(e.target.value)}
-                                  onKeyDown={handleCategoryKeyPress}
-                                  className="text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
-                                  autoFocus
-                                >
-                                  <option value="">Select Category</option>
-                                  {Object.entries(CATEGORY_GROUPS).map(([groupName, categories]) => (
-                                    <optgroup key={groupName} label={groupName}>
-                                      {categories.map(category => (
-                                        <option key={category} value={category}>
-                                          {category}
-                                        </option>
-                                      ))}
-                                    </optgroup>
-                                  ))}
-                                </select>
-                                <button
-                                  onClick={handleSaveCategoryEdit}
-                                  className="p-1 text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300"
-                                  title="Save category"
-                                >
-                                  <CheckIcon className="h-3 w-3" />
-                                </button>
-                                <button
-                                  onClick={handleCancelCategoryEdit}
-                                  className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                                  title="Cancel"
-                                >
-                                  <XMarkIcon className="h-3 w-3" />
-                                </button>
+            {Array.isArray(filteredTransactions) && filteredTransactions.map((transaction) => {
+              // Find statement info for this transaction
+              const statement = statements.find(s => s.id === transaction.statementId);
+              return (
+                <li key={transaction.id}>
+                  <div className="px-4 py-4 sm:px-6">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center flex-1">
+                        {/* Selection checkbox */}
+                        {isSelectMode && (
+                          <div className="flex-shrink-0 mr-3">
+                            <input
+                              type="checkbox"
+                              checked={selectedTransactions.has(transaction.id)}
+                              onChange={() => handleSelectTransaction(transaction.id)}
+                              className="h-4 w-4 text-blue-600 border-gray-300 dark:border-gray-600 rounded focus:ring-blue-500 dark:focus:ring-blue-400"
+                            />
+                          </div>
+                        )}
+                        <div className="flex-shrink-0">
+                          {/* Type badge with color and tooltip */}
+                          {(() => {
+                            const typeObj = TRANSACTION_TYPES.find(t => t.value === transaction.type);
+                            return (
+                              <div
+                                className={`h-8 w-20 rounded-full flex items-center justify-center text-sm font-semibold ${typeObj?.color || 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'}`}
+                                title={typeObj?.label || 'Other'}
+                              >
+                                {typeObj?.label || transaction.type || 'Other'}
                               </div>
-                            ) : (
-                              <div className="flex items-center">
-                                <span className={`${transaction.category ? 'text-gray-700 dark:text-gray-300' : 'text-gray-400 dark:text-gray-500 italic'}`}>
-                                  {transaction.category || 'Uncategorized'}
-                                </span>
-                                {!isSelectMode && (
-                                  <button
-                                    onClick={() => handleStartCategoryEdit(transaction)}
-                                    className="ml-1 p-1 text-gray-400 hover:text-blue-500 dark:hover:text-blue-400 transition-colors"
-                                    title="Edit category"
+                            );
+                          })()}
+                        </div>
+                        <div className="ml-4 flex-1">
+                          <div className="text-sm font-medium text-gray-900 dark:text-white">
+                            {transaction.description}
+                          </div>
+                          <div className="text-sm text-gray-500 dark:text-gray-400">
+                            {transaction.payee && `${transaction.payee} • `}
+                            {/* Statement/PDF display */}
+                          {statement && (
+                            <span className="inline-block text-blue-600 dark:text-blue-400 font-semibold mr-2">
+                              {statement.name}
+                            </span>
+                          )}
+                          {!transaction.statementId && (
+                            <span className="inline-block text-gray-400 italic mr-2">Manual/Unlinked</span>
+                          )}
+                            <span className="inline-block">
+                              {editingCategoryId === transaction.id ? (
+                                <div className="flex items-center space-x-1">
+                                  <select
+                                    value={editingCategoryValue}
+                                    onChange={(e) => setEditingCategoryValue(e.target.value)}
+                                    onKeyDown={handleCategoryKeyPress}
+                                    className="text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                    autoFocus
                                   >
-                                    <TagIcon className="h-3 w-3" />
+                                    <option value="">Select Category</option>
+                                    {Object.entries(CATEGORY_GROUPS).map(([groupName, categories]) => (
+                                      <optgroup key={groupName} label={groupName}>
+                                        {categories.map(category => (
+                                          <option key={category} value={category}>
+                                            {category}
+                                          </option>
+                                        ))}
+                                      </optgroup>
+                                    ))}
+                                  </select>
+                                  <button
+                                    onClick={handleSaveCategoryEdit}
+                                    className="p-1 text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300"
+                                    title="Save category"
+                                  >
+                                    <CheckIcon className="h-3 w-3" />
                                   </button>
-                                )}
-                              </div>
-                            )}
-                          </span>
-                          {transaction.source && ` • ${transaction.source}`}
+                                  <button
+                                    onClick={handleCancelCategoryEdit}
+                                    className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                                    title="Cancel"
+                                  >
+                                    <XMarkIcon className="h-3 w-3" />
+                                  </button>
+                                </div>
+                              ) : (
+                                <div className="flex items-center">
+                                  <span className={`${transaction.category ? 'text-gray-700 dark:text-gray-300' : 'text-gray-400 dark:text-gray-500 italic'}`} title={getCategoryLabel(transaction.category)}>
+                                    {transaction.category ? getCategoryLabel(transaction.category) : 'Uncategorized'}
+                                  </span>
+                                  {!isSelectMode && (
+                                    <button
+                                      onClick={() => handleStartCategoryEdit(transaction)}
+                                      className="ml-1 p-1 text-gray-400 hover:text-blue-500 dark:hover:text-blue-400 transition-colors"
+                                      title="Edit category"
+                                    >
+                                      <TagIcon className="h-3 w-3" />
+                                    </button>
+                                  )}
+                                </div>
+                              )}
+                            </span>
+                            {transaction.source && ` • ${transaction.source}`}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                    <div className="flex items-center space-x-4">
-                      <div className="text-right">
-                        <div className={`text-sm font-medium ${
-                          transaction.type === 'income' 
-                            ? 'text-green-600 dark:text-green-400' 
-                            : transaction.type === 'expense'
-                            ? 'text-red-600 dark:text-red-400'
-                            : 'text-gray-900 dark:text-white'
-                        }`}>
-                          {transaction.type === 'income' ? '+' : transaction.type === 'expense' ? '-' : ''}
-                          ${Math.abs(transaction.amount).toLocaleString()}
+                      <div className="flex items-center space-x-4">
+                        <div className="text-right">
+                          <div className={`text-sm font-medium ${
+                            transaction.type === 'income' 
+                              ? 'text-green-600 dark:text-green-400' 
+                              : transaction.type === 'expense'
+                              ? 'text-red-600 dark:text-red-400'
+                              : 'text-gray-900 dark:text-white'
+                          }`}>
+                            {transaction.type === 'income' ? '+' : transaction.type === 'expense' ? '-' : ''}
+                            ${Math.abs(transaction.amount).toLocaleString()}
+                          </div>
+                          <div className="text-sm text-gray-500 dark:text-gray-400">
+                            {new Date(transaction.date).toLocaleDateString()}
+                          </div>
                         </div>
-                        <div className="text-sm text-gray-500 dark:text-gray-400">
-                          {new Date(transaction.date).toLocaleDateString()}
-                        </div>
+                        {!isSelectMode && (
+                          <div className="flex items-center space-x-2">
+                            <button
+                              onClick={() => handleEditTransaction(transaction)}
+                              className="p-2 text-gray-400 dark:text-gray-500 hover:text-blue-500 dark:hover:text-blue-400 transition-colors"
+                              title="Edit transaction"
+                            >
+                              <PencilIcon className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDelete(transaction.id, transaction.description)}
+                              disabled={deletingId === transaction.id}
+                              className="p-2 text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 transition-colors disabled:opacity-50"
+                              title="Delete transaction"
+                            >
+                              {deletingId === transaction.id ? (
+                                <LoadingSpinner size="sm" />
+                              ) : (
+                                <TrashIcon className="h-4 w-4" />
+                              )}
+                            </button>
+                          </div>
+                        )}
                       </div>
-                      {!isSelectMode && (
-                        <div className="flex items-center space-x-2">
-                          <button
-                            onClick={() => handleEditTransaction(transaction)}
-                            className="p-2 text-gray-400 dark:text-gray-500 hover:text-blue-500 dark:hover:text-blue-400 transition-colors"
-                            title="Edit transaction"
-                          >
-                            <PencilIcon className="h-4 w-4" />
-                          </button>
-                          <button
-                            onClick={() => handleDelete(transaction.id, transaction.description)}
-                            disabled={deletingId === transaction.id}
-                            className="p-2 text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 transition-colors disabled:opacity-50"
-                            title="Delete transaction"
-                          >
-                            {deletingId === transaction.id ? (
-                              <LoadingSpinner size="sm" />
-                            ) : (
-                              <TrashIcon className="h-4 w-4" />
-                            )}
-                          </button>
-                        </div>
-                      )}
                     </div>
                   </div>
-                </div>
-              </li>
-            )) : (
+                </li>
+              );
+            })}
+            {(!Array.isArray(transactions) || transactions.length === 0) && (
               <li className="px-4 py-4 text-center text-gray-500 dark:text-gray-400">
                 No transactions available
               </li>

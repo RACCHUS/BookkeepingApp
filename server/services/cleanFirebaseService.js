@@ -114,7 +114,8 @@ class FirebaseService {
           createdAt: admin.firestore.FieldValue.serverTimestamp(),
           updatedAt: admin.firestore.FieldValue.serverTimestamp()
         });
-        
+        // Patch the document to include its Firestore ID as a field
+        await docRef.update({ id: docRef.id });
         const doc = await docRef.get();
         const data = doc.data();
         console.log(`🔥 Firebase: Created transaction ${docRef.id}`);

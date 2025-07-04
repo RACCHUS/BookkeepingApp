@@ -90,7 +90,8 @@ export const processPDF = async (req, res) => {
 
     const processId = crypto.randomUUID();
 
-    // Create mock transactions that will be "extracted" from the PDF
+    // Always use fileId as the robust statementId for all transactions
+    const statementId = fileId;
     const mockTransactions = [
       {
         date: '2025-06-20',
@@ -99,7 +100,8 @@ export const processPDF = async (req, res) => {
         category: 'Office Expenses',
         type: 'expense',
         payee: 'Staples Inc',
-        confidence: 0.95
+        confidence: 0.95,
+        statementId
       },
       {
         date: '2025-06-21',
@@ -108,7 +110,8 @@ export const processPDF = async (req, res) => {
         category: 'Business Income',
         type: 'income',
         payee: 'ABC Company',
-        confidence: 0.98
+        confidence: 0.98,
+        statementId
       },
       {
         date: '2025-06-22',
@@ -117,7 +120,8 @@ export const processPDF = async (req, res) => {
         category: 'Car and Truck Expenses',
         type: 'expense',
         payee: 'Shell',
-        confidence: 0.92
+        confidence: 0.92,
+        statementId
       }
     ];
 
@@ -128,6 +132,7 @@ export const processPDF = async (req, res) => {
         for (const transaction of mockTransactions) {
           const result = await firebaseService.createTransaction(userId, {
             ...transaction,
+            statementId, // Always set statementId for robust linking
             source: 'pdf_import',
             sourceFile: `${fileId}.pdf`,
             sourceFileId: fileId,

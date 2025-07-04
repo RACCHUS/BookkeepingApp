@@ -7,14 +7,92 @@ import ChaseDateUtils from './ChaseDateUtils.js';
 
 class ChaseTransactionParser {
   static parseDepositLine(line, year) {
-    // Example: 01/08Remote Online Deposit 1$3,640.00
-    const match = line.match(/(\d{2}\/\d{2})(.+?)\$?([\d,]+\.\d{2})/);
-    if (!match) return null;
-    const [, dateStr, description, amountStr] = match;
+    // Handle Chase PDF format where only first amount has $ sign:
+    // 01/08 Remote Online Deposit 1 $3,640.00   (with $)
+    // 01/19 Remote Online Deposit 1 2,500.00    (without $)
+    
+    // Clean the line first
+    const cleanLine = line.trim();
+    if (!cleanLine || cleanLine.includes('DATE') || cleanLine.includes('Total')) return null;
+    
+    // Look for date pattern at start
+    const dateMatch = cleanLine.match(/^(\d{1,2}\/\d{1,2})/);
+    if (!dateMatch) return null;
+    
+    const dateStr = dateMatch[1];
+    
+    // Try multiple amount patterns to be more flexible
+    let amountMatch;
+    
+    // Pattern 1: With $ sign - may or may not have space before $
+    amountMatch = cleanLine.match(/\s*\$(\d{1,3}(?:,\d{3})*\.?\d{0,2})\s*$/);
+    
+    // Pattern 2: Without $ sign but with commas - may or may not have space before amount
+    if (!amountMatch) {
+      amountMatch = cleanLine.match(/\s*(\d{1,3}(?:,\d{3})*\.?\d{0,2})\s*$/);
+    }
+    
+    // Pattern 3: Amount without commas (e.g., 450.00, 1450.00) - may or may not have space
+    if (!amountMatch) {
+      amountMatch = cleanLine.match(/\s*(\d{3,5}\.\d{2})\s*$/);
+    }
+    
+    if (!amountMatch) {
+      return null;
+    }
+
+    const amountStr = amountMatch[1];
+    
+    // Additional validation: ensure the captured amount looks reasonable
+    if (amountStr.startsWith(',') || amountStr.endsWith(',')) {
+      return null;
+    }
+    
+    // Fix common PDF extraction issue: amounts like "12,910.00" that should be "2,910.00"
+    // This happens when "Remote Online Deposit 1 2,910.00" becomes "Remote Online Deposit 12,910.00"
+    let correctedAmountStr = amountStr;
+    if (amountStr.startsWith('1') && (amountStr.includes(',') || amountStr.length >= 6)) {
+      // Check if this looks like a concatenated "1" + amount
+      const withoutFirst = amountStr.substring(1);
+      if (withoutFirst.match(/^\d{1,3}(?:,\d{3})*\.?\d{0,2}$/) || withoutFirst.match(/^\d{3,4}\.\d{2}$/)) {
+        // This looks like "1" + valid amount, so remove the "1"
+        correctedAmountStr = withoutFirst;
+      }
+    }
+    
+    // Clean up amount string and convert to number
+    let cleanAmountStr = correctedAmountStr.replace(/,/g, '');
+    // Add .00 if no decimal point (e.g., "1790" becomes "1790.00")
+    if (!cleanAmountStr.includes('.')) {
+      cleanAmountStr += '.00';
+    }
+    
+    const amount = parseFloat(cleanAmountStr);
+    
+    // Validate amount
+    if (isNaN(amount) || amount <= 0 || amount > 100000) {
+      return null;
+    }
+    
+    // Additional sanity check: ensure this looks like a valid deposit amount
+    if (amount < 1 || amount > 50000) {
+      return null;
+    }
+    
+    // Extract description between date and amount
+    const dateEnd = dateMatch.index + dateMatch[0].length;
+    const amountStart = amountMatch.index;
+    let descriptionPart = cleanLine.substring(dateEnd, amountStart).trim();
+    
+    // Clean up description
+    const cleanDescription = descriptionPart.replace(/\s+/g, ' ').trim();
+    
+    if (!cleanDescription) {
+      return null;
+    }
+    
     const date = ChaseDateUtils.toISODate(dateStr, year);
-    const amount = parseFloat(amountStr.replace(/[$,]/g, ''));
-    if (isNaN(amount) || amount <= 0) return null;
-    const cleanDescription = description.trim();
+    
     return {
       date,
       amount,

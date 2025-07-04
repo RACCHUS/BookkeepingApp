@@ -6,8 +6,22 @@
 class ChaseSectionExtractor {
   static extractDepositsSection(text) {
     // Returns the raw deposits section text or null
-    const match = text.match(/DEPOSITS AND ADDITIONS[\s\S]*?Total Deposits and Additions[\s\S]*?\$[\d,]+\.?\d{2}/i);
-    return match ? match[0] : null;
+    // Be more flexible with the section boundary - sometimes the total line varies
+    const match = text.match(/DEPOSITS AND ADDITIONS[\s\S]*?(?:Total Deposits and Additions|TOTAL DEPOSITS)[\s\S]*?\$?[\d,]+\.?\d{2}/i);
+    if (match) {
+      console.log('🏦 DEBUG: Deposits section regex matched');
+      return match[0];
+    }
+    
+    // Fallback: try to find just the deposits section without total
+    const fallbackMatch = text.match(/DEPOSITS AND ADDITIONS([\s\S]*?)(?=CHECKS PAID|ATM|ELECTRONIC|$)/i);
+    if (fallbackMatch) {
+      console.log('🏦 DEBUG: Using fallback deposits section');
+      return fallbackMatch[0];
+    }
+    
+    console.log('🏦 DEBUG: No deposits section found');
+    return null;
   }
 
   static extractChecksSection(text) {

@@ -89,7 +89,11 @@ const Dashboard = () => {
   const handleAddTransaction = async (data) => {
     await apiClient.transactions.create(data);
     setShowAddModal(false);
-    // Optionally refetch queries here if needed
+    // Refetch recent transactions and summary so new transaction appears with correct Firestore id
+    if (typeof window !== 'undefined' && window.__REACT_QUERY_CLIENT__) {
+      window.__REACT_QUERY_CLIENT__.invalidateQueries(['recent-transactions']);
+      window.__REACT_QUERY_CLIENT__.invalidateQueries(['transaction-summary', startOfMonth, endOfMonth]);
+    }
   };
 
   return (

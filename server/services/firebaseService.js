@@ -27,7 +27,8 @@ class FirebaseService {  constructor() {
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
         updatedAt: admin.firestore.FieldValue.serverTimestamp()
       });
-      
+      // Patch the document to include its Firestore ID as a field
+      await docRef.update({ id: docRef.id });
       return docRef.id;
     } catch (error) {
       console.error('Error creating transaction:', error);
