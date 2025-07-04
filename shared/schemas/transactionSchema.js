@@ -31,6 +31,10 @@ export const TransactionSchema = {
   sourceFileId: '', // Firebase Storage file ID
   originalData: {}, // Raw data from import source
   
+  // Statement section information (for PDF imports)
+  section: '', // Full section name (e.g., "DEPOSITS AND ADDITIONS")
+  sectionCode: '', // Short code (e.g., "deposits", "checks", "card", "electronic", "manual")
+  
   // Business context
   businessPurpose: '', // Required for business expenses
   clientProject: '', // If related to specific client/project

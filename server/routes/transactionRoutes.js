@@ -21,7 +21,8 @@ const createTransactionValidation = [
   body('amount').isNumeric().withMessage('Amount must be a number'),
   body('description').isLength({ min: 1, max: 500 }).withMessage('Description is required and must be less than 500 characters'),
   body('category').isLength({ min: 1 }).withMessage('Category is required'),
-  body('type').isIn(['income', 'expense', 'transfer']).withMessage('Type must be income, expense, or transfer')
+  body('type').isIn(['income', 'expense', 'transfer']).withMessage('Type must be income, expense, or transfer'),
+  body('sectionCode').optional().isIn(['deposits', 'checks', 'card', 'electronic', 'manual', 'uncategorized']).withMessage('Section code must be valid')
 ];
 
 const updateTransactionValidation = [
@@ -30,7 +31,8 @@ const updateTransactionValidation = [
   body('amount').optional().isNumeric().withMessage('Amount must be a number'),
   body('description').optional().isLength({ min: 1, max: 500 }).withMessage('Description must be less than 500 characters'),
   body('category').optional().isLength({ min: 1 }).withMessage('Category cannot be empty'),
-  body('type').optional().isIn(['income', 'expense', 'transfer']).withMessage('Type must be income, expense, or transfer')
+  body('type').optional().isIn(['income', 'expense', 'transfer']).withMessage('Type must be income, expense, or transfer'),
+  body('sectionCode').optional().isIn(['deposits', 'checks', 'card', 'electronic', 'manual', 'uncategorized']).withMessage('Section code must be valid')
 ];
 
 const getTransactionsValidation = [

@@ -7,6 +7,7 @@ import { useAuth } from '../../context/AuthContext';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import TransactionModal from '../../components/TransactionModal';
 import { IRS_CATEGORIES, CATEGORY_GROUPS } from '@shared/constants/categories';
+import { SECTION_OPTIONS, getSectionDisplayName } from '@shared/constants/sections';
 
 // Improved, user-friendly transaction types
 const TRANSACTION_TYPES = [
@@ -15,6 +16,20 @@ const TRANSACTION_TYPES = [
   { value: 'expense', label: 'Expense', color: 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300' },
   { value: 'transfer', label: 'Transfer', color: 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300' },
   { value: 'adjustment', label: 'Adjustment', color: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300' },
+];
+
+// PDF section filter options
+const SECTION_FILTERS = [
+  { value: '', label: 'All Sections' },
+  ...SECTION_OPTIONS.map(section => ({
+    value: section.code,
+    label: section.label,
+    icon: section.code === 'deposits' ? '💰' : 
+          section.code === 'checks' ? '📝' :
+          section.code === 'card' ? '💳' :
+          section.code === 'electronic' ? '🔌' :
+          section.code === 'manual' ? '✍️' : '❓'
+  }))
 ];
 
 // Helper for category label with group
@@ -51,6 +66,7 @@ const TransactionList = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
+  const [sectionFilter, setSectionFilter] = useState('');
   const [dateRange, setDateRange] = useState({ start: '', end: '' });
   
   // Modal state
@@ -404,6 +420,18 @@ const TransactionList = () => {
       filtered = filtered.filter(transaction => transaction.type === typeFilter);
     }
 
+    // Section filter
+    if (sectionFilter) {
+      if (sectionFilter === 'uncategorized') {
+        // Show transactions with no sectionCode or sectionCode === 'uncategorized'
+        filtered = filtered.filter(transaction => 
+          !transaction.sectionCode || transaction.sectionCode === 'uncategorized'
+        );
+      } else {
+        filtered = filtered.filter(transaction => transaction.sectionCode === sectionFilter);
+      }
+    }
+
     // Date range filter
     if (dateRange.start) {
       filtered = filtered.filter(transaction => 
@@ -417,7 +445,7 @@ const TransactionList = () => {
     }
 
     return filtered;
-  }, [data?.data?.transactions, searchTerm, categoryFilter, statementFilter, typeFilter, dateRange]);
+  }, [data?.data?.transactions, searchTerm, categoryFilter, statementFilter, typeFilter, sectionFilter, dateRange]);
 
   // Available categories for filters - moved before conditional returns
   const availableCategories = useMemo(() => {
@@ -522,6 +550,7 @@ const TransactionList = () => {
     setSearchTerm('');
     setCategoryFilter('');
     setTypeFilter('');
+    setSectionFilter('');
     setDateRange({ start: '', end: '' });
   };
 
@@ -601,7 +630,7 @@ const TransactionList = () => {
       </div>
 
       {/* Search and Filters */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
         {/* Search */}
         <div className="relative">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -645,6 +674,22 @@ const TransactionList = () => {
           >
             {TRANSACTION_TYPES.map(type => (
               <option key={type.value} value={type.value}>{type.label}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Section Filter (PDF sections) */}
+        <div>
+          <select
+            value={sectionFilter}
+            onChange={(e) => setSectionFilter(e.target.value)}
+            className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md leading-5 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+            title="Filter by PDF section"
+          >
+            {SECTION_FILTERS.map(section => (
+              <option key={section.value} value={section.value}>
+                {section.icon ? `${section.icon} ${section.label}` : section.label}
+              </option>
             ))}
           </select>
         </div>
@@ -771,6 +816,16 @@ const TransactionList = () => {
                           </div>
                           <div className="text-sm text-gray-500 dark:text-gray-400">
                             {transaction.payee && `${transaction.payee} • `}
+                            {/* Section display */}
+                            {(transaction.sectionCode || (!transaction.sectionCode && transaction.source !== 'manual')) && (
+                              <span className="inline-block bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300 px-2 py-1 rounded-full text-xs font-medium mr-2">
+                                {(() => {
+                                  const sectionCode = transaction.sectionCode || 'uncategorized';
+                                  const section = SECTION_FILTERS.find(s => s.value === sectionCode);
+                                  return section ? `${section.icon} ${section.label}` : getSectionDisplayName(sectionCode);
+                                })()}
+                              </span>
+                            )}
                             {/* Statement/PDF display */}
                           {statement && (
                             <span className="inline-block text-blue-600 dark:text-blue-400 font-semibold mr-2">

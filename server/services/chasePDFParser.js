@@ -118,7 +118,8 @@ class ChasePDFParser {
           depositsFound: text.includes('DEPOSITS AND ADDITIONS'),
           checksFound: text.includes('CHECKS PAID'),
           cardTransactionsFound: /ATM\s*&\s*DEBIT CARD WITHDRAWALS\s*\n\s*DATE\s*DESCRIPTION\s*AMOUNT/i.test(text),
-          electronicFound: text.includes('ELECTRONIC WITHDRAWALS')
+          electronicFound: text.includes('ELECTRONIC WITHDRAWALS'),
+          sectionBreakdown: this.getAvailableSections(transactions)
         }
       };
       
@@ -222,7 +223,11 @@ class ChasePDFParser {
           'income',
           year
         );
-        if (transaction) transactions.push(transaction);
+        if (transaction) {
+          transaction.section = 'DEPOSITS AND ADDITIONS';
+          transaction.sectionCode = 'deposits';
+          transactions.push(transaction);
+        }
         continue;
       }
       // Card Purchases: 01/02Card Purchase 12/29 Chevron 0202648 Plantation FL Card 1819$38.80
@@ -235,7 +240,11 @@ class ChasePDFParser {
           'expense',
           year
         );
-        if (transaction) transactions.push(transaction);
+        if (transaction) {
+          transaction.section = 'ATM & DEBIT CARD WITHDRAWALS';
+          transaction.sectionCode = 'card';
+          transactions.push(transaction);
+        }
         continue;
       }
       // Electronic Withdrawals (multi-line): 01/11Orig CO Name:Home Depot...
@@ -259,7 +268,11 @@ class ChasePDFParser {
             'expense',
             year
           );
-          if (transaction) transactions.push(transaction);
+          if (transaction) {
+            transaction.section = 'ELECTRONIC WITHDRAWALS';
+            transaction.sectionCode = 'electronic';
+            transactions.push(transaction);
+          }
         }
         continue;
       }
@@ -273,7 +286,11 @@ class ChasePDFParser {
           'expense',
           year
         );
-        if (transaction) transactions.push(transaction);
+        if (transaction) {
+          transaction.section = 'CHECKS PAID';
+          transaction.sectionCode = 'checks';
+          transactions.push(transaction);
+        }
         continue;
       }
     }
@@ -393,6 +410,8 @@ class ChasePDFParser {
       totalExpenses: 0,
       netIncome: 0,
       categorySummary: {},
+      sectionSummary: {},
+      availableSections: this.getAvailableSections(transactions),
       needsReview: 0
     };
 
@@ -417,6 +436,32 @@ class ChasePDFParser {
       }
       summary.categorySummary[transaction.category].total += transaction.amount;
       summary.categorySummary[transaction.category].count++;
+
+      // Section summary
+      if (transaction.sectionCode) {
+        if (!summary.sectionSummary[transaction.sectionCode]) {
+          summary.sectionSummary[transaction.sectionCode] = {
+            name: transaction.section,
+            total: 0,
+            count: 0,
+            type: transaction.type
+          };
+        }
+        summary.sectionSummary[transaction.sectionCode].total += transaction.amount;
+        summary.sectionSummary[transaction.sectionCode].count++;
+      } else {
+        // Handle transactions with missing section
+        if (!summary.sectionSummary['uncategorized']) {
+          summary.sectionSummary['uncategorized'] = {
+            name: 'Uncategorized Section',
+            total: 0,
+            count: 0,
+            type: transaction.type
+          };
+        }
+        summary.sectionSummary['uncategorized'].total += transaction.amount;
+        summary.sectionSummary['uncategorized'].count++;
+      }
     });
 
     summary.netIncome = summary.totalIncome - summary.totalExpenses;
@@ -433,7 +478,12 @@ class ChasePDFParser {
       for (const line of lines) {
         if (line.includes('DATE') || line.includes('DESCRIPTION') || line.includes('Total')) continue;
         const tx = ChaseTransactionParser.parseDepositLine(line, year);
-        if (tx) deposits.push(tx);
+        if (tx) {
+          // Add section metadata for filtering
+          tx.section = 'DEPOSITS AND ADDITIONS';
+          tx.sectionCode = 'deposits';
+          deposits.push(tx);
+        }
       }
     }
     this.extractionLog.push(`Extracted ${deposits.length} deposits`);
@@ -449,7 +499,12 @@ class ChasePDFParser {
       for (const line of lines) {
         if (line.includes('DATE') || line.includes('DESCRIPTION') || line.includes('Total')) continue;
         const tx = ChaseTransactionParser.parseCheckLine ? ChaseTransactionParser.parseCheckLine(line, year) : null;
-        if (tx) checks.push(tx);
+        if (tx) {
+          // Add section metadata for filtering
+          tx.section = 'CHECKS PAID';
+          tx.sectionCode = 'checks';
+          checks.push(tx);
+        }
       }
     }
     this.extractionLog.push(`Extracted ${checks.length} checks`);
@@ -465,7 +520,12 @@ class ChasePDFParser {
       for (const line of lines) {
         if (line.includes('DATE') || line.includes('DESCRIPTION') || line.includes('Total')) continue;
         const tx = ChaseTransactionParser.parseCardLine ? ChaseTransactionParser.parseCardLine(line, year) : null;
-        if (tx) cardTransactions.push(tx);
+        if (tx) {
+          // Add section metadata for filtering
+          tx.section = 'ATM & DEBIT CARD WITHDRAWALS';
+          tx.sectionCode = 'card';
+          cardTransactions.push(tx);
+        }
       }
     }
     this.extractionLog.push(`Extracted ${cardTransactions.length} card transactions`);
@@ -531,6 +591,9 @@ class ChasePDFParser {
               category: 'Business Expenses',
               subCategory: 'Electronic Payments',
               source: 'chase_pdf',
+              // Add section metadata for filtering
+              section: 'ELECTRONIC WITHDRAWALS',
+              sectionCode: 'electronic'
             };
             electronicTransactions.push(transaction);
           }
@@ -619,6 +682,52 @@ class ChasePDFParser {
     const month = parseInt(dateParts[0]);
     const day = parseInt(dateParts[1]);
     return `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}T12:00:00`;
+  }
+
+  /**
+   * Filter transactions by PDF section
+   * @param {Array} transactions - Array of transactions
+   * @param {string} sectionCode - Section code: 'deposits', 'checks', 'card', 'electronic', 'manual', 'uncategorized'
+   * @returns {Array} Filtered transactions
+   */
+  filterTransactionsBySection(transactions, sectionCode) {
+    if (!sectionCode) return transactions;
+    
+    if (sectionCode === 'uncategorized') {
+      // Return transactions with missing or undefined sectionCode
+      return transactions.filter(tx => !tx.sectionCode || tx.sectionCode === 'uncategorized');
+    }
+    
+    return transactions.filter(tx => tx.sectionCode === sectionCode);
+  }
+
+  /**
+   * Get available sections from transactions
+   * @param {Array} transactions - Array of transactions
+   * @returns {Array} Array of section objects with counts
+   */
+  getAvailableSections(transactions) {
+    const sections = {
+      deposits: { code: 'deposits', name: 'DEPOSITS AND ADDITIONS', count: 0, total: 0 },
+      checks: { code: 'checks', name: 'CHECKS PAID', count: 0, total: 0 },
+      card: { code: 'card', name: 'ATM & DEBIT CARD WITHDRAWALS', count: 0, total: 0 },
+      electronic: { code: 'electronic', name: 'ELECTRONIC WITHDRAWALS', count: 0, total: 0 },
+      manual: { code: 'manual', name: 'MANUAL ENTRY', count: 0, total: 0 },
+      uncategorized: { code: 'uncategorized', name: 'UNCATEGORIZED SECTION', count: 0, total: 0 }
+    };
+
+    transactions.forEach(tx => {
+      if (tx.sectionCode && sections[tx.sectionCode]) {
+        sections[tx.sectionCode].count++;
+        sections[tx.sectionCode].total += tx.amount;
+      } else if (!tx.sectionCode) {
+        // Handle transactions with missing section code
+        sections.uncategorized.count++;
+        sections.uncategorized.total += tx.amount;
+      }
+    });
+
+    return Object.values(sections).filter(section => section.count > 0);
   }
 }
 

@@ -4,7 +4,8 @@ import { apiClient } from '../services/api';
 import { useForm } from 'react-hook-form';
 import { toast } from 'react-hot-toast';
 import { XMarkIcon } from '@heroicons/react/24/outline';
-import { IRS_CATEGORIES, CATEGORY_GROUPS } from '../../../shared/constants/categories';
+import { IRS_CATEGORIES, CATEGORY_GROUPS } from '@shared/constants/categories';
+import { STATEMENT_SECTIONS, SECTION_OPTIONS, getSectionDisplayName } from '@shared/constants/sections';
 
 const TransactionModal = ({ transaction, isOpen, onClose, onSave, mode = 'edit' }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -90,7 +91,8 @@ const TransactionModal = ({ transaction, isOpen, onClose, onSave, mode = 'edit' 
       type: typeof transaction?.type === 'string' && ['income','expense'].includes(transaction.type) ? transaction.type : (typeof transaction?.amount === 'number' && transaction.amount > 0 ? 'income' : 'expense'),
       payee: typeof transaction?.payee === 'string' ? transaction.payee : '',
       notes: typeof transaction?.notes === 'string' ? transaction.notes : '',
-      statementId: typeof transaction?.statementId === 'string' ? transaction.statementId : ''
+      statementId: typeof transaction?.statementId === 'string' ? transaction.statementId : '',
+      sectionCode: typeof transaction?.sectionCode === 'string' ? transaction.sectionCode : 'manual'
     }
   });
 
@@ -168,7 +170,8 @@ const TransactionModal = ({ transaction, isOpen, onClose, onSave, mode = 'edit' 
         type: typeof transaction?.type === 'string' && ['income','expense'].includes(transaction.type) ? transaction.type : (typeof transaction?.amount === 'number' && transaction.amount > 0 ? 'income' : 'expense'),
         payee: typeof transaction?.payee === 'string' ? transaction.payee : '',
         notes: typeof transaction?.notes === 'string' ? transaction.notes : '',
-        statementId: typeof transaction?.statementId === 'string' ? transaction.statementId : ''
+        statementId: typeof transaction?.statementId === 'string' ? transaction.statementId : '',
+        sectionCode: typeof transaction?.sectionCode === 'string' ? transaction.sectionCode : 'manual'
       });
     } else if (mode === 'create') {
       reset({
@@ -179,7 +182,8 @@ const TransactionModal = ({ transaction, isOpen, onClose, onSave, mode = 'edit' 
         type: 'expense',
         payee: '',
         notes: '',
-        statementId: ''
+        statementId: '',
+        sectionCode: 'manual'
       });
     }
   }, [transaction, mode, reset]);
@@ -196,6 +200,8 @@ const TransactionModal = ({ transaction, isOpen, onClose, onSave, mode = 'edit' 
         amount: finalAmount,
         date: data.date, // Keep as string for API
         statementId: data.statementId || '',
+        sectionCode: data.sectionCode || 'manual',
+        section: data.sectionCode ? getSectionDisplayName(data.sectionCode) : 'Manual Entry'
       };
 
       await onSave(transactionData);
@@ -301,6 +307,29 @@ const TransactionModal = ({ transaction, isOpen, onClose, onSave, mode = 'edit' 
                   <option value="income">Income</option>
                 </select>
               </div>
+            </div>
+
+            {/* Section Selection */}
+            <div>
+              <label className="form-label">
+                Statement Section
+                <span className="text-sm text-gray-500 dark:text-gray-400 ml-2">
+                  (For manual transactions, choose the most appropriate section)
+                </span>
+              </label>
+              <select 
+                {...register('sectionCode')} 
+                className="form-input"
+              >
+                {SECTION_OPTIONS.map((section) => (
+                  <option key={section.code} value={section.code}>
+                    {section.label}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                This helps categorize your transaction within the statement structure.
+              </p>
             </div>
 
             {/* Amount */}
