@@ -363,7 +363,7 @@ export const bulkUpdateTransactions = async (req, res) => {
 export const getTransactionSummary = async (req, res) => {
   try {
     const { uid: userId } = req.user;
-    const { startDate, endDate, groupBy = 'category' } = req.query;
+    const { startDate, endDate, groupBy = 'category', companyId } = req.query;
 
     if (!startDate || !endDate) {
       return res.status(400).json({
@@ -376,11 +376,17 @@ export const getTransactionSummary = async (req, res) => {
     let usingMockData = false;
     
     try {
-      summary = await firebaseService.getTransactionSummary(
-        userId,
-        new Date(startDate),
-        new Date(endDate)
-      );
+      const filters = {
+        startDate: new Date(startDate),
+        endDate: new Date(endDate)
+      };
+      
+      // Add company filter if specified
+      if (companyId && companyId !== 'all') {
+        filters.companyId = companyId;
+      }
+      
+      summary = await firebaseService.getTransactionSummary(userId, filters);
     } catch (error) {
       console.warn('Firestore summary query failed:', error.message);
       // Return empty summary instead of mock data
@@ -405,7 +411,8 @@ export const getTransactionSummary = async (req, res) => {
       dateRange: {
         startDate,
         endDate
-      }
+      },
+      companyFilter: companyId || 'all'
     });
 
   } catch (error) {
@@ -535,7 +542,7 @@ export const bulkUpdateCategories = async (req, res) => {
 export const getCategoryStats = async (req, res) => {
   try {
     const { uid: userId } = req.user;
-    const { startDate, endDate } = req.query;
+    const { startDate, endDate, companyId } = req.query;
 
     let dateRange = null;
     if (startDate && endDate) {
@@ -545,11 +552,17 @@ export const getCategoryStats = async (req, res) => {
       };
     }
 
-    const stats = await transactionClassifierService.getCategoryStats(userId, dateRange);
+    const filters = {};
+    if (companyId && companyId !== 'all') {
+      filters.companyId = companyId;
+    }
+
+    const stats = await transactionClassifierService.getCategoryStats(userId, dateRange, filters);
 
     res.json({
       success: true,
-      stats
+      stats,
+      companyFilter: companyId || 'all'
     });
 
   } catch (error) {

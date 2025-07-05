@@ -125,6 +125,10 @@ export const processPDF = async (req, res) => {
 
 const processFileSynchronously = async (fileDoc, userId, autoSave) => {
   try {
+    // Import company service for handling company assignment
+    const companyServiceModule = await import('../services/companyService.js');
+    const companyService = companyServiceModule.default;
+
     // Read file from local storage
     const buffer = await fs.readFile(fileDoc.filePath);
 
@@ -138,6 +142,24 @@ const processFileSynchronously = async (fileDoc, userId, autoSave) => {
     }
 
     const transactions = parseResult.transactions || [];
+    const accountInfo = parseResult.accountInfo || {};
+    const companyInfo = accountInfo.companyInfo || {};
+
+    // Find or create company based on PDF extracted data
+    let company = null;
+    if (companyInfo.extracted && companyInfo.name) {
+      try {
+        company = await companyService.findOrCreateFromPDFData(userId, companyInfo);
+        console.log(`🏢 Assigned company: ${company?.name || 'Default'}`);
+      } catch (error) {
+        console.warn('Failed to process company info from PDF:', error);
+        // Use default company as fallback
+        company = await companyService.getDefaultCompany(userId);
+      }
+    } else {
+      // No company info extracted, use default company
+      company = await companyService.getDefaultCompany(userId);
+    }
 
     // If autoSave is true, save transactions to Firestore
     if (autoSave && transactions.length > 0) {
@@ -152,7 +174,10 @@ const processFileSynchronously = async (fileDoc, userId, autoSave) => {
           importedAt: new Date(),
           // Add default classification if not present
           category: transaction.category || 'Uncategorized',
-          isClassified: !!transaction.category
+          isClassified: !!transaction.category,
+          // Add company information
+          companyId: company?.id || '',
+          companyName: company?.name || ''
         };
 
         const savedTransaction = await firebaseService.createDocument(
@@ -164,10 +189,25 @@ const processFileSynchronously = async (fileDoc, userId, autoSave) => {
         savedTransactions.push(savedTransaction);
       }
 
-      return { transactions: savedTransactions };
+      return { 
+        transactions: savedTransactions, 
+        company: company,
+        companyInfo: companyInfo
+      };
     }
 
-    return { transactions };
+    // For preview mode, add company info to transactions
+    const transactionsWithCompany = transactions.map(transaction => ({
+      ...transaction,
+      companyId: company?.id || '',
+      companyName: company?.name || ''
+    }));
+
+    return { 
+      transactions: transactionsWithCompany, 
+      company: company,
+      companyInfo: companyInfo
+    };
 
   } catch (error) {
     console.error('Error processing file:', error);

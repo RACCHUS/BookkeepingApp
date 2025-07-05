@@ -314,19 +314,62 @@ class TransactionClassifierService {
   /**
    * Get category statistics for the user
    */
-  async getCategoryStats(userId, dateRange = null) {
+  async getCategoryStats(userId, dateRange = null, filters = {}) {
     try {
-      // This would typically calculate accuracy metrics, most used categories, etc.
-      // For now, return basic mock data
-      return {
-        totalClassifications: 150,
-        accuracy: 85.5,
-        topCategories: [
-          { category: 'Office Expenses', count: 45 },
-          { category: 'Car and Truck Expenses', count: 32 },
-          { category: 'Meals and Entertainment', count: 28 }
-        ]
+      // Build query filters
+      const queryFilters = { ...filters };
+      if (dateRange) {
+        queryFilters.startDate = dateRange.start;
+        queryFilters.endDate = dateRange.end;
+      }
+
+      // Get transactions with filters applied
+      const transactions = await this.firebaseService.getTransactions(userId, queryFilters);
+      
+      // Calculate statistics
+      const stats = {
+        totalClassifications: transactions.length,
+        categoryBreakdown: {},
+        companyBreakdown: {},
+        typeBreakdown: { income: 0, expense: 0 }
       };
+
+      // Process transactions
+      transactions.forEach(transaction => {
+        // Category breakdown
+        const category = transaction.category || 'Uncategorized';
+        if (!stats.categoryBreakdown[category]) {
+          stats.categoryBreakdown[category] = { count: 0, amount: 0 };
+        }
+        stats.categoryBreakdown[category].count++;
+        stats.categoryBreakdown[category].amount += Math.abs(transaction.amount);
+
+        // Company breakdown
+        if (transaction.companyName) {
+          if (!stats.companyBreakdown[transaction.companyName]) {
+            stats.companyBreakdown[transaction.companyName] = { count: 0, amount: 0 };
+          }
+          stats.companyBreakdown[transaction.companyName].count++;
+          stats.companyBreakdown[transaction.companyName].amount += Math.abs(transaction.amount);
+        }
+
+        // Type breakdown
+        if (transaction.type === 'income' || transaction.type === 'expense') {
+          stats.typeBreakdown[transaction.type] += Math.abs(transaction.amount);
+        }
+      });
+
+      // Convert to top categories format
+      stats.topCategories = Object.entries(stats.categoryBreakdown)
+        .sort((a, b) => b[1].count - a[1].count)
+        .slice(0, 10)
+        .map(([category, data]) => ({
+          category,
+          count: data.count,
+          amount: data.amount
+        }));
+
+      return stats;
     } catch (error) {
       console.error('Error getting category stats:', error);
       return {};

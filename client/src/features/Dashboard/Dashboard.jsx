@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { apiClient } from '../../services/api';
 import LoadingSpinner from '../../components/LoadingSpinner';
+import QuickReports from '../../components/QuickReports';
 import {
   CurrencyDollarIcon,
   DocumentTextIcon,
@@ -130,24 +131,27 @@ const Dashboard = () => {
         })}
       </div>
 
-      {/* Recent transactions */}
-      <div className="card">
-        <div className="card-header">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white transition-colors">Recent Transactions</h2>
-        </div>
-        <div className="card-body p-0">
-          {transactions.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="table">
-                <thead className="table-header">
-                  <tr>
-                    <th className="table-header-cell">Date</th>
-                    <th className="table-header-cell">Description</th>
-                    <th className="table-header-cell">Category</th>
-                    <th className="table-header-cell">Amount</th>
-                  </tr>
-                </thead>
-                <tbody>
+      {/* Content grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Recent transactions - takes up 2 columns */}
+        <div className="lg:col-span-2">
+          <div className="card">
+            <div className="card-header">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white transition-colors">Recent Transactions</h2>
+            </div>
+            <div className="card-body p-0">
+              {transactions.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="table">
+                    <thead className="table-header">
+                      <tr>
+                        <th className="table-header-cell">Date</th>
+                        <th className="table-header-cell">Description</th>
+                        <th className="table-header-cell">Category</th>
+                        <th className="table-header-cell">Amount</th>
+                      </tr>
+                    </thead>
+                    <tbody>
                   {transactions.map((transaction, index) => (
                     <tr key={transaction.id} className={index % 2 === 0 ? 'table-row' : 'table-row-alt'}>
                       <td className="table-cell">
@@ -186,7 +190,12 @@ const Dashboard = () => {
             </div>
           )}
         </div>
+        </div>
       </div>
+      </div>
+
+      {/* Quick Reports Section */}
+      <QuickReports />
 
       {/* Quick actions */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

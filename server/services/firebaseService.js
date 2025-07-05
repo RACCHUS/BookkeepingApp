@@ -360,12 +360,9 @@ class FirebaseService {  constructor() {
   }
 
   // Analytics and reporting helpers
-  async getTransactionSummary(userId, startDate, endDate) {
+  async getTransactionSummary(userId, filters) {
     try {
-      const transactions = await this.getTransactions(userId, {
-        startDate,
-        endDate
-      });
+      const transactions = await this.getTransactions(userId, filters);
 
       const summary = {
         totalIncome: 0,

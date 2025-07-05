@@ -15,8 +15,14 @@ export const uploadPDF = async (req, res) => {
   try {
     const { file } = req;
     const { uid: userId } = req.user; // Remove fallback to force proper auth
-    // Accept user-provided name for the statement (optional)
-    const { bankType = 'chase', autoProcess = false, name: userProvidedName } = req.body;
+    // Accept user-provided name for the statement (optional) and company information
+    const { 
+      bankType = 'chase', 
+      autoProcess = false, 
+      name: userProvidedName,
+      companyId,
+      companyName
+    } = req.body;
 
     if (!userId) {
       return res.status(401).json({
@@ -26,6 +32,9 @@ export const uploadPDF = async (req, res) => {
     }
 
     console.log('📄 PDF upload by user:', userId);
+    if (companyId) {
+      console.log('🏢 Company selected:', companyName || companyId);
+    }
 
     if (!file) {
       return res.status(400).json({
@@ -65,7 +74,10 @@ export const uploadPDF = async (req, res) => {
       uploadedBy: userId,
       uploadedAt: new Date().toISOString(),
       status: 'uploaded',
-      processed: false
+      processed: false,
+      // Company information
+      companyId: companyId || null,
+      companyName: companyName || null
     };
     // Write metadata file before any processing (for robust statement listing)
     const metaPath = filePath + '.meta.json';
@@ -78,7 +90,9 @@ export const uploadPDF = async (req, res) => {
         fileName: uploadRecord.fileName,
         uploadedAt: uploadRecord.uploadedAt,
         bankType: uploadRecord.bankType,
-        uploadedBy: uploadRecord.uploadedBy
+        uploadedBy: uploadRecord.uploadedBy,
+        companyId: uploadRecord.companyId,
+        companyName: uploadRecord.companyName
       }, null, 2));
     } catch (metaErr) {
       console.error('Failed to write statement metadata file:', metaErr);
@@ -100,7 +114,9 @@ export const uploadPDF = async (req, res) => {
           status: 'processing',
           uploadedAt: uploadRecord.uploadedAt,
           bankType: bankType,
-          autoProcessing: true
+          autoProcessing: true,
+          companyId: companyId,
+          companyName: companyName
         }
       });
     }
@@ -116,7 +132,9 @@ export const uploadPDF = async (req, res) => {
         size: file.size,
         status: 'uploaded',
         uploadedAt: uploadRecord.uploadedAt,
-        bankType: bankType
+        bankType: bankType,
+        companyId: companyId,
+        companyName: companyName
       },
       next_steps: {
         process_url: `/api/pdf/process/${uploadId}`,
@@ -209,6 +227,22 @@ async function processUploadedFile(fileId, filePath, userId, bankType, processId
   const actualProcessId = processId || crypto.randomUUID();
   
   try {
+    // Read metadata to get company information
+    let companyInfo = { companyId: null, companyName: null };
+    const metaPath = filePath + '.meta.json';
+    try {
+      const metaData = await fs.readFile(metaPath, 'utf-8');
+      const metadata = JSON.parse(metaData);
+      if (metadata.companyId) {
+        companyInfo.companyId = metadata.companyId;
+        companyInfo.companyName = metadata.companyName;
+      }
+    } catch (metaError) {
+      console.warn('Could not read metadata file for company info:', metaError.message);
+    }
+
+    console.log(`🏢 Processing PDF for company: ${companyInfo.companyName || companyInfo.companyId || 'No company specified'}`);
+
     // Update progress
     processingStatus.set(actualProcessId, {
       status: 'processing',
@@ -255,7 +289,10 @@ async function processUploadedFile(fileId, filePath, userId, bankType, processId
           statementId: fileId, // <-- This is the key fix: always link to the statement/PDF
           isManuallyReviewed: false,
           createdBy: userId,
-          importedAt: new Date().toISOString()
+          importedAt: new Date().toISOString(),
+          // Add company information
+          companyId: companyInfo.companyId,
+          companyName: companyInfo.companyName
         };
         transactionsToSave.push(enhancedTransaction);
       }

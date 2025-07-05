@@ -239,11 +239,92 @@ class ChasePDFParser {
       };
     }
 
+    // Extract company information from statement header
+    const companyInfo = this.extractCompanyInfo(text);
+
     return {
       accountNumber: accountMatch ? accountMatch[1] : null,
       statementPeriod: statementPeriod,
       beginningBalance: beginningMatch ? parseFloat(beginningMatch[1].replace(/,/g, '')) : null,
-      endingBalance: endingMatch ? parseFloat(endingMatch[1].replace(/,/g, '')) : null
+      endingBalance: endingMatch ? parseFloat(endingMatch[1].replace(/,/g, '')) : null,
+      companyInfo
+    };
+  }
+
+  /**
+   * Extract company information from Chase PDF statement header
+   * @param {string} text - PDF text content
+   * @returns {object} Company information object
+   */
+  extractCompanyInfo(text) {
+    // Look for company name patterns in the first few lines of the statement
+    const lines = text.split('\n').slice(0, 20); // Check first 20 lines
+    
+    let companyName = null;
+    let companyAddress = null;
+    
+    // Common patterns for business names in Chase statements
+    const businessPatterns = [
+      /^([A-Z\s]+(?:INC|LLC|CORP|CORPORATION|COMPANY|CO|LTD|LIMITED|CONSTRUCTION|ENTERPRISES|SERVICES|GROUP)\.?),?\s*$/i,
+      /^([A-Z\s]+(?:&|AND)\s+[A-Z\s]+(?:INC|LLC|CORP|CONSTRUCTION)\.?),?\s*$/i,
+      /^([A-Z][A-Za-z\s]+(?:CONSTRUCTION|CONTRACTING|BUILDER|BUILDERS|COMPANY)\.?),?\s*$/i,
+      /^([A-Z][A-Za-z\s]{10,50})\s*$/  // General business name pattern (10-50 chars, starts with capital)
+    ];
+    
+    // Address patterns
+    const addressPatterns = [
+      /^\d+\s+[A-Za-z\s]+(?:Street|St|Avenue|Ave|Road|Rd|Drive|Dr|Lane|Ln|Boulevard|Blvd|Circle|Cir|Court|Ct|Way|Place|Pl)\.?\s*$/i,
+      /^[A-Za-z\s]+,\s*[A-Z]{2}\s+\d{5}(?:-\d{4})?\s*$/  // City, State ZIP
+    ];
+    
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+      
+      // Skip empty lines and common header text
+      if (!line || 
+          line.includes('Chase') || 
+          line.includes('Statement') || 
+          line.includes('Account') || 
+          line.includes('Period') ||
+          line.includes('Balance') ||
+          line.includes('Page') ||
+          line.match(/^\d+$/)) {
+        continue;
+      }
+      
+      // Check for business name patterns
+      if (!companyName) {
+        for (const pattern of businessPatterns) {
+          const match = line.match(pattern);
+          if (match) {
+            companyName = match[1].trim();
+            console.log(`🏢 Extracted company name: ${companyName}`);
+            break;
+          }
+        }
+      }
+      
+      // Check for address patterns (usually appears after company name)
+      if (companyName && !companyAddress) {
+        for (const pattern of addressPatterns) {
+          if (pattern.test(line)) {
+            companyAddress = line;
+            console.log(`📍 Extracted company address: ${companyAddress}`);
+            break;
+          }
+        }
+      }
+      
+      // If we have both, we can stop looking
+      if (companyName && companyAddress) {
+        break;
+      }
+    }
+    
+    return {
+      name: companyName,
+      address: companyAddress,
+      extracted: !!(companyName || companyAddress)
     };
   }
 

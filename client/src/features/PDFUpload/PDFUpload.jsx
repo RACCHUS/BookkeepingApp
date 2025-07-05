@@ -1,28 +1,55 @@
 import React, { useState, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { apiClient } from '../../services/api';
 import LoadingSpinner from '../../components/LoadingSpinner';
+import CompanySelector from '../../components/CompanySelector';
 import {
   CloudArrowUpIcon,
   DocumentTextIcon,
   CheckCircleIcon,
   ExclamationTriangleIcon,
-  TrashIcon
+  TrashIcon,
+  BuildingOfficeIcon
 } from '@heroicons/react/24/outline';
 
 const PDFUpload = () => {
   const [uploadedFiles, setUploadedFiles] = useState([]);
   const [processingFiles, setProcessingFiles] = useState(new Set());
+  const [selectedCompany, setSelectedCompany] = useState('');
+  const [selectedCompanyData, setSelectedCompanyData] = useState(null);
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
+
+  // Fetch companies to check if any exist
+  const { data: companiesResponse } = useQuery({
+    queryKey: ['companies'],
+    queryFn: apiClient.companies.getAll,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
+  const companies = companiesResponse?.data || [];
+  const hasCompanies = companies.length > 0;
 
   // Upload mutation
   const uploadMutation = useMutation({
     mutationFn: ({file, tempId}) => {
+      if (!selectedCompany) {
+        throw new Error('Please select a company before uploading files');
+      }
+      
       const formData = new FormData();
       formData.append('pdf', file);
       formData.append('bankType', 'chase'); // Default to Chase for now
+      formData.append('companyId', selectedCompany);
+      
+      // Also include company name if available
+      if (selectedCompanyData?.name) {
+        formData.append('companyName', selectedCompanyData.name);
+      }
+      
       return apiClient.pdf.upload(formData);
     },
     onSuccess: (data, {file, tempId}) => {
@@ -55,7 +82,9 @@ const PDFUpload = () => {
               ...f, 
               id: fileId,
               status: 'uploaded',
-              uploadedAt: new Date().toISOString()
+              uploadedAt: new Date().toISOString(),
+              companyId: data.data?.companyId || selectedCompany,
+              companyName: data.data?.companyName || selectedCompanyData?.name
             }
           : f
       ));
@@ -215,7 +244,17 @@ const PDFUpload = () => {
     }, 5000); // Poll every 5 seconds
   };
 
+  const handleCompanyChange = (companyId, companyData) => {
+    setSelectedCompany(companyId);
+    setSelectedCompanyData(companyData);
+  };
+
   const onDrop = useCallback((acceptedFiles) => {
+    if (!selectedCompany) {
+      toast.error('Please select a company before uploading files');
+      return;
+    }
+
     acceptedFiles.forEach(file => {
       // Generate unique temp ID for tracking
       const tempId = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -225,13 +264,15 @@ const PDFUpload = () => {
         tempId,
         name: file.name,
         size: file.size,
-        status: 'uploading'
+        status: 'uploading',
+        companyId: selectedCompany,
+        companyName: selectedCompanyData?.name
       }]);
       
       // Start upload
       uploadMutation.mutate({file, tempId});
     });
-  }, [uploadMutation]);
+  }, [uploadMutation, selectedCompany, selectedCompanyData]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -290,23 +331,88 @@ const PDFUpload = () => {
         <p className="text-gray-600 dark:text-gray-300">Upload bank statements to automatically import transactions</p>
       </div>
 
+      {/* Company Selection */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border border-gray-200 dark:border-gray-700">
+        <div className="flex items-center space-x-3 mb-4">
+          <BuildingOfficeIcon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+          <h2 className="text-lg font-medium text-gray-900 dark:text-white">Select Company</h2>
+        </div>
+        <div className="max-w-md">
+          <CompanySelector
+            value={selectedCompany}
+            onChange={handleCompanyChange}
+            placeholder="Choose which company these statements belong to..."
+            allowCreate={true}
+            onCreateNew={(searchTerm) => {
+              toast('Redirecting to company management...');
+              navigate('/companies');
+            }}
+            required={true}
+            error={!selectedCompany && uploadedFiles.length > 0 ? 'Company selection is required' : null}
+          />
+        </div>
+        
+        {/* Alternative Create Company Button - Only show when no companies exist */}
+        {!hasCompanies && (
+          <div className="mt-4">
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+              Don't have any companies yet?
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                toast('Navigating to company creation...');
+                navigate('/companies');
+              }}
+              className="inline-flex items-center px-3 py-2 border border-blue-300 dark:border-blue-600 rounded-md text-sm font-medium text-blue-700 dark:text-blue-400 bg-white dark:bg-gray-700 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+            >
+              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              Create Your First Company
+            </button>
+          </div>
+        )}
+        
+        {selectedCompanyData && (
+          <div className="mt-3 text-sm text-gray-600 dark:text-gray-400">
+            Selected: <span className="font-medium text-gray-900 dark:text-white">{selectedCompanyData.name}</span>
+            {selectedCompanyData.isDefault && (
+              <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-200">
+                Default
+              </span>
+            )}
+          </div>
+        )}
+      </div>
+
       {/* Upload Area */}
       <div
         {...getRootProps()}
-        className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
-          isDragActive
-            ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 dark:border-blue-400'
-            : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500 dark:bg-gray-700/50'
+        className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+          !selectedCompany 
+            ? 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 cursor-not-allowed opacity-50'
+            : isDragActive
+            ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 dark:border-blue-400 cursor-pointer'
+            : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500 dark:bg-gray-700/50 cursor-pointer'
         }`}
       >
-        <input {...getInputProps()} />
+        <input {...getInputProps()} disabled={!selectedCompany} />
         <CloudArrowUpIcon className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" />
         <div className="mt-4">
           <p className="text-lg font-medium text-gray-900 dark:text-white">
-            {isDragActive ? 'Drop files here' : 'Drag & drop PDF files here'}
+            {!selectedCompany 
+              ? 'Select a company above to start uploading'
+              : isDragActive 
+              ? 'Drop files here' 
+              : 'Drag & drop PDF files here'
+            }
           </p>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            or click to browse (PDF files only, max 10MB each)
+            {!selectedCompany 
+              ? 'Choose which company these bank statements belong to first'
+              : 'or click to browse (PDF files only, max 10MB each)'
+            }
           </p>
         </div>
       </div>
@@ -327,9 +433,18 @@ const PDFUpload = () => {
                         <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
                           {file.name}
                         </p>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">
-                          {getStatusText(file)} • {(file.size / 1024 / 1024).toFixed(2)} MB
-                        </p>
+                        <div className="flex items-center space-x-2 text-sm text-gray-500 dark:text-gray-400">
+                          <span>{getStatusText(file)} • {(file.size / 1024 / 1024).toFixed(2)} MB</span>
+                          {file.companyName && (
+                            <>
+                              <span>•</span>
+                              <div className="flex items-center">
+                                <BuildingOfficeIcon className="h-3 w-3 mr-1" />
+                                <span className="font-medium">{file.companyName}</span>
+                              </div>
+                            </>
+                          )}
+                        </div>
                       </div>
                     </div>
                     <div className="flex items-center space-x-2">
@@ -369,6 +484,7 @@ const PDFUpload = () => {
         <h3 className="text-sm font-medium text-blue-800 dark:text-blue-200">Instructions</h3>
         <div className="mt-2 text-sm text-blue-700 dark:text-blue-300">
           <ol className="list-decimal list-inside space-y-1">
+            <li>Select the company that these bank statements belong to</li>
             <li>Upload your bank statement PDF files (currently supports Chase Bank format)</li>
             <li>Wait for upload to complete, then click "Process" for each file</li>
             <li>Review the imported transactions in the Transactions section</li>

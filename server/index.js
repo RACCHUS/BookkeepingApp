@@ -45,6 +45,9 @@ import pdfRoutes from './routes/pdfRoutes.js';
 // Import classification routes
 import classificationRoutes from './routes/classificationRoutes.js';
 
+// Import company routes
+import companyRoutes from './routes/companyRoutes.js';
+
 const app = express();
 const PORT = process.env.PORT || 5000;
 
@@ -203,6 +206,9 @@ app.use('/api/pdf', optionalAuthMiddleware, pdfRoutes);
 
 // Add classification routes with optional auth
 app.use('/api/classification', optionalAuthMiddleware, classificationRoutes);
+
+// Add company routes with optional auth
+app.use('/api/companies', optionalAuthMiddleware, companyRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

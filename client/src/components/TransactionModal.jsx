@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import StatementSelector from '../features/Statements/StatementSelector';
+import CompanySelector from './CompanySelector.jsx';
 import { apiClient } from '../services/api';
 import { useForm } from 'react-hook-form';
 import { toast } from 'react-hot-toast';
@@ -100,7 +101,9 @@ const TransactionModal = ({ transaction, isOpen, onClose, onSave, mode = 'edit' 
       payee: typeof transaction?.payee === 'string' ? transaction.payee : '',
       notes: typeof transaction?.notes === 'string' ? transaction.notes : '',
       statementId: typeof transaction?.statementId === 'string' ? transaction.statementId : '',
-      sectionCode: typeof transaction?.sectionCode === 'string' ? transaction.sectionCode : 'manual'
+      sectionCode: typeof transaction?.sectionCode === 'string' ? transaction.sectionCode : 'manual',
+      companyId: typeof transaction?.companyId === 'string' ? transaction.companyId : '',
+      companyName: typeof transaction?.companyName === 'string' ? transaction.companyName : ''
     }
   });
 
@@ -180,7 +183,9 @@ const TransactionModal = ({ transaction, isOpen, onClose, onSave, mode = 'edit' 
         payee: typeof transaction?.payee === 'string' ? transaction.payee : '',
         notes: typeof transaction?.notes === 'string' ? transaction.notes : '',
         statementId: typeof transaction?.statementId === 'string' ? transaction.statementId : '',
-        sectionCode: typeof transaction?.sectionCode === 'string' ? transaction.sectionCode : 'manual'
+        sectionCode: typeof transaction?.sectionCode === 'string' ? transaction.sectionCode : 'manual',
+        companyId: typeof transaction?.companyId === 'string' ? transaction.companyId : '',
+        companyName: typeof transaction?.companyName === 'string' ? transaction.companyName : ''
       });
     } else if (mode === 'create') {
       reset({
@@ -193,7 +198,9 @@ const TransactionModal = ({ transaction, isOpen, onClose, onSave, mode = 'edit' 
         payee: '',
         notes: '',
         statementId: '',
-        sectionCode: 'manual'
+        sectionCode: 'manual',
+        companyId: '',
+        companyName: ''
       });
     }
   }, [transaction, mode, reset]);
@@ -221,7 +228,9 @@ const TransactionModal = ({ transaction, isOpen, onClose, onSave, mode = 'edit' 
         date: data.date, // Keep as string for API
         statementId: data.statementId || '',
         sectionCode: data.sectionCode || 'manual',
-        section: data.sectionCode ? getSectionDisplayName(data.sectionCode) : 'Manual Entry'
+        section: data.sectionCode ? getSectionDisplayName(data.sectionCode) : 'Manual Entry',
+        companyId: data.companyId || '',
+        companyName: data.companyName || ''
       };
 
       await onSave(transactionData);
@@ -390,6 +399,24 @@ const TransactionModal = ({ transaction, isOpen, onClose, onSave, mode = 'edit' 
               {errors.description && (
                 <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.description.message}</p>
               )}
+            </div>
+
+            {/* Company */}
+            <div>
+              <label className="form-label">Company</label>
+              <CompanySelector
+                value={watch('companyId')}
+                onChange={(companyId, company) => {
+                  setValue('companyId', companyId);
+                  setValue('companyName', company?.name || '');
+                }}
+                className="w-full"
+                placeholder="Select a company..."
+                allowCreate={false}
+              />
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                Assign this transaction to a specific business or company.
+              </p>
             </div>
 
             {/* Category */}

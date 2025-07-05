@@ -187,4 +187,91 @@
   .form-input.category-select option:hover {
     @apply bg-blue-50 dark:bg-blue-900;
   }
+  
+  /* Reports and date preset styles */
+  .date-preset-button {
+    @apply flex flex-col items-center p-3 rounded-lg border-2 transition-all duration-200 hover:shadow-md;
+  }
+  
+  .date-preset-button.active {
+    @apply border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 shadow-md;
+  }
+  
+  .date-preset-button:not(.active) {
+    @apply border-gray-200 dark:border-gray-600 hover:border-blue-300 dark:hover:border-blue-500 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300;
+  }
+  
+  .report-card {
+    @apply border-2 rounded-lg p-6 hover:shadow-lg transition-all duration-200 relative;
+  }
+  
+  .report-card.recommended {
+    @apply border-green-200 dark:border-green-700 bg-green-50/50 dark:bg-green-900/10;
+  }
+  
+  .report-card:not(.recommended) {
+    @apply border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600;
+  }
+  
+  .recommended-badge {
+    @apply absolute -top-2 -right-2 bg-green-500 text-white text-xs px-2 py-1 rounded-full font-medium;
+  }
+  
+  /* Financial summary cards */
+  .summary-card {
+    @apply bg-white dark:bg-gray-800 shadow rounded-lg p-6 transition-all duration-200 hover:shadow-md;
+  }
+  
+  .summary-card-positive {
+    @apply border-l-4 border-green-500;
+  }
+  
+  .summary-card-negative {
+    @apply border-l-4 border-red-500;
+  }
+  
+  .summary-card-neutral {
+    @apply border-l-4 border-blue-500;
+  }
+  
+  /* Smart Date Selector styles */
+  .date-mode-tab {
+    @apply px-3 py-2 text-sm font-medium rounded-md transition-all duration-200;
+  }
+  
+  .date-mode-tab.active {
+    @apply bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 shadow-sm;
+  }
+  
+  .date-mode-tab:not(.active) {
+    @apply text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300;
+  }
+  
+  .month-button {
+    @apply p-3 rounded-lg border-2 transition-all duration-200 text-sm font-medium relative;
+  }
+  
+  .month-button.active {
+    @apply border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300;
+  }
+  
+  .month-button:not(.active) {
+    @apply border-gray-200 dark:border-gray-600 hover:border-blue-300 dark:hover:border-blue-500 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300;
+  }
+  
+  .year-button {
+    @apply p-3 rounded-lg border-2 transition-all duration-200 text-sm font-medium relative;
+  }
+  
+  .year-button.active {
+    @apply border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300;
+  }
+  
+  .year-button:not(.active) {
+    @apply border-gray-200 dark:border-gray-600 hover:border-blue-300 dark:hover:border-blue-500 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300;
+  }
+  
+  .current-indicator {
+    @apply absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full;
+  }
 }

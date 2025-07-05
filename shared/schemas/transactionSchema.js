@@ -41,6 +41,10 @@ export const TransactionSchema = {
   isReimbursable: false, // If this should be reimbursed
   reimbursementStatus: 'not_applicable', // pending, approved, paid, not_applicable
   
+  // Company information
+  companyId: '', // ID of the company this transaction belongs to
+  companyName: '', // Company name for easy filtering/display
+  
   // Employee information (if applicable)
   employeeId: '', // If this is an employee expense/payment
   employeeName: '', // Employee name

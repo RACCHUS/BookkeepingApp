@@ -1,36 +1,56 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from 'react-hot-toast';
-import { apiClient } from '../../services/api';
+import { apiClient } from '../../services/api.js';
 import { useAuth } from '../../context/AuthContext';
 import LoadingSpinner from '../../components/LoadingSpinner';
+import SmartDateSelector from '../../components/SmartDateSelector';
+import CompanySelector from '../../components/CompanySelector.jsx';
 import {
   DocumentArrowDownIcon,
   CalendarIcon,
   ChartBarIcon,
   DocumentTextIcon,
-  PrinterIcon
+  PrinterIcon,
+  ClockIcon,
+  ArrowPathIcon
 } from '@heroicons/react/24/outline';
 
 const Reports = () => {
   const { user } = useAuth();
   const [generating, setGenerating] = useState(null);
+  const [selectedCompany, setSelectedCompany] = useState('all');
   const [dateRange, setDateRange] = useState({
     start: new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0], // Start of current year
     end: new Date().toISOString().split('T')[0] // Today
   });
 
-  // Get transaction summary for the date range
+  // Get transaction summary for the date range and company
   const { data: summaryData, isLoading: summaryLoading } = useQuery({
-    queryKey: ['transactionSummary', dateRange.start, dateRange.end],
-    queryFn: () => apiClient.transactions.getSummary(dateRange.start, dateRange.end),
+    queryKey: ['transactionSummary', dateRange.start, dateRange.end, selectedCompany],
+    queryFn: () => {
+      const filters = {
+        startDate: dateRange.start,
+        endDate: dateRange.end
+      };
+      if (selectedCompany && selectedCompany !== 'all') {
+        filters.companyId = selectedCompany;
+      }
+      return apiClient.transactions.getSummary(filters.startDate, filters.endDate, filters);
+    },
     enabled: !!user && !!dateRange.start && !!dateRange.end
   });
 
   // Get category statistics
   const { data: categoryStats } = useQuery({
-    queryKey: ['categoryStats', dateRange.start, dateRange.end],
-    queryFn: () => apiClient.transactions.getCategoryStats(dateRange.start, dateRange.end),
+    queryKey: ['categoryStats', dateRange.start, dateRange.end, selectedCompany],
+    queryFn: () => {
+      const filters = {};
+      if (selectedCompany && selectedCompany !== 'all') {
+        filters.companyId = selectedCompany;
+      }
+      return apiClient.transactions.getCategoryStats(dateRange.start, dateRange.end, filters);
+    },
     enabled: !!user && !!dateRange.start && !!dateRange.end
   });
 
@@ -45,19 +65,26 @@ const Reports = () => {
     try {
       let response;
       
+      const reportFilters = {
+        startDate: dateRange.start,
+        endDate: dateRange.end
+      };
+      
+      if (selectedCompany && selectedCompany !== 'all') {
+        reportFilters.companyId = selectedCompany;
+      }
+      
       switch (reportType) {
         case 'summary':
           response = await apiClient.reports.generateSummaryPDF({
-            startDate: dateRange.start,
-            endDate: dateRange.end,
+            ...reportFilters,
             includeDetails: true
           });
           break;
           
         case 'tax':
           response = await apiClient.reports.generateTaxSummaryPDF({
-            startDate: dateRange.start,
-            endDate: dateRange.end,
+            ...reportFilters,
             taxYear: new Date(dateRange.start).getFullYear(),
             includeTransactionDetails: true
           });
@@ -65,8 +92,7 @@ const Reports = () => {
           
         case 'category':
           response = await apiClient.reports.generateCategoryBreakdownPDF({
-            startDate: dateRange.start,
-            endDate: dateRange.end
+            ...reportFilters
           });
           break;
           
@@ -96,24 +122,27 @@ const Reports = () => {
   const reportTypes = [
     {
       id: 'summary',
-      title: 'Transaction Summary Report',
+      title: 'Financial Summary Report',
       description: 'Comprehensive overview of all transactions, income, and expenses',
       icon: DocumentTextIcon,
-      color: 'blue'
+      color: 'blue',
+      recommended: false
     },
     {
       id: 'tax',
-      title: 'Tax Summary Report',
-      description: 'IRS-ready report organized by tax categories for filing',
+      title: 'IRS Schedule C Tax Report',
+      description: 'IRS-ready report organized by Schedule C categories for tax filing',
       icon: DocumentArrowDownIcon,
-      color: 'green'
+      color: 'green',
+      recommended: true
     },
     {
       id: 'category',
       title: 'Category Breakdown Report',
-      description: 'Detailed breakdown of expenses and income by category',
+      description: 'Detailed breakdown of expenses and income by IRS category',
       icon: ChartBarIcon,
-      color: 'purple'
+      color: 'purple',
+      recommended: false
     }
   ];
 
@@ -129,45 +158,28 @@ const Reports = () => {
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white transition-colors">Reports</h1>
-        <p className="text-gray-600 dark:text-gray-300 transition-colors">Generate financial and tax reports</p>
+        <p className="text-gray-600 dark:text-gray-300 transition-colors">Generate financial and tax reports for any time period</p>
       </div>
 
-      {/* Date Range Selector */}
+      {/* Smart Date Selector */}
+      <SmartDateSelector 
+        dateRange={dateRange}
+        onDateChange={setDateRange}
+      />
+
+      {/* Company Filter */}
       <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6 transition-colors">
-        <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Report Period</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Start Date
-            </label>
-            <div className="relative">
-              <input
-                type="date"
-                value={dateRange.start}
-                onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))}
-                className="block w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md leading-5 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-              />
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <CalendarIcon className="h-5 w-5 text-gray-400 dark:text-gray-500" />
-              </div>
-            </div>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              End Date
-            </label>
-            <div className="relative">
-              <input
-                type="date"
-                value={dateRange.end}
-                onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))}
-                className="block w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md leading-5 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-              />
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <CalendarIcon className="h-5 w-5 text-gray-400 dark:text-gray-500" />
-              </div>
-            </div>
-          </div>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-medium text-gray-900 dark:text-white">Filter by Company</h2>
+        </div>
+        <div className="max-w-md">
+          <CompanySelector
+            value={selectedCompany}
+            onChange={setSelectedCompany}
+            allowAll={true}
+            placeholder="All Companies"
+            required={false}
+          />
         </div>
       </div>
 
@@ -201,14 +213,30 @@ const Reports = () => {
 
       {/* Report Generation */}
       <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6 transition-colors">
-        <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-6">Generate Reports</h2>
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-lg font-medium text-gray-900 dark:text-white">Generate Reports</h2>
+          <div className="text-sm text-gray-500 dark:text-gray-400">
+            {summary.transactionCount || 0} transactions in selected period
+          </div>
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {reportTypes.map((report) => {
             const Icon = report.icon;
             const isGenerating = generating === report.id;
             
             return (
-              <div key={report.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-6 hover:shadow-md transition-all">
+              <div key={report.id} className={`
+                relative border-2 rounded-lg p-6 hover:shadow-md transition-all
+                ${report.recommended 
+                  ? 'border-green-200 dark:border-green-700 bg-green-50/50 dark:bg-green-900/10' 
+                  : 'border-gray-200 dark:border-gray-700'
+                }
+              `}>
+                {report.recommended && (
+                  <div className="absolute -top-2 -right-2 bg-green-500 text-white text-xs px-2 py-1 rounded-full">
+                    Recommended
+                  </div>
+                )}
                 <div className="flex items-center mb-4">
                   <div className={`p-2 rounded-lg bg-${report.color}-100 dark:bg-${report.color}-900/20`}>
                     <Icon className={`h-6 w-6 text-${report.color}-600 dark:text-${report.color}-400`} />
@@ -223,7 +251,14 @@ const Reports = () => {
                 <button
                   onClick={() => handleGenerateReport(report.id)}
                   disabled={isGenerating || !summary.transactionCount}
-                  className={`w-full flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-${report.color}-600 hover:bg-${report.color}-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-${report.color}-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors`}
+                  className={`
+                    w-full flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white 
+                    ${report.recommended 
+                      ? 'bg-green-600 hover:bg-green-700 focus:ring-green-500' 
+                      : `bg-${report.color}-600 hover:bg-${report.color}-700 focus:ring-${report.color}-500`
+                    }
+                    focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors
+                  `}
                 >
                   {isGenerating ? (
                     <>
@@ -241,6 +276,23 @@ const Reports = () => {
             );
           })}
         </div>
+        
+        {!summary.transactionCount && (
+          <div className="mt-4 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="ml-3">
+                <p className="text-sm text-yellow-700 dark:text-yellow-200">
+                  No transactions found for the selected date range. Please choose a different period or add some transactions.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Category Breakdown */}

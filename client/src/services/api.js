@@ -45,13 +45,13 @@ export const apiClient = {
     update: (id, data) => api.put(`/transactions/${id}`, data),
     delete: (id) => api.delete(`/transactions/${id}`),
     bulkUpdate: (transactions) => api.patch('/transactions/bulk', { transactions }),
-    getSummary: (startDate, endDate) => api.get('/transactions/summary', { 
-      params: { startDate, endDate } 
+    getSummary: (startDate, endDate, filters = {}) => api.get('/transactions/summary', { 
+      params: { startDate, endDate, ...filters } 
     }),
     getClassificationSuggestions: (transactionIds) => api.post('/transactions/classify', { transactionIds }),
     bulkUpdateCategories: (updates) => api.post('/transactions/bulk-categorize', { updates }),
-    getCategoryStats: (startDate, endDate) => api.get('/transactions/stats', {
-      params: { startDate, endDate }
+    getCategoryStats: (startDate, endDate, filters = {}) => api.get('/transactions/stats', {
+      params: { startDate, endDate, ...filters }
     })
   },
   // PDF methods
@@ -100,6 +100,16 @@ export const apiClient = {
       responseType: 'blob'
     }),
     getHistory: () => api.get('/reports/history')
+  },
+
+  // Company methods
+  companies: {
+    getAll: () => api.get('/companies'),
+    getById: (id) => api.get(`/companies/${id}`),
+    create: (data) => api.post('/companies', data),
+    update: (id, data) => api.put(`/companies/${id}`, data),
+    delete: (id) => api.delete(`/companies/${id}`),
+    setDefault: (id) => api.put(`/companies/${id}/set-default`)
   }
 };
 

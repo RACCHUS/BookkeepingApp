@@ -19,6 +19,7 @@ import TransactionList from './features/Transactions/TransactionList';
 import PDFUpload from './features/PDFUpload/PDFUpload';
 import Classification from './features/Classification/Classification';
 import Reports from './features/Reports/Reports';
+import CompanyManagement from './features/Companies/CompanyManagement';
 
 // Create a client
 const queryClient = new QueryClient({
@@ -137,6 +138,7 @@ function App() {
                   <Route path="upload" element={<PDFUpload />} />
                   <Route path="classification" element={<Classification />} />
                   <Route path="reports" element={<Reports />} />
+                  <Route path="companies" element={<CompanyManagement />} />
                 </Route>
                 
                 {/* Catch all route */}

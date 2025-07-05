@@ -6,7 +6,8 @@ import {
   CloudArrowUpIcon,
   ChartBarIcon,
   Cog6ToothIcon,
-  TagIcon
+  TagIcon,
+  BuildingOfficeIcon
 } from '@heroicons/react/24/outline';
 
 const Sidebar = () => {
@@ -15,6 +16,7 @@ const Sidebar = () => {
   const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: HomeIcon },
     { name: 'Transactions', href: '/transactions', icon: DocumentTextIcon },
+    { name: 'Companies', href: '/companies', icon: BuildingOfficeIcon },
     { name: 'Upload PDF', href: '/upload', icon: CloudArrowUpIcon },
     { name: 'Classification', href: '/classification', icon: TagIcon },
     { name: 'Reports', href: '/reports', icon: ChartBarIcon },

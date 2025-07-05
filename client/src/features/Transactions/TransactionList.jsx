@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import StatementSelector from '../Statements/StatementSelector';
+import CompanySelector from '../../components/CompanySelector.jsx';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-hot-toast';
 import { apiClient } from '../../services/api';
@@ -93,6 +94,7 @@ const TransactionList = () => {
   const [categoryFilter, setCategoryFilter] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
   const [sectionFilter, setSectionFilter] = useState('');
+  const [companyFilter, setCompanyFilter] = useState('');
   const [dateRange, setDateRange] = useState({ start: '', end: '' });
   
   // Modal state
@@ -459,6 +461,21 @@ const TransactionList = () => {
       }
     }
 
+    // Company filter
+    if (companyFilter) {
+      if (companyFilter === '__no_company') {
+        // Show only transactions without a companyId (no company assigned)
+        filtered = filtered.filter(transaction => 
+          !transaction.companyId || transaction.companyId === ''
+        );
+      } else {
+        // Show only transactions with the specific companyId
+        filtered = filtered.filter(transaction => 
+          String(transaction.companyId) === String(companyFilter)
+        );
+      }
+    }
+
     // Date range filter
     if (dateRange.start) {
       filtered = filtered.filter(transaction => 
@@ -472,7 +489,7 @@ const TransactionList = () => {
     }
 
     return filtered;
-  }, [data?.data?.transactions, searchTerm, categoryFilter, statementFilter, typeFilter, sectionFilter, dateRange]);
+  }, [data?.data?.transactions, searchTerm, categoryFilter, statementFilter, typeFilter, sectionFilter, companyFilter, dateRange]);
 
   // Available categories for filters - moved before conditional returns
   const availableCategories = useMemo(() => {
@@ -662,7 +679,7 @@ const TransactionList = () => {
       {/* Search and Filters */}
       <div className="space-y-4">
         {/* Primary Filters Row */}
-        <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-7 gap-4">
           {/* Search */}
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -932,6 +949,15 @@ const TransactionList = () => {
                           </div>
                           <div className="text-sm text-gray-500 dark:text-gray-400">
                             {transaction.payee && `${transaction.payee} • `}
+                            {/* Company display */}
+                            {transaction.companyName && (
+                              <span className="inline-block bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300 px-2 py-1 rounded-full text-xs font-medium mr-2">
+                                <svg className="w-3 h-3 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                                </svg>
+                                {transaction.companyName}
+                              </span>
+                            )}
                             {/* Section display */}
                             {(transaction.sectionCode || (!transaction.sectionCode && transaction.source !== 'manual')) && (
                               <span className="inline-block bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300 px-2 py-1 rounded-full text-xs font-medium mr-2">
