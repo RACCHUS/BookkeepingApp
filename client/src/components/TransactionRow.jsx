@@ -90,7 +90,7 @@ const TransactionRow = memo(({
                       >
                         <option value="">Select Category</option>
                         {Object.entries(CATEGORY_GROUPS).map(([groupName, categories]) => (
-                          <optgroup key={groupName} label={groupName}>
+                          <optgroup key={groupName} label={groupName.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}>
                             {categories.map(category => (
                               <option key={category} value={category}>
                                 {category}

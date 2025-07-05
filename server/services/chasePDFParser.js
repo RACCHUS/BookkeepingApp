@@ -6,6 +6,7 @@ import ChaseTransactionParser from './parsers/ChaseTransactionParser.js';
 import ChaseDateUtils from './parsers/ChaseDateUtils.js';
 import ChaseClassifier from './parsers/ChaseClassifier.js';
 import ChaseSummary from './parsers/ChaseSummary.js';
+import { IRS_CATEGORIES } from '../../shared/constants/categories.js';
 
 class ChasePDFParser {
   constructor() {
@@ -38,54 +39,138 @@ class ChasePDFParser {
     // Common payee patterns for automatic classification
     this.payeeClassification = {
       // Office & Business Expenses
-      'AMAZON': 'Office Expenses',
-      'STAPLES': 'Office Expenses',
-      'OFFICE DEPOT': 'Office Expenses',
-      'BEST BUY': 'Office Expenses',
-      'MICROSOFT': 'Office Expenses',
-      'ADOBE': 'Office Expenses',
+      'AMAZON': IRS_CATEGORIES.OFFICE_EXPENSES,
+      'STAPLES': IRS_CATEGORIES.OFFICE_EXPENSES,
+      'OFFICE DEPOT': IRS_CATEGORIES.OFFICE_EXPENSES,
+      'BEST BUY': IRS_CATEGORIES.OFFICE_EXPENSES,
+      'MICROSOFT': IRS_CATEGORIES.SOFTWARE_SUBSCRIPTIONS,
+      'ADOBE': IRS_CATEGORIES.SOFTWARE_SUBSCRIPTIONS,
+      'QUICKBOOKS': IRS_CATEGORIES.SOFTWARE_SUBSCRIPTIONS,
+      'GOOGLE': IRS_CATEGORIES.SOFTWARE_SUBSCRIPTIONS,
+      'ZOOM': IRS_CATEGORIES.SOFTWARE_SUBSCRIPTIONS,
+      'SLACK': IRS_CATEGORIES.SOFTWARE_SUBSCRIPTIONS,
       
       // Vehicle & Transportation
-      'SHELL': 'Car and Truck Expenses',
-      'EXXON': 'Car and Truck Expenses',
-      'MOBIL': 'Car and Truck Expenses',
-      'CHEVRON': 'Car and Truck Expenses',
-      'BP': 'Car and Truck Expenses',
-      'UBER': 'Travel',
-      'LYFT': 'Travel',
+      'SHELL': IRS_CATEGORIES.CAR_TRUCK_EXPENSES,
+      'EXXON': IRS_CATEGORIES.CAR_TRUCK_EXPENSES,
+      'MOBIL': IRS_CATEGORIES.CAR_TRUCK_EXPENSES,
+      'CHEVRON': IRS_CATEGORIES.CAR_TRUCK_EXPENSES,
+      'BP': IRS_CATEGORIES.CAR_TRUCK_EXPENSES,
+      'COSTCO GAS': IRS_CATEGORIES.CAR_TRUCK_EXPENSES,
+      'VALERO': IRS_CATEGORIES.CAR_TRUCK_EXPENSES,
+      'AUTO REPAIR': IRS_CATEGORIES.CAR_TRUCK_EXPENSES,
+      'JIFFY LUBE': IRS_CATEGORIES.CAR_TRUCK_EXPENSES,
+      'UBER': IRS_CATEGORIES.TRAVEL,
+      'LYFT': IRS_CATEGORIES.TRAVEL,
+      'TAXI': IRS_CATEGORIES.TRAVEL,
       
       // Travel & Meals
-      'HOTEL': 'Travel',
-      'MARRIOTT': 'Travel',
-      'HILTON': 'Travel',
-      'AMERICAN AIRLINES': 'Travel',
-      'DELTA': 'Travel',
-      'SOUTHWEST': 'Travel',
-      'RESTAURANT': 'Meals and Entertainment',
-      'MCDONALD': 'Meals and Entertainment',
-      'STARBUCKS': 'Meals and Entertainment',
+      'HOTEL': IRS_CATEGORIES.TRAVEL,
+      'MARRIOTT': IRS_CATEGORIES.TRAVEL,
+      'HILTON': IRS_CATEGORIES.TRAVEL,
+      'HYATT': IRS_CATEGORIES.TRAVEL,
+      'AMERICAN AIRLINES': IRS_CATEGORIES.TRAVEL,
+      'DELTA': IRS_CATEGORIES.TRAVEL,
+      'SOUTHWEST': IRS_CATEGORIES.TRAVEL,
+      'UNITED AIRLINES': IRS_CATEGORIES.TRAVEL,
+      'RESTAURANT': IRS_CATEGORIES.MEALS,
+      'MCDONALD': IRS_CATEGORIES.MEALS,
+      'STARBUCKS': IRS_CATEGORIES.MEALS,
+      'SUBWAY': IRS_CATEGORIES.MEALS,
+      'PIZZA': IRS_CATEGORIES.MEALS,
       
       // Utilities & Communications
-      'VERIZON': 'Phone and Internet',
-      'AT&T': 'Phone and Internet',
-      'COMCAST': 'Phone and Internet',
-      'ELECTRIC': 'Utilities',
-      'GAS COMPANY': 'Utilities',
+      'VERIZON': IRS_CATEGORIES.UTILITIES,
+      'AT&T': IRS_CATEGORIES.UTILITIES,
+      'COMCAST': IRS_CATEGORIES.UTILITIES,
+      'XFINITY': IRS_CATEGORIES.UTILITIES,
+      'T-MOBILE': IRS_CATEGORIES.UTILITIES,
+      'SPRINT': IRS_CATEGORIES.UTILITIES,
+      'ELECTRIC': IRS_CATEGORIES.UTILITIES,
+      'GAS COMPANY': IRS_CATEGORIES.UTILITIES,
+      'WATER DEPT': IRS_CATEGORIES.UTILITIES,
+      'INTERNET': IRS_CATEGORIES.UTILITIES,
       
       // Professional Services
-      'LAW FIRM': 'Legal and Professional Services',
-      'ACCOUNTING': 'Legal and Professional Services',
-      'CONSULTANT': 'Legal and Professional Services',
+      'LAW FIRM': IRS_CATEGORIES.LEGAL_PROFESSIONAL,
+      'ATTORNEY': IRS_CATEGORIES.LEGAL_PROFESSIONAL,
+      'LAWYER': IRS_CATEGORIES.LEGAL_PROFESSIONAL,
+      'ACCOUNTING': IRS_CATEGORIES.LEGAL_PROFESSIONAL,
+      'CPA': IRS_CATEGORIES.LEGAL_PROFESSIONAL,
+      'CONSULTANT': IRS_CATEGORIES.LEGAL_PROFESSIONAL,
+      'NOTARY': IRS_CATEGORIES.LEGAL_PROFESSIONAL,
+      
+      // Insurance
+      'INSURANCE': IRS_CATEGORIES.INSURANCE_OTHER,
+      'ALLSTATE': IRS_CATEGORIES.INSURANCE_OTHER,
+      'STATE FARM': IRS_CATEGORIES.INSURANCE_OTHER,
+      'GEICO': IRS_CATEGORIES.INSURANCE_OTHER,
+      'PROGRESSIVE': IRS_CATEGORIES.INSURANCE_OTHER,
       
       // Banking & Fees
-      'OVERDRAFT': 'Bank Service Charges',
-      'MAINTENANCE FEE': 'Bank Service Charges',
-      'ATM FEE': 'Bank Service Charges',
+      'OVERDRAFT': IRS_CATEGORIES.BANK_FEES,
+      'MAINTENANCE FEE': IRS_CATEGORIES.BANK_FEES,
+      'ATM FEE': IRS_CATEGORIES.BANK_FEES,
+      'SERVICE CHARGE': IRS_CATEGORIES.BANK_FEES,
+      'WIRE TRANSFER': IRS_CATEGORIES.BANK_FEES,
+      
+      // Rent and Lease
+      'RENT': IRS_CATEGORIES.RENT_LEASE_OTHER,
+      'LEASE': IRS_CATEGORIES.RENT_LEASE_OTHER,
+      'STORAGE': IRS_CATEGORIES.RENT_LEASE_OTHER,
+      
+      // Equipment and Supplies
+      'HOME DEPOT': IRS_CATEGORIES.SUPPLIES,
+      'LOWES': IRS_CATEGORIES.SUPPLIES,
+      'COSTCO': IRS_CATEGORIES.SUPPLIES,
+      'SAM\'S CLUB': IRS_CATEGORIES.SUPPLIES,
+      'WALMART': IRS_CATEGORIES.SUPPLIES,
+      
+      // Web & Hosting
+      'GODADDY': IRS_CATEGORIES.WEB_HOSTING,
+      'NAMECHEAP': IRS_CATEGORIES.WEB_HOSTING,
+      'BLUEHOST': IRS_CATEGORIES.WEB_HOSTING,
+      'HOSTGATOR': IRS_CATEGORIES.WEB_HOSTING,
+      'AWS': IRS_CATEGORIES.WEB_HOSTING,
+      
+      // Education & Training
+      'COURSERA': IRS_CATEGORIES.TRAINING_EDUCATION,
+      'UDEMY': IRS_CATEGORIES.TRAINING_EDUCATION,
+      'LINKEDIN LEARNING': IRS_CATEGORIES.TRAINING_EDUCATION,
+      
+      // Memberships
+      'CHAMBER OF COMMERCE': IRS_CATEGORIES.DUES_MEMBERSHIPS,
+      'NETWORKING': IRS_CATEGORIES.DUES_MEMBERSHIPS,
+      'PROFESSIONAL ASSOCIATION': IRS_CATEGORIES.DUES_MEMBERSHIPS,
+      'TRADE ASSOCIATION': IRS_CATEGORIES.DUES_MEMBERSHIPS,
+      
+      // Additional Other Expenses
+      'MERCHANT SERVICES': IRS_CATEGORIES.OTHER_EXPENSES,
+      'CREDIT CARD PROCESSING': IRS_CATEGORIES.OTHER_EXPENSES,
+      'SQUARE': IRS_CATEGORIES.OTHER_EXPENSES,
+      'STRIPE': IRS_CATEGORIES.OTHER_EXPENSES,
+      'PAYPAL FEES': IRS_CATEGORIES.OTHER_EXPENSES,
+      'CLEANING SERVICE': IRS_CATEGORIES.OTHER_EXPENSES,
+      'JANITORIAL': IRS_CATEGORIES.OTHER_EXPENSES,
+      'SECURITY SYSTEM': IRS_CATEGORIES.SECURITY_SERVICES,
+      'ALARM': IRS_CATEGORIES.SECURITY_SERVICES,
+      
+      // Licenses and Permits
+      'LICENSE FEE': IRS_CATEGORIES.TAXES_LICENSES,
+      'PERMIT FEE': IRS_CATEGORIES.TAXES_LICENSES,
+      'REGISTRATION FEE': IRS_CATEGORIES.TAXES_LICENSES,
+      
+      // Tools and Small Equipment
+      'HARBOR FREIGHT': IRS_CATEGORIES.TOOLS_EQUIPMENT,
+      'NORTHERN TOOL': IRS_CATEGORIES.TOOLS_EQUIPMENT,
+      'CRAFTSMAN': IRS_CATEGORIES.TOOLS_EQUIPMENT,
       
       // Common business income indicators
-      'DEPOSIT': 'Business Income',
-      'TRANSFER FROM': 'Business Income',
-      'PAYMENT RECEIVED': 'Business Income'
+      'DEPOSIT': IRS_CATEGORIES.GROSS_RECEIPTS,
+      'TRANSFER FROM': IRS_CATEGORIES.GROSS_RECEIPTS,
+      'PAYMENT RECEIVED': IRS_CATEGORIES.GROSS_RECEIPTS,
+      'CLIENT PAYMENT': IRS_CATEGORIES.GROSS_RECEIPTS,
+      'INVOICE PAYMENT': IRS_CATEGORIES.GROSS_RECEIPTS
     };
   }
 
@@ -336,9 +421,9 @@ class ChasePDFParser {
       category: category,
       type: type,
       payee: payee,
-      confidence: category !== 'Uncategorized' ? 0.8 : 0.3,
+      confidence: category !== IRS_CATEGORIES.UNCATEGORIZED ? 0.8 : 0.3,
       source: 'chase_pdf',
-      needsReview: category === 'Uncategorized' || !payee
+      needsReview: category === IRS_CATEGORIES.UNCATEGORIZED || !payee
     };
   }
 
@@ -355,28 +440,40 @@ class ChasePDFParser {
     // Pattern-based classification
     if (type === 'income') {
       if (upperDesc.includes('DEPOSIT') || upperDesc.includes('PAYMENT') || upperDesc.includes('TRANSFER')) {
-        return 'Business Income';
+        return IRS_CATEGORIES.GROSS_RECEIPTS;
       }
     } else {
       // Expense classification by keywords
       if (upperDesc.includes('GAS') || upperDesc.includes('FUEL')) {
-        return 'Car and Truck Expenses';
+        return IRS_CATEGORIES.CAR_TRUCK_EXPENSES;
       }
       if (upperDesc.includes('RESTAURANT') || upperDesc.includes('CAFE') || upperDesc.includes('FOOD')) {
-        return 'Meals and Entertainment';
+        return IRS_CATEGORIES.MEALS;
       }
       if (upperDesc.includes('HOTEL') || upperDesc.includes('AIRBNB') || upperDesc.includes('FLIGHT')) {
-        return 'Travel';
+        return IRS_CATEGORIES.TRAVEL;
       }
       if (upperDesc.includes('OFFICE') || upperDesc.includes('SUPPLY')) {
-        return 'Office Expenses';
+        return IRS_CATEGORIES.OFFICE_EXPENSES;
       }
       if (upperDesc.includes('FEE') || upperDesc.includes('CHARGE')) {
-        return 'Bank Service Charges';
+        return IRS_CATEGORIES.BANK_FEES;
+      }
+      if (upperDesc.includes('INSURANCE')) {
+        return IRS_CATEGORIES.INSURANCE_OTHER;
+      }
+      if (upperDesc.includes('RENT') || upperDesc.includes('LEASE')) {
+        return IRS_CATEGORIES.RENT_LEASE_OTHER;
+      }
+      if (upperDesc.includes('SOFTWARE') || upperDesc.includes('SUBSCRIPTION')) {
+        return IRS_CATEGORIES.SOFTWARE_SUBSCRIPTIONS;
+      }
+      if (upperDesc.includes('PHONE') || upperDesc.includes('INTERNET') || upperDesc.includes('ELECTRIC') || upperDesc.includes('WATER')) {
+        return IRS_CATEGORIES.UTILITIES;
       }
     }
     
-    return 'Uncategorized';
+    return IRS_CATEGORIES.UNCATEGORIZED;
   }
 
   extractPayee(description) {

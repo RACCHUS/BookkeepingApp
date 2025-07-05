@@ -8,44 +8,51 @@ class TransactionClassifierService {
     // Enhanced classification patterns with confidence scores
     this.classificationRules = {
       // Business Income (100% confidence)
-      'Business Income': {
+      [IRS_CATEGORIES.GROSS_RECEIPTS]: {
         keywords: ['deposit', 'payment received', 'wire transfer', 'ach credit', 'direct deposit', 'invoice payment', 'customer payment'],
         patterns: [/deposit/i, /payment\s+received/i, /wire\s+transfer/i, /ach\s+credit/i],
         confidence: 100
       },
       
       // Office Expenses (90% confidence)
-      'Office Expenses': {
-        keywords: ['amazon', 'staples', 'office depot', 'best buy', 'microsoft', 'adobe', 'supplies', 'software', 'printer', 'computer'],
-        patterns: [/office\s+supply/i, /computer\s+equipment/i, /software\s+subscription/i],
+      [IRS_CATEGORIES.OFFICE_EXPENSES]: {
+        keywords: ['staples', 'office depot', 'supplies', 'printer', 'paper', 'pens', 'office supplies'],
+        patterns: [/office\s+supply/i, /computer\s+equipment/i, /office\s+furniture/i],
+        confidence: 90
+      },
+      
+      // Software and Subscriptions (90% confidence)
+      [IRS_CATEGORIES.SOFTWARE_SUBSCRIPTIONS]: {
+        keywords: ['microsoft', 'adobe', 'quickbooks', 'software', 'subscription', 'saas', 'cloud service'],
+        patterns: [/software\s+subscription/i, /cloud\s+service/i, /saas/i],
         confidence: 90
       },
       
       // Car and Truck Expenses (95% confidence)
-      'Car and Truck Expenses': {
+      [IRS_CATEGORIES.CAR_TRUCK_EXPENSES]: {
         keywords: ['shell', 'exxon', 'mobil', 'chevron', 'bp', 'gas station', 'fuel', 'auto repair', 'oil change', 'tire'],
         patterns: [/gas\s+station/i, /auto\s+repair/i, /oil\s+change/i, /tire\s+service/i],
         confidence: 95
       },
       
       // Travel (85% confidence)
-      'Travel': {
+      [IRS_CATEGORIES.TRAVEL]: {
         keywords: ['hotel', 'marriott', 'hilton', 'american airlines', 'delta', 'southwest', 'uber', 'lyft', 'rental car', 'airport'],
         patterns: [/hotel/i, /airlines/i, /airport\s+parking/i, /car\s+rental/i],
         confidence: 85
       },
       
       // Meals and Entertainment (80% confidence)
-      'Meals and Entertainment': {
+      [IRS_CATEGORIES.MEALS_ENTERTAINMENT]: {
         keywords: ['restaurant', 'mcdonalds', 'starbucks', 'coffee', 'lunch', 'dinner', 'catering', 'client dinner'],
         patterns: [/restaurant/i, /coffee\s+shop/i, /catering/i, /client\s+lunch/i],
         confidence: 80
       },
       
-      // Phone and Internet (95% confidence)
-      'Phone and Internet': {
-        keywords: ['verizon', 'att', 'at&t', 'comcast', 'internet', 'phone service', 'mobile', 'wireless'],
-        patterns: [/phone\s+service/i, /internet\s+service/i, /wireless\s+plan/i],
+      // Utilities (95% confidence)
+      [IRS_CATEGORIES.UTILITIES]: {
+        keywords: ['verizon', 'att', 'at&t', 'comcast', 'internet', 'phone service', 'mobile', 'wireless', 'electric', 'gas company'],
+        patterns: [/phone\s+service/i, /internet\s+service/i, /wireless\s+plan/i, /electric\s+company/i],
         confidence: 95
       },
       

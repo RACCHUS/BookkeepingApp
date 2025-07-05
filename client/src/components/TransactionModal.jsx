@@ -4,7 +4,14 @@ import { apiClient } from '../services/api';
 import { useForm } from 'react-hook-form';
 import { toast } from 'react-hot-toast';
 import { XMarkIcon } from '@heroicons/react/24/outline';
-import { IRS_CATEGORIES, CATEGORY_GROUPS } from '@shared/constants/categories';
+import { 
+  IRS_CATEGORIES, 
+  CATEGORY_GROUPS, 
+  getCategoriesForDropdown, 
+  getSubcategories, 
+  isTaxDeductible,
+  isBusinessCategory 
+} from '@shared/constants/categories';
 import { STATEMENT_SECTIONS, SECTION_OPTIONS, getSectionDisplayName } from '@shared/constants/sections';
 
 const TransactionModal = ({ transaction, isOpen, onClose, onSave, mode = 'edit' }) => {
@@ -88,6 +95,7 @@ const TransactionModal = ({ transaction, isOpen, onClose, onSave, mode = 'edit' 
       amount: typeof transaction?.amount === 'number' && !isNaN(transaction.amount) ? Math.abs(transaction.amount) : '',
       description: typeof transaction?.description === 'string' ? transaction.description : '',
       category: typeof transaction?.category === 'string' ? transaction.category : '',
+      subcategory: typeof transaction?.subcategory === 'string' ? transaction.subcategory : '',
       type: typeof transaction?.type === 'string' && ['income','expense'].includes(transaction.type) ? transaction.type : (typeof transaction?.amount === 'number' && transaction.amount > 0 ? 'income' : 'expense'),
       payee: typeof transaction?.payee === 'string' ? transaction.payee : '',
       notes: typeof transaction?.notes === 'string' ? transaction.notes : '',
@@ -167,6 +175,7 @@ const TransactionModal = ({ transaction, isOpen, onClose, onSave, mode = 'edit' 
         amount: typeof transaction?.amount === 'number' && !isNaN(transaction.amount) ? Math.abs(transaction.amount) : '',
         description: typeof transaction?.description === 'string' ? transaction.description : '',
         category: typeof transaction?.category === 'string' ? transaction.category : '',
+        subcategory: typeof transaction?.subcategory === 'string' ? transaction.subcategory : '',
         type: typeof transaction?.type === 'string' && ['income','expense'].includes(transaction.type) ? transaction.type : (typeof transaction?.amount === 'number' && transaction.amount > 0 ? 'income' : 'expense'),
         payee: typeof transaction?.payee === 'string' ? transaction.payee : '',
         notes: typeof transaction?.notes === 'string' ? transaction.notes : '',
@@ -179,6 +188,7 @@ const TransactionModal = ({ transaction, isOpen, onClose, onSave, mode = 'edit' 
         amount: '',
         description: '',
         category: '',
+        subcategory: '',
         type: 'expense',
         payee: '',
         notes: '',
@@ -187,6 +197,16 @@ const TransactionModal = ({ transaction, isOpen, onClose, onSave, mode = 'edit' 
       });
     }
   }, [transaction, mode, reset]);
+
+  // Watch for category changes and clear subcategory
+  const watchedCategory = watch('category');
+  useEffect(() => {
+    // Clear subcategory when category changes
+    setValue('subcategory', '');
+  }, [watchedCategory, setValue]);
+
+  // Get available subcategories for the selected category
+  const availableSubcategories = watchedCategory ? getSubcategories(watchedCategory) : [];
 
   const onSubmit = async (data) => {
     setIsSubmitting(true);
@@ -377,94 +397,50 @@ const TransactionModal = ({ transaction, isOpen, onClose, onSave, mode = 'edit' 
               <label className="form-label">Category</label>
               <select 
                 {...register('category', { required: 'Category is required' })}
-                className="form-input"
+                className="form-input category-select"
               >
                 <option value="">Select a category</option>
                 
-                <optgroup label="Income">
-                  {CATEGORY_GROUPS.INCOME.map((categoryName) => (
-                    <option key={categoryName} value={categoryName}>
-                      {categoryName}
-                    </option>
-                  ))}
-                </optgroup>
-                
-                <optgroup label="Operating Expenses">
-                  {CATEGORY_GROUPS.OPERATING_EXPENSES.map((categoryName) => (
-                    <option key={categoryName} value={categoryName}>
-                      {categoryName}
-                    </option>
-                  ))}
-                </optgroup>
-                
-                <optgroup label="Professional Services">
-                  {CATEGORY_GROUPS.PROFESSIONAL_SERVICES.map((categoryName) => (
-                    <option key={categoryName} value={categoryName}>
-                      {categoryName}
-                    </option>
-                  ))}
-                </optgroup>
-                
-                <optgroup label="Employee Costs">
-                  {CATEGORY_GROUPS.EMPLOYEE_COSTS.map((categoryName) => (
-                    <option key={categoryName} value={categoryName}>
-                      {categoryName}
-                    </option>
-                  ))}
-                </optgroup>
-                
-                <optgroup label="Vehicle Expenses">
-                  {CATEGORY_GROUPS.VEHICLE_EXPENSES.map((categoryName) => (
-                    <option key={categoryName} value={categoryName}>
-                      {categoryName}
-                    </option>
-                  ))}
-                </optgroup>
-                
-                <optgroup label="Financial">
-                  {CATEGORY_GROUPS.FINANCIAL.map((categoryName) => (
-                    <option key={categoryName} value={categoryName}>
-                      {categoryName}
-                    </option>
-                  ))}
-                </optgroup>
-                
-                <optgroup label="Travel & Meals">
-                  {CATEGORY_GROUPS.TRAVEL_MEALS.map((categoryName) => (
-                    <option key={categoryName} value={categoryName}>
-                      {categoryName}
-                    </option>
-                  ))}
-                </optgroup>
-                
-                <optgroup label="Depreciation">
-                  {CATEGORY_GROUPS.DEPRECIATION.map((categoryName) => (
-                    <option key={categoryName} value={categoryName}>
-                      {categoryName}
-                    </option>
-                  ))}
-                </optgroup>
-                
-                <optgroup label="Other">
-                  {CATEGORY_GROUPS.OTHER.map((categoryName) => (
-                    <option key={categoryName} value={categoryName}>
-                      {categoryName}
-                    </option>
-                  ))}
-                </optgroup>
-                
-                <optgroup label="Personal">
-                  {CATEGORY_GROUPS.PERSONAL.map((categoryName) => (
-                    <option key={categoryName} value={categoryName}>
-                      {categoryName}
-                    </option>
-                  ))}
-                </optgroup>
+                {Object.entries(CATEGORY_GROUPS).map(([groupName, categories]) => (
+                  <optgroup 
+                    key={groupName} 
+                    label={groupName.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                  >
+                    {categories.map((categoryName) => (
+                      <option key={categoryName} value={categoryName}>
+                        {categoryName}
+                        {!isBusinessCategory(categoryName) && ' (Personal)'}
+                        {!isTaxDeductible(categoryName) && isBusinessCategory(categoryName) && ' (Non-deductible)'}
+                      </option>
+                    ))}
+                  </optgroup>
+                ))}
               </select>
               {errors.category && (
                 <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.category.message}</p>
               )}
             </div>
+
+            {/* Subcategory */}
+            {availableSubcategories.length > 0 && (
+              <div>
+                <label className="form-label">
+                  Subcategory 
+                  <span className="text-gray-500 text-sm">(Optional)</span>
+                </label>
+                <select 
+                  {...register('subcategory')}
+                  className="form-input category-select"
+                >
+                  <option value="">Select a subcategory</option>
+                  {availableSubcategories.map((subcategory) => (
+                    <option key={subcategory} value={subcategory}>
+                      {subcategory}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             {/* Payee */}
             <div>

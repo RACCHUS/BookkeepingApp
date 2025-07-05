@@ -6,7 +6,13 @@ import { apiClient } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import TransactionModal from '../../components/TransactionModal';
-import { IRS_CATEGORIES, CATEGORY_GROUPS } from '@shared/constants/categories';
+import { 
+  IRS_CATEGORIES, 
+  CATEGORY_GROUPS, 
+  getCategoriesForDropdown, 
+  isBusinessCategory, 
+  isTaxDeductible 
+} from '@shared/constants/categories';
 import { SECTION_OPTIONS, getSectionDisplayName } from '@shared/constants/sections';
 import { SORT_OPTIONS, SORT_DIRECTIONS, SORT_PRESETS, getSortOptionByValue, getSortDirectionByValue } from '@shared/constants/sorting';
 
@@ -33,14 +39,32 @@ const SECTION_FILTERS = [
   }))
 ];
 
-// Helper for category label with group
-const getCategoryLabel = (category) => {
+// Helper for category label with group and subcategory
+const getCategoryLabel = (category, subcategory) => {
+  let label = category;
+  
+  // Add group prefix for better organization
   for (const [group, cats] of Object.entries(CATEGORY_GROUPS)) {
     if (cats.includes(category)) {
-      return `${group}: ${category}`;
+      const groupName = group.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+      label = `${groupName}: ${category}`;
+      break;
     }
   }
-  return category;
+  
+  // Add subcategory if provided
+  if (subcategory) {
+    label += ` > ${subcategory}`;
+  }
+  
+  // Add indicators for business/tax status
+  if (!isBusinessCategory(category)) {
+    label += ' (Personal)';
+  } else if (!isTaxDeductible(category)) {
+    label += ' (Non-deductible)';
+  }
+  
+  return label;
 };
 import {
   PlusIcon,
@@ -393,7 +417,8 @@ const TransactionList = () => {
       filtered = filtered.filter(transaction => 
         transaction.description?.toLowerCase().includes(term) ||
         transaction.payee?.toLowerCase().includes(term) ||
-        transaction.category?.toLowerCase().includes(term)
+        transaction.category?.toLowerCase().includes(term) ||
+        transaction.subcategory?.toLowerCase().includes(term)
       );
     }
 
@@ -661,7 +686,7 @@ const TransactionList = () => {
           >
             <option value="">All Categories</option>
             {Object.entries(CATEGORY_GROUPS).map(([group, cats]) => (
-              <optgroup key={group} label={group}>
+              <optgroup key={group} label={group.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}>
                 {cats.map(category => (
                   <option key={category} value={category}>
                     {category}
@@ -938,7 +963,7 @@ const TransactionList = () => {
                                   >
                                     <option value="">Select Category</option>
                                     {Object.entries(CATEGORY_GROUPS).map(([groupName, categories]) => (
-                                      <optgroup key={groupName} label={groupName}>
+                                      <optgroup key={groupName} label={groupName.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}>
                                         {categories.map(category => (
                                           <option key={category} value={category}>
                                             {category}
@@ -964,8 +989,8 @@ const TransactionList = () => {
                                 </div>
                               ) : (
                                 <div className="flex items-center">
-                                  <span className={`${transaction.category ? 'text-gray-700 dark:text-gray-300' : 'text-gray-400 dark:text-gray-500 italic'}`} title={getCategoryLabel(transaction.category)}>
-                                    {transaction.category ? getCategoryLabel(transaction.category) : 'Uncategorized'}
+                                  <span className={`${transaction.category ? 'text-gray-700 dark:text-gray-300' : 'text-gray-400 dark:text-gray-500 italic'}`} title={getCategoryLabel(transaction.category, transaction.subcategory)}>
+                                    {transaction.category ? getCategoryLabel(transaction.category, transaction.subcategory) : 'Uncategorized'}
                                   </span>
                                   {!isSelectMode && (
                                     <button
