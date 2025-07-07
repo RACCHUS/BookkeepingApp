@@ -36,7 +36,7 @@ api.interceptors.response.use(
 );
 
 // API methods
-export const apiClient = {
+const apiClient = {
   // Transaction methods
   transactions: {
     getAll: (params) => api.get('/transactions', { params }),
@@ -61,7 +61,10 @@ export const apiClient = {
     }),
     process: (fileId, options = {}) => api.post(`/pdf/process/${fileId}`, options),
     getStatus: (processId) => api.get(`/pdf/status/${processId}`),
-    getUploads: (params) => api.get('/pdf/uploads', { params })
+    getUploads: (params) => api.get('/pdf/uploads', { params }),
+    deleteUpload: (uploadId) => api.delete(`/pdf/uploads/${uploadId}`),
+    renameUpload: (uploadId, data) => api.put(`/pdf/uploads/${uploadId}/rename`, data),
+    getUploadDetails: (uploadId) => api.get(`/pdf/uploads/${uploadId}`)
   },
 
   // Classification methods
@@ -113,4 +116,5 @@ export const apiClient = {
   }
 };
 
-export default api;
+export { apiClient };
+export default apiClient;

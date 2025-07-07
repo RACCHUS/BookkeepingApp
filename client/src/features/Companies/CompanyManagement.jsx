@@ -104,6 +104,12 @@ const CompanyManagement = () => {
   };
 
   const handleDeleteCompany = async (companyId, companyName) => {
+    if (!companyId) {
+      console.error('Company ID is missing!');
+      toast.error('Cannot delete company: ID is missing');
+      return;
+    }
+    
     if (window.confirm(`Are you sure you want to delete "${companyName}"? This action cannot be undone.`)) {
       deleteMutation.mutate(companyId);
     }
@@ -236,7 +242,7 @@ const CompanyManagement = () => {
 
       {isModalOpen && (
         <CompanyForm
-          company={selectedCompany}
+          company={modalMode === 'edit' ? selectedCompany : null}
           mode={modalMode}
           onSave={handleSaveCompany}
           onCancel={handleCloseModal}

@@ -8,6 +8,8 @@ const CompanyList = ({
   isDeleting, 
   isSettingDefault 
 }) => {
+  console.log('CompanyList received companies:', companies);
+  
   const formatAddress = (address) => {
     if (!address) return 'No address';
     
@@ -52,9 +54,9 @@ const CompanyList = ({
 
   return (
     <div className="space-y-4">
-      {companies.map((company) => (
+      {companies.map((company, index) => (
         <div
-          key={company.id}
+          key={company.id || `company-${index}`}
           className="border border-gray-200 dark:border-gray-700 rounded-lg p-6 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
         >
           <div className="flex items-start justify-between">
@@ -159,17 +161,21 @@ const CompanyList = ({
               {!company.isDefault && (
                 <button
                   onClick={() => onSetDefault(company.id)}
-                  className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200 font-medium"
+                  className={`text-sm font-medium px-3 py-1 rounded-md transition-colors duration-200 ${
+                    isSettingDefault
+                      ? 'text-gray-400 dark:text-gray-500 cursor-not-allowed'
+                      : 'text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200 hover:bg-blue-50 dark:hover:bg-blue-900/20 cursor-pointer'
+                  }`}
                   disabled={isSettingDefault}
                   title="Set as default company"
                 >
-                  Set Default
+                  {isSettingDefault ? 'Setting...' : 'Set Default'}
                 </button>
               )}
               
               <button
                 onClick={() => onEdit(company)}
-                className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-pointer transition-colors duration-200 rounded-md hover:bg-gray-100 dark:hover:bg-gray-600"
                 title="Edit company"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -179,9 +185,14 @@ const CompanyList = ({
               
               <button
                 onClick={() => onDelete(company.id, company.name)}
-                className="p-2 text-gray-400 hover:text-red-600 dark:hover:text-red-400"
+                className={`p-2 transition-colors duration-200 rounded-md ${
+                  isDeleting || company.isDefault
+                    ? 'text-gray-300 dark:text-gray-600 cursor-not-allowed'
+                    : 'text-gray-400 hover:text-red-600 dark:hover:text-red-400 cursor-pointer hover:bg-red-50 dark:hover:bg-red-900/20'
+                }`}
                 disabled={isDeleting || company.isDefault}
                 title={company.isDefault ? "Cannot delete default company" : "Delete company"}
+                style={!isDeleting && !company.isDefault ? { cursor: 'pointer' } : { cursor: 'not-allowed' }}
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />

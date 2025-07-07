@@ -241,6 +241,7 @@ const Dashboard = () => {
         onClose={() => setShowAddModal(false)}
         onSave={handleAddTransaction}
         mode="create"
+        refreshTrigger={Date.now()}
       />
     </div>
   );

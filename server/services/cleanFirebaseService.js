@@ -491,6 +491,259 @@ class FirebaseService {
     }
   }
 
+  // Upload management methods
+  async createUploadRecord(userId, uploadData) {
+    if (!this.isInitialized) {
+      console.log('📁 Mock: Creating upload record');
+      return { id: uploadData.id, ...uploadData };
+    }
+
+    try {
+      const uploadRef = this.db.collection('uploads').doc(uploadData.id);
+      const uploadRecord = {
+        ...uploadData,
+        userId,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      };
+      
+      await uploadRef.set(uploadRecord);
+      console.log(`✅ Created upload record: ${uploadData.id}`);
+      return { id: uploadData.id, ...uploadRecord };
+    } catch (error) {
+      console.error('Error creating upload record:', error);
+      throw error;
+    }
+  }
+
+  async getUploads(userId, filters = {}) {
+    if (!this.isInitialized) {
+      console.log('📁 Mock: Getting uploads');
+      return [];
+    }
+
+    try {
+      let query = this.db.collection('uploads').where('userId', '==', userId);
+      
+      // Apply company filter
+      if (filters.companyId) {
+        query = query.where('companyId', '==', filters.companyId);
+      }
+      
+      // Apply sorting
+      const sortBy = filters.sortBy || 'uploadedAt';
+      const sortOrder = filters.sortOrder || 'desc';
+      query = query.orderBy(sortBy, sortOrder);
+      
+      const snapshot = await query.get();
+      const uploads = [];
+      
+      for (const doc of snapshot.docs) {
+        const data = doc.data();
+        // Convert Firestore timestamps to ISO strings
+        const upload = {
+          id: doc.id,
+          ...data,
+          uploadedAt: data.uploadedAt?.toDate?.()?.toISOString() || data.uploadedAt,
+          createdAt: data.createdAt?.toDate?.()?.toISOString() || data.createdAt,
+          updatedAt: data.updatedAt?.toDate?.()?.toISOString() || data.updatedAt
+        };
+        uploads.push(upload);
+      }
+      
+      return uploads;
+    } catch (error) {
+      console.error('Error getting uploads:', error);
+      
+      // Check if this is an index-related error
+      if (error.code === 9 || error.message?.includes('index') || error.message?.includes('composite index')) {
+        console.warn('🔍 Firestore Index Required for uploads query:', {
+          operation: 'getUploads',
+          error: error.message,
+          recommendation: 'Create a composite index for collection "uploads" with fields: userId (asc), uploadedAt (desc)'
+        });
+        
+        // Extract index creation URL if available
+        const urlMatch = error.message.match(/https:\/\/console\.firebase\.google\.com[^\s]+/);
+        if (urlMatch) {
+          console.warn('🔧 Create index at:', urlMatch[0]);
+        }
+      }
+      
+      throw error;
+    }
+  }
+
+  async getUploadById(userId, uploadId) {
+    if (!this.isInitialized) {
+      console.log('📁 Mock: Getting upload by ID');
+      return null;
+    }
+
+    try {
+      const uploadRef = this.db.collection('uploads').doc(uploadId);
+      const doc = await uploadRef.get();
+      
+      if (!doc.exists) {
+        return null;
+      }
+      
+      const data = doc.data();
+      
+      // Verify ownership
+      if (data.userId !== userId) {
+        throw new Error('Access denied: Upload belongs to another user');
+      }
+      
+      return {
+        id: doc.id,
+        ...data,
+        uploadedAt: data.uploadedAt?.toDate?.()?.toISOString() || data.uploadedAt,
+        createdAt: data.createdAt?.toDate?.()?.toISOString() || data.createdAt,
+        updatedAt: data.updatedAt?.toDate?.()?.toISOString() || data.updatedAt
+      };
+    } catch (error) {
+      console.error('Error getting upload by ID:', error);
+      throw error;
+    }
+  }
+
+  async updateUpload(userId, uploadId, updates) {
+    if (!this.isInitialized) {
+      console.log('📁 Mock: Updating upload');
+      return { id: uploadId, ...updates };
+    }
+
+    try {
+      const uploadRef = this.db.collection('uploads').doc(uploadId);
+      
+      // Verify ownership first
+      const doc = await uploadRef.get();
+      if (!doc.exists) {
+        throw new Error('Upload not found');
+      }
+      
+      if (doc.data().userId !== userId) {
+        throw new Error('Access denied: Upload belongs to another user');
+      }
+      
+      const updateData = {
+        ...updates,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      };
+      
+      await uploadRef.update(updateData);
+      console.log(`✅ Updated upload: ${uploadId}`);
+      
+      // Return updated data
+      const updatedDoc = await uploadRef.get();
+      const data = updatedDoc.data();
+      return {
+        id: uploadId,
+        ...data,
+        uploadedAt: data.uploadedAt?.toDate?.()?.toISOString() || data.uploadedAt,
+        createdAt: data.createdAt?.toDate?.()?.toISOString() || data.createdAt,
+        updatedAt: data.updatedAt?.toDate?.()?.toISOString() || data.updatedAt
+      };
+    } catch (error) {
+      console.error('Error updating upload:', error);
+      throw error;
+    }
+  }
+
+  async deleteUpload(userId, uploadId) {
+    if (!this.isInitialized) {
+      console.log('📁 Mock: Deleting upload');
+      return { deleted: true };
+    }
+
+    try {
+      const uploadRef = this.db.collection('uploads').doc(uploadId);
+      
+      // Verify ownership first
+      const doc = await uploadRef.get();
+      if (!doc.exists) {
+        throw new Error('Upload not found');
+      }
+      
+      if (doc.data().userId !== userId) {
+        throw new Error('Access denied: Upload belongs to another user');
+      }
+      
+      await uploadRef.delete();
+      console.log(`✅ Deleted upload: ${uploadId}`);
+      return { deleted: true };
+    } catch (error) {
+      console.error('Error deleting upload:', error);
+      throw error;
+    }
+  }
+
+  async getTransactionsByUploadId(userId, uploadId) {
+    if (!this.isInitialized) {
+      console.log('📁 Mock: Getting transactions by upload ID');
+      return [];
+    }
+
+    try {
+      console.log(`🔍 Querying transactions for uploadId: ${uploadId}, userId: ${userId}`);
+      
+      const query = this.db.collection('transactions')
+        .where('userId', '==', userId)
+        .where('statementId', '==', uploadId)
+        .orderBy('date', 'desc');
+      
+      const snapshot = await query.get();
+      console.log(`📊 Found ${snapshot.size} transactions for upload ${uploadId}`);
+      
+      const transactions = [];
+      
+      snapshot.docs.forEach(doc => {
+        const data = doc.data();
+        console.log(`📄 Transaction ${doc.id}: statementId=${data.statementId}, amount=${data.amount}`);
+        transactions.push({
+          id: doc.id,
+          ...data,
+          date: data.date?.toDate?.()?.toISOString()?.split('T')[0] || data.date,
+          createdAt: data.createdAt?.toDate?.()?.toISOString() || data.createdAt,
+          updatedAt: data.updatedAt?.toDate?.()?.toISOString() || data.updatedAt
+        });
+      });
+      
+      return transactions;
+    } catch (error) {
+      console.error('Error getting transactions by upload ID:', error);
+      throw error;
+    }
+  }
+
+  async deleteTransactionsByUploadId(userId, uploadId) {
+    if (!this.isInitialized) {
+      console.log('📁 Mock: Deleting transactions by upload ID');
+      return 0;
+    }
+
+    try {
+      const query = this.db.collection('transactions')
+        .where('userId', '==', userId)
+        .where('uploadId', '==', uploadId);
+      
+      const snapshot = await query.get();
+      const batch = this.db.batch();
+      
+      snapshot.docs.forEach(doc => {
+        batch.delete(doc.ref);
+      });
+      
+      await batch.commit();
+      console.log(`✅ Deleted ${snapshot.size} transactions for upload: ${uploadId}`);
+      return snapshot.size;
+    } catch (error) {
+      console.error('Error deleting transactions by upload ID:', error);
+      throw error;
+    }
+  }
+
   isUsingFirebase() {
     return this.isInitialized;
   }

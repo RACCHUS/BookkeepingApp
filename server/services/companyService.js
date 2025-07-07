@@ -58,10 +58,13 @@ class CompanyService {
         .orderBy('name', 'asc')
         .get();
 
-      return snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
+      return snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          ...data,
+          id: doc.id  // Ensure document ID always takes precedence
+        };
+      });
     };
 
     const fallbackQuery = async () => {
@@ -71,10 +74,13 @@ class CompanyService {
         .where('isActive', '==', true)
         .get();
 
-      const companies = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
+      const companies = snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          ...data,
+          id: doc.id  // Ensure document ID always takes precedence
+        };
+      });
 
       // Sort in memory: default companies first, then alphabetically
       companies.sort((a, b) => {
@@ -118,7 +124,8 @@ class CompanyService {
         throw new Error('Company not found');
       }
 
-      const company = { id: doc.id, ...doc.data() };
+      const data = doc.data();
+      const company = { ...data, id: doc.id };
 
       // Verify user owns this company
       if (company.userId !== userId) {
@@ -215,7 +222,8 @@ class CompanyService {
       }
 
       const doc = snapshot.docs[0];
-      return { id: doc.id, ...doc.data() };
+      const data = doc.data();
+      return { ...data, id: doc.id };
     } catch (error) {
       console.error('Error getting default company:', error);
       throw error;

@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
@@ -33,10 +33,38 @@ const PDFUpload = () => {
   const companies = companiesResponse?.data || [];
   const hasCompanies = companies.length > 0;
 
+  // Auto-select default company when companies are loaded
+  useEffect(() => {
+    if (companies.length > 0 && (selectedCompany === null || selectedCompany === undefined)) {
+      const defaultCompany = companies.find(company => company.isDefault);
+      if (defaultCompany) {
+        setSelectedCompany(defaultCompany.id);
+        setSelectedCompanyData(defaultCompany);
+      } else if (companies.length === 1) {
+        // If only one company exists, select it automatically
+        setSelectedCompany(companies[0].id);
+        setSelectedCompanyData(companies[0]);
+      }
+    }
+  }, [companies, selectedCompany]);
+
+  // Fix for cases where we have company data but not company ID
+  useEffect(() => {
+    if (selectedCompanyData && (selectedCompany === null || selectedCompany === undefined) && companies.length > 0) {
+      const matchingCompany = companies.find(company => 
+        company.name === selectedCompanyData.name || 
+        company.id === selectedCompanyData.id
+      );
+      if (matchingCompany) {
+        setSelectedCompany(matchingCompany.id);
+      }
+    }
+  }, [selectedCompanyData, selectedCompany, companies]);
+
   // Upload mutation
   const uploadMutation = useMutation({
     mutationFn: ({file, tempId}) => {
-      if (!selectedCompany) {
+      if (selectedCompany === null || selectedCompany === undefined) {
         throw new Error('Please select a company before uploading files');
       }
       
@@ -245,12 +273,22 @@ const PDFUpload = () => {
   };
 
   const handleCompanyChange = (companyId, companyData) => {
-    setSelectedCompany(companyId);
-    setSelectedCompanyData(companyData);
+    // Handle empty string IDs (treat as valid)
+    if ((companyId || companyId === '') && companyData) {
+      setSelectedCompany(companyId);
+      setSelectedCompanyData(companyData);
+    } else if (companyData && (companyData.id || companyData.id === '')) {
+      // Fallback: use ID from company data if companyId is missing
+      setSelectedCompany(companyData.id);
+      setSelectedCompanyData(companyData);
+    } else {
+      console.warn('Invalid company selection:', { companyId, companyData });
+    }
   };
 
   const onDrop = useCallback((acceptedFiles) => {
-    if (!selectedCompany) {
+    // Check if company is selected (handle empty string IDs)
+    if (selectedCompany === null || selectedCompany === undefined) {
       toast.error('Please select a company before uploading files');
       return;
     }
@@ -390,18 +428,18 @@ const PDFUpload = () => {
       <div
         {...getRootProps()}
         className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
-          !selectedCompany 
+          (selectedCompany === null || selectedCompany === undefined)
             ? 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 cursor-not-allowed opacity-50'
             : isDragActive
             ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 dark:border-blue-400 cursor-pointer'
             : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500 dark:bg-gray-700/50 cursor-pointer'
         }`}
       >
-        <input {...getInputProps()} disabled={!selectedCompany} />
+        <input {...getInputProps()} disabled={selectedCompany === null || selectedCompany === undefined} />
         <CloudArrowUpIcon className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" />
         <div className="mt-4">
           <p className="text-lg font-medium text-gray-900 dark:text-white">
-            {!selectedCompany 
+            {(selectedCompany === null || selectedCompany === undefined)
               ? 'Select a company above to start uploading'
               : isDragActive 
               ? 'Drop files here' 
@@ -409,7 +447,7 @@ const PDFUpload = () => {
             }
           </p>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            {!selectedCompany 
+            {(selectedCompany === null || selectedCompany === undefined)
               ? 'Choose which company these bank statements belong to first'
               : 'or click to browse (PDF files only, max 10MB each)'
             }

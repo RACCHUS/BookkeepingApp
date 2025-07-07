@@ -494,6 +494,7 @@ const TransactionList = () => {
         onClose={handleCloseModal}
         onSave={handleSaveTransaction}
         mode={modalMode}
+        refreshTrigger={data?.timestamp || Date.now()}
       />
     </div>
   );

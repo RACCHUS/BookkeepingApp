@@ -24,6 +24,8 @@ export const getTransactions = async (req, res) => {
       type,
       payee,
       sectionCode,
+      uploadId,
+      companyId,
       orderBy = 'date',
       order = 'desc'
     } = req.query;
@@ -53,6 +55,14 @@ export const getTransactions = async (req, res) => {
       filters.sectionCode = sectionCode;
     }
 
+    if (uploadId) {
+      filters.uploadId = uploadId;
+    }
+
+    if (companyId) {
+      filters.companyId = companyId;
+    }
+
     let transactions;
     let usingMockData = false;
     
@@ -77,6 +87,18 @@ export const getTransactions = async (req, res) => {
     if (sectionCode) {
       filteredTransactions = filteredTransactions.filter(t => 
         t.sectionCode === sectionCode
+      );
+    }
+
+    if (uploadId) {
+      filteredTransactions = filteredTransactions.filter(t => 
+        t.uploadId === uploadId
+      );
+    }
+
+    if (companyId) {
+      filteredTransactions = filteredTransactions.filter(t => 
+        t.companyId === companyId
       );
     }
 
@@ -363,7 +385,7 @@ export const bulkUpdateTransactions = async (req, res) => {
 export const getTransactionSummary = async (req, res) => {
   try {
     const { uid: userId } = req.user;
-    const { startDate, endDate, groupBy = 'category', companyId } = req.query;
+    const { startDate, endDate, groupBy = 'category', companyId, uploadId } = req.query;
 
     if (!startDate || !endDate) {
       return res.status(400).json({
@@ -384,6 +406,11 @@ export const getTransactionSummary = async (req, res) => {
       // Add company filter if specified
       if (companyId && companyId !== 'all') {
         filters.companyId = companyId;
+      }
+      
+      // Add upload filter if specified
+      if (uploadId) {
+        filters.uploadId = uploadId;
       }
       
       summary = await firebaseService.getTransactionSummary(userId, filters);
@@ -542,7 +569,7 @@ export const bulkUpdateCategories = async (req, res) => {
 export const getCategoryStats = async (req, res) => {
   try {
     const { uid: userId } = req.user;
-    const { startDate, endDate, companyId } = req.query;
+    const { startDate, endDate, companyId, uploadId } = req.query;
 
     let dateRange = null;
     if (startDate && endDate) {
@@ -555,6 +582,10 @@ export const getCategoryStats = async (req, res) => {
     const filters = {};
     if (companyId && companyId !== 'all') {
       filters.companyId = companyId;
+    }
+    
+    if (uploadId) {
+      filters.uploadId = uploadId;
     }
 
     const stats = await transactionClassifierService.getCategoryStats(userId, dateRange, filters);

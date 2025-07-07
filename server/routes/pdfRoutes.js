@@ -1,10 +1,14 @@
 import express from 'express';
 import multer from 'multer';
+import { body, param } from 'express-validator';
 import { 
   uploadPDF, 
   processPDF, 
   getPDFStatus,
   getUserUploads,
+  deleteUpload,
+  renameUpload,
+  getUploadDetails,
   testChasePDF
 } from '../controllers/realPdfController.js';
 
@@ -31,6 +35,19 @@ router.post('/upload', upload.single('pdf'), uploadPDF);
 router.post('/process/:fileId', processPDF);
 router.get('/status/:processId', getPDFStatus);
 router.get('/uploads', getUserUploads);
+router.get('/uploads/:uploadId', 
+  param('uploadId').notEmpty().withMessage('Upload ID is required'),
+  getUploadDetails
+);
+router.put('/uploads/:uploadId/rename', 
+  param('uploadId').notEmpty().withMessage('Upload ID is required'),
+  body('name').isLength({ min: 1, max: 255 }).withMessage('Name must be between 1 and 255 characters'),
+  renameUpload
+);
+router.delete('/uploads/:uploadId', 
+  param('uploadId').notEmpty().withMessage('Upload ID is required'),
+  deleteUpload
+);
 
 // Test endpoint for Chase PDF parsing
 router.get('/test-chase', testChasePDF);

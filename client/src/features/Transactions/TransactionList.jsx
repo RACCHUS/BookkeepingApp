@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import StatementSelector from '../Statements/StatementSelector';
 import CompanySelector from '../../components/CompanySelector.jsx';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -81,6 +82,7 @@ import {
 
 const TransactionList = () => {
   const { user, loading: authLoading } = useAuth(); // Add authentication context with loading state
+  const [searchParams] = useSearchParams();
   const [filters, setFilters] = useState({
     limit: 50,
     offset: 0,
@@ -95,6 +97,7 @@ const TransactionList = () => {
   const [typeFilter, setTypeFilter] = useState('');
   const [sectionFilter, setSectionFilter] = useState('');
   const [companyFilter, setCompanyFilter] = useState('');
+  const [uploadFilter, setUploadFilter] = useState('');
   const [dateRange, setDateRange] = useState({ start: '', end: '' });
   
   // Modal state
@@ -106,13 +109,23 @@ const TransactionList = () => {
   const [statements, setStatements] = useState([]);
   const [statementFilter, setStatementFilter] = useState('');
 
-  // Fetch available statements/PDFs for filter dropdown
+  // Handle URL parameters for upload-specific filtering
   useEffect(() => {
-    let mounted = true;
+    const uploadId = searchParams.get('uploadId');
+    if (uploadId) {
+      setUploadFilter(uploadId);
+      setStatementFilter(uploadId); // Also set statement filter for consistency
+    }
+  }, [searchParams]);
+
+  // Fetch available statements/PDFs for filter dropdown
+  const fetchStatements = () => {
     apiClient.pdf.getUploads()
       .then((res) => {
-        if (mounted && Array.isArray(res?.data?.uploads)) {
-          setStatements(res.data.uploads
+        // The response is { success: true, data: [...] } where data is the direct array
+        const uploads = Array.isArray(res?.data) ? res.data : (res?.data?.uploads || []);
+        if (Array.isArray(uploads)) {
+          setStatements(uploads
             .map((u, idx) => {
               // Robust unique id fallback
               const id = u.id || u._id || u.filename || u.originalname || `statement_${idx}`;
@@ -135,12 +148,11 @@ const TransactionList = () => {
               };
             })
             .filter(Boolean)
-          );
+        );
         }
       })
       .catch(() => setStatements([]));
-    return () => { mounted = false; };
-  }, []);
+  };
 
   // Bulk operations state
   const [selectedTransactions, setSelectedTransactions] = useState(new Set());
@@ -153,12 +165,32 @@ const TransactionList = () => {
 
   const queryClient = useQueryClient();
 
+  // Build dynamic query parameters including filters
+  const queryParams = useMemo(() => {
+    const params = { ...filters };
+    
+    if (categoryFilter) params.category = categoryFilter;
+    if (typeFilter) params.type = typeFilter;
+    if (sectionFilter) params.sectionCode = sectionFilter;
+    if (companyFilter) params.companyId = companyFilter;
+    if (uploadFilter) params.uploadId = uploadFilter;
+    if (dateRange.start) params.startDate = dateRange.start;
+    if (dateRange.end) params.endDate = dateRange.end;
+    
+    return params;
+  }, [filters, categoryFilter, typeFilter, sectionFilter, companyFilter, uploadFilter, dateRange]);
+
   // All query and mutation hooks must be declared before any conditional logic
   const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ['transactions', filters],
-    queryFn: () => apiClient.transactions.getAll(filters),
+    queryKey: ['transactions', queryParams],
+    queryFn: () => apiClient.transactions.getAll(queryParams),
     enabled: !!user && !authLoading, // Only run query when user is authenticated and auth is not loading
   });
+
+  // Refresh statements when transaction data changes (moved after data declaration)
+  useEffect(() => {
+    fetchStatements();
+  }, [data]);
 
   // Delete mutation
   const deleteMutation = useMutation({
@@ -595,6 +627,8 @@ const TransactionList = () => {
     setCategoryFilter('');
     setTypeFilter('');
     setSectionFilter('');
+    setCompanyFilter('');
+    setUploadFilter('');
     setDateRange({ start: '', end: '' });
     setStatementFilter('');
     // Reset sorting to default
@@ -1096,6 +1130,7 @@ const TransactionList = () => {
         onClose={handleCloseModal}
         onSave={handleSaveTransaction}
         mode={modalMode}
+        refreshTrigger={data?.timestamp || Date.now()}
       />
     </div>
   );

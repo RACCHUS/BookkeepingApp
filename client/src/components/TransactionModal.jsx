@@ -15,18 +15,17 @@ import {
 } from '@shared/constants/categories';
 import { STATEMENT_SECTIONS, SECTION_OPTIONS, getSectionDisplayName } from '@shared/constants/sections';
 
-const TransactionModal = ({ transaction, isOpen, onClose, onSave, mode = 'edit' }) => {
+const TransactionModal = ({ transaction, isOpen, onClose, onSave, mode = 'edit', refreshTrigger }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [statements, setStatements] = useState([]);
 
-  // Fetch available statements/PDFs for linking
-  useEffect(() => {
-    let mounted = true;
+  // Function to fetch statements
+  const fetchStatements = () => {
     apiClient.pdf.getUploads()
       .then((res) => {
-        // Support both {uploads: [...]} and {data: {uploads: [...]}}
-        const uploads = res?.data?.uploads || res?.data?.data?.uploads || [];
-        if (mounted && Array.isArray(uploads)) {
+        // The response is { success: true, data: [...] } where data is the direct array
+        const uploads = Array.isArray(res?.data) ? res.data : (res?.data?.uploads || []);
+        if (Array.isArray(uploads)) {
           setStatements(uploads
             .map((u, idx) => {
               // Robust unique id fallback (should always be present after backend fix)
@@ -54,8 +53,12 @@ const TransactionModal = ({ transaction, isOpen, onClose, onSave, mode = 'edit' 
         }
       })
       .catch(() => setStatements([]));
-    return () => { mounted = false; };
-  }, []);
+  };
+
+  // Fetch available statements/PDFs for linking
+  useEffect(() => {
+    fetchStatements();
+  }, [refreshTrigger]); // Re-fetch when refreshTrigger changes
 
   const {
     register,
@@ -486,6 +489,7 @@ const TransactionModal = ({ transaction, isOpen, onClose, onSave, mode = 'edit' 
               value={watch('statementId')}
               onChange={val => setValue('statementId', val, { shouldDirty: true })}
               statements={statements}
+              onRefresh={fetchStatements}
             />
 
             {/* Notes */}

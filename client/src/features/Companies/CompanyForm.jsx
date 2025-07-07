@@ -23,7 +23,7 @@ const CompanyForm = ({ company, mode, onSave, onCancel, isLoading }) => {
   const [errors, setErrors] = useState({});
 
   useEffect(() => {
-    if (company && mode === 'edit') {
+    if (mode === 'edit' && company) {
       setFormData({
         name: company.name || '',
         legalName: company.legalName || '',
@@ -40,6 +40,26 @@ const CompanyForm = ({ company, mode, onSave, onCancel, isLoading }) => {
           state: company.address?.state || '',
           zipCode: company.address?.zipCode || '',
           country: company.address?.country || 'USA'
+        }
+      });
+    } else {
+      // Always reset form data for create mode or when no company is provided
+      setFormData({
+        name: '',
+        legalName: '',
+        description: '',
+        businessType: 'LLC',
+        status: 'active',
+        taxId: '',
+        phone: '',
+        email: '',
+        website: '',
+        address: {
+          street: '',
+          city: '',
+          state: '',
+          zipCode: '',
+          country: 'USA'
         }
       });
     }

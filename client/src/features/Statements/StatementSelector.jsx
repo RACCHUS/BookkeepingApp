@@ -6,13 +6,25 @@ import React from 'react';
  *   value: current statementId
  *   onChange: function(newStatementId)
  *   statements: array of { id, name, uploadedAt }
+ *   onRefresh: optional function to refresh the statements list
  */
-const StatementSelector = ({ value, onChange, statements = [] }) => {
+const StatementSelector = ({ value, onChange, statements = [], onRefresh }) => {
   // Check if the current value is missing from the statements list
   const hasValue = value && statements.some(s => s.id === value);
   return (
     <div>
-      <label className="form-label">Statement/PDF</label>
+      <div className="flex items-center justify-between">
+        <label className="form-label">Statement/PDF</label>
+        {onRefresh && (
+          <button
+            type="button"
+            onClick={onRefresh}
+            className="text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+          >
+            Refresh List
+          </button>
+        )}
+      </div>
       <select
         className="form-input"
         value={value || ''}

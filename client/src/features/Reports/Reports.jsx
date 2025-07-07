@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useSearchParams } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { apiClient } from '../../services/api.js';
 import { useAuth } from '../../context/AuthContext';
@@ -13,21 +14,53 @@ import {
   DocumentTextIcon,
   PrinterIcon,
   ClockIcon,
-  ArrowPathIcon
+  ArrowPathIcon,
+  FolderIcon,
+  XMarkIcon
 } from '@heroicons/react/24/outline';
 
 const Reports = () => {
   const { user } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [generating, setGenerating] = useState(null);
   const [selectedCompany, setSelectedCompany] = useState('all');
+  const [uploadFilter, setUploadFilter] = useState(null);
   const [dateRange, setDateRange] = useState({
     start: new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0], // Start of current year
     end: new Date().toISOString().split('T')[0] // Today
   });
 
+  // Handle URL parameters for upload-specific reports
+  useEffect(() => {
+    const uploadId = searchParams.get('uploadId');
+    const uploadName = searchParams.get('uploadName');
+    const companyId = searchParams.get('companyId');
+    const startDate = searchParams.get('startDate');
+    const endDate = searchParams.get('endDate');
+
+    if (uploadId) {
+      setUploadFilter({ id: uploadId, name: uploadName || 'Unknown Upload' });
+    }
+
+    if (companyId) {
+      setSelectedCompany(companyId);
+    }
+
+    if (startDate && endDate) {
+      setDateRange({ start: startDate, end: endDate });
+    }
+  }, [searchParams]);
+
+  const clearUploadFilter = () => {
+    setUploadFilter(null);
+    // Remove upload-related search params
+    const newSearchParams = new URLSearchParams();
+    setSearchParams(newSearchParams);
+  };
+
   // Get transaction summary for the date range and company
   const { data: summaryData, isLoading: summaryLoading } = useQuery({
-    queryKey: ['transactionSummary', dateRange.start, dateRange.end, selectedCompany],
+    queryKey: ['transactionSummary', dateRange.start, dateRange.end, selectedCompany, uploadFilter?.id],
     queryFn: () => {
       const filters = {
         startDate: dateRange.start,
@@ -36,6 +69,9 @@ const Reports = () => {
       if (selectedCompany && selectedCompany !== 'all') {
         filters.companyId = selectedCompany;
       }
+      if (uploadFilter?.id) {
+        filters.uploadId = uploadFilter.id;
+      }
       return apiClient.transactions.getSummary(filters.startDate, filters.endDate, filters);
     },
     enabled: !!user && !!dateRange.start && !!dateRange.end
@@ -43,11 +79,14 @@ const Reports = () => {
 
   // Get category statistics
   const { data: categoryStats } = useQuery({
-    queryKey: ['categoryStats', dateRange.start, dateRange.end, selectedCompany],
+    queryKey: ['categoryStats', dateRange.start, dateRange.end, selectedCompany, uploadFilter?.id],
     queryFn: () => {
       const filters = {};
       if (selectedCompany && selectedCompany !== 'all') {
         filters.companyId = selectedCompany;
+      }
+      if (uploadFilter?.id) {
+        filters.uploadId = uploadFilter.id;
       }
       return apiClient.transactions.getCategoryStats(dateRange.start, dateRange.end, filters);
     },
@@ -72,6 +111,10 @@ const Reports = () => {
       
       if (selectedCompany && selectedCompany !== 'all') {
         reportFilters.companyId = selectedCompany;
+      }
+      
+      if (uploadFilter?.id) {
+        reportFilters.uploadId = uploadFilter.id;
       }
       
       switch (reportType) {
@@ -160,6 +203,32 @@ const Reports = () => {
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white transition-colors">Reports</h1>
         <p className="text-gray-600 dark:text-gray-300 transition-colors">Generate financial and tax reports for any time period</p>
       </div>
+
+      {/* Upload Filter */}
+      {uploadFilter && (
+        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <FolderIcon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              <div>
+                <p className="text-sm font-medium text-blue-900 dark:text-blue-100">
+                  Showing data for upload: {uploadFilter.name}
+                </p>
+                <p className="text-xs text-blue-700 dark:text-blue-300">
+                  Reports are filtered to show only transactions from this uploaded file
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={clearUploadFilter}
+              className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200"
+              title="Clear upload filter"
+            >
+              <XMarkIcon className="h-5 w-5" />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Smart Date Selector */}
       <SmartDateSelector 

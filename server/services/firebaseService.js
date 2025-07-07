@@ -87,6 +87,36 @@ class FirebaseService {  constructor() {
     }
   }
 
+  /**
+   * Get transactions by upload/statement ID
+   * @param {string} userId - User ID
+   * @param {string} uploadId - Upload/Statement ID
+   * @returns {Promise<Array>} Transactions
+   */
+  async getTransactionsByUploadId(userId, uploadId) {
+    try {
+      const snapshot = await this.db
+        .collection('transactions')
+        .where('userId', '==', userId)
+        .where('statementId', '==', uploadId)
+        .orderBy('date', 'desc')
+        .get();
+
+      const transactions = [];
+      snapshot.forEach(doc => {
+        transactions.push({
+          id: doc.id,
+          ...doc.data()
+        });
+      });
+
+      return transactions;
+    } catch (error) {
+      console.error('Error getting transactions by upload ID:', error);
+      throw error;
+    }
+  }
+
   async updateTransaction(transactionId, userId, updateData) {
     try {
       const docRef = this.db.collection('transactions').doc(transactionId);
