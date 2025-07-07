@@ -25,6 +25,12 @@ class ChaseClassifier {
   }
 
   static extractPayee(description) {
+    // Check transactions from PDFs don't contain payee information
+    // Bank statements only show check numbers, not who they were paid to
+    if (/^check\s*#?\d+$/i.test(description.trim())) {
+      return null; // No payee information available in PDF
+    }
+    
     // Simple payee extraction (expand as needed)
     return description.split(' ')[0];
   }

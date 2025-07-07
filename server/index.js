@@ -48,6 +48,9 @@ import classificationRoutes from './routes/classificationRoutes.js';
 // Import company routes
 import companyRoutes from './routes/companyRoutes.js';
 
+// Import payee routes
+import payeeRoutes from './routes/payeeRoutes.js';
+
 const app = express();
 const PORT = process.env.PORT || 5000;
 
@@ -209,6 +212,9 @@ app.use('/api/classification', optionalAuthMiddleware, classificationRoutes);
 
 // Add company routes with optional auth
 app.use('/api/companies', optionalAuthMiddleware, companyRoutes);
+
+// Add payee routes with optional auth
+app.use('/api/payees', optionalAuthMiddleware, payeeRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

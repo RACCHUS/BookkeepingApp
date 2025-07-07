@@ -48,6 +48,68 @@ export const formatDateForDisplay = (dateString) => {
 };
 
 /**
+ * Format a date for display (alias for formatDateForDisplay)
+ * @param {string|Date|Object} date - Date string, Date object, or Firestore Timestamp
+ * @returns {string} Formatted date string
+ */
+export const formatDate = (date) => {
+  if (!date) return '';
+  
+  try {
+    // Handle Firestore Timestamp objects
+    if (date && typeof date === 'object' && date.seconds) {
+      const jsDate = new Date(date.seconds * 1000);
+      return jsDate.toLocaleDateString();
+    }
+    
+    // Handle different date formats
+    if (typeof date === 'string') {
+      // If it's already in YYYY-MM-DD format
+      if (date.includes('-')) {
+        return formatDateForDisplay(date);
+      }
+      // If it's an ISO string, extract the date part
+      return formatDateForDisplay(date.split('T')[0]);
+    }
+    
+    // If it's a Date object
+    if (date instanceof Date) {
+      return date.toLocaleDateString();
+    }
+    
+    // Try to parse as date
+    const parsedDate = new Date(date);
+    if (!isNaN(parsedDate.getTime())) {
+      return parsedDate.toLocaleDateString();
+    }
+    
+  } catch (error) {
+    console.warn('Error formatting date:', date, error);
+  }
+  
+  return String(date);
+};
+
+/**
+ * Format currency amount for display
+ * @param {number} amount - Amount to format
+ * @param {string} currency - Currency code (default: 'USD')
+ * @returns {string} Formatted currency string
+ */
+export const formatCurrency = (amount, currency = 'USD') => {
+  if (typeof amount !== 'number' || isNaN(amount)) {
+    return '$0.00';
+  }
+  
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: currency,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }).format(amount);
+};
+
+/**
  * Validate that a date range has the correct format and order
  * @param {object} dateRange - Object with start and end properties
  * @returns {boolean} True if valid, false otherwise

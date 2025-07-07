@@ -10,7 +10,9 @@ import {
   getTransactionSummary,
   getClassificationSuggestions,
   bulkUpdateCategories,
-  getCategoryStats
+  getCategoryStats,
+  assignPayeeToTransaction,
+  bulkAssignPayeeToTransactions
 } from '../controllers/transactionController.js';
 
 const router = express.Router();
@@ -55,5 +57,7 @@ router.post('/bulk-categorize', bulkUpdateCategories);
 router.put('/:id', updateTransactionValidation, updateTransaction);
 router.delete('/:id', deleteTransaction);
 router.patch('/bulk', bulkUpdateTransactions);
+router.patch('/:id/assign-payee', assignPayeeToTransaction);
+router.patch('/bulk-assign-payee', bulkAssignPayeeToTransactions);
 
 export default router;

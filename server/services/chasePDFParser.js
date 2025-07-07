@@ -558,6 +558,12 @@ class ChasePDFParser {
   }
 
   extractPayee(description) {
+    // Check transactions from PDFs don't contain payee information
+    // Bank statements only show check numbers, not who they were paid to
+    if (/^check\s*#?\d+$/i.test(description.trim())) {
+      return null; // No payee information available in PDF
+    }
+    
     // Remove common transaction prefixes/suffixes
     let payee = description
       .replace(/^(DEBIT|CREDIT|CHECK|DEPOSIT|WITHDRAWAL)\s+/i, '')
@@ -578,7 +584,12 @@ class ChasePDFParser {
     // Limit length and clean up
     payee = payee.substring(0, 50).trim();
     
-    return payee || 'Unknown Payee';
+    // Return null if we don't have meaningful payee information
+    if (!payee || payee === 'Unknown Payee') {
+      return null;
+    }
+    
+    return payee;
   }
 
   generateSummary(transactions) {
@@ -811,7 +822,7 @@ class ChasePDFParser {
       // Auto-classify based on description
       const category = this.classifyTransaction(cleanDescription, type);
       
-      // Extract payee from description
+      // Extract payee from description (null if not available, e.g., for checks)
       const payee = this.extractPayee(cleanDescription);
       
       return {
@@ -820,10 +831,10 @@ class ChasePDFParser {
         description: cleanDescription,
         category: category,
         type: type,
-        payee: payee,
+        payee: payee, // Can be null for transactions without payee info (like checks)
         confidence: category !== 'Uncategorized' ? 0.8 : 0.3,
         source: 'chase_pdf',
-        needsReview: category === 'Uncategorized' || !payee
+        needsReview: category === 'Uncategorized' || payee === null
       };
     } catch (error) {
       console.error('Error creating transaction:', error);

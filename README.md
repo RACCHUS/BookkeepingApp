@@ -8,14 +8,25 @@ A comprehensive bookkeeping application that allows users to import Chase bank P
 - **PDF Import**: Upload and parse Chase bank statements and other PDF files
 - **Automatic Classification**: Smart categorization of transactions into IRS tax categories
 - **Manual Transaction Entry**: Add cash transactions and missing entries
-- **Employee Tracking**: Manage employee payments and benefits
+- **Multi-Company Support**: Manage multiple companies with separate financial tracking
+- **Employee & Vendor Management**: Track payees and assign them to transactions
+- **Upload Management**: Organize and manage PDF uploads with company assignment
 - **Real-time Updates**: Live dashboard with financial summaries
 
 ### Tax & Reporting
 - **IRS Category Mapping**: Automatic mapping to Schedule C categories
 - **Tax Reports**: Generate tax-ready summaries by quarter and year
 - **Profit & Loss**: Comprehensive P&L statements
+- **Company-Specific Reports**: Generate reports filtered by company
+- **Payee-Based Reports**: Track expenses and payments by employee/vendor
 - **Export to PDF**: Professional report generation
+
+### Payee Management
+- **Employee Tracking**: Manage employee information and payments
+- **Vendor Management**: Track vendor details and expenses
+- **Check Assignment**: Assign payees to check transactions (PDFs don't contain payee info)
+- **Quick Check Review**: Easily find and assign payees to checks without assigned recipients
+- **Payee-Based Filtering**: Filter transactions and reports by specific payees
 
 ### Learning System
 - **Smart Classification**: Machine learning-based transaction categorization
@@ -157,6 +168,7 @@ bookkeeping-app/
 - Upload Chase bank statements (PDF format)
 - Automatic text extraction and parsing
 - Transaction detection and classification
+- **Note**: Check transactions from PDFs don't contain payee information (bank statements only show check numbers). Use the Payee Management feature to manually assign payees to checks after import.
 
 ### 3. Transaction Management
 - View all imported transactions
@@ -187,6 +199,32 @@ All API endpoints require Bearer token authentication.
 - `PUT /api/transactions/:id` - Update transaction
 - `DELETE /api/transactions/:id` - Delete transaction
 - `GET /api/transactions/summary` - Get financial summary
+- `POST /api/transactions/:id/assign-payee` - Assign payee to transaction
+- `POST /api/transactions/bulk-assign-payee` - Bulk assign payee to transactions
+
+### Companies
+- `GET /api/companies` - Get user companies
+- `POST /api/companies` - Create new company
+- `PUT /api/companies/:id` - Update company
+- `DELETE /api/companies/:id` - Delete company
+- `POST /api/companies/:id/set-default` - Set default company
+
+### Payees
+- `GET /api/payees` - Get all payees
+- `GET /api/payees/employees` - Get employee payees
+- `GET /api/payees/vendors` - Get vendor payees
+- `POST /api/payees` - Create new payee
+- `PUT /api/payees/:id` - Update payee
+- `DELETE /api/payees/:id` - Delete payee
+- `GET /api/payees/search` - Search payees
+- `GET /api/payees/transactions-without-payees` - Get transactions without assigned payees
+
+### Upload Management
+- `GET /api/uploads` - Get user uploads
+- `PUT /api/uploads/:id/rename` - Rename upload
+- `DELETE /api/uploads/:id` - Delete upload
+- `GET /api/uploads/:id` - Get upload details
+- `GET /api/uploads/:id/transactions` - Get transactions from upload
 
 ### PDF Processing
 - `POST /api/pdf/upload` - Upload PDF file

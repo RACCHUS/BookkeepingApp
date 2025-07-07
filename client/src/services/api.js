@@ -113,7 +113,30 @@ const apiClient = {
     update: (id, data) => api.put(`/companies/${id}`, data),
     delete: (id) => api.delete(`/companies/${id}`),
     setDefault: (id) => api.put(`/companies/${id}/set-default`)
-  }
+  },
+
+  // Payee methods
+  payees: {
+    getAll: (params) => api.get('/payees', { params }),
+    getById: (id) => api.get(`/payees/${id}`),
+    create: (data) => api.post('/payees', data),
+    update: (id, data) => api.put(`/payees/${id}`, data),
+    delete: (id) => api.delete(`/payees/${id}`),
+    getEmployees: (params) => api.get('/payees/employees', { params }),
+    getVendors: (params) => api.get('/payees/vendors', { params }),
+    getTransactionsWithoutPayees: (params) => api.get('/payees/transactions-without-payees', { params }),
+    assignToTransaction: (transactionId, payeeId, payeeName) => api.patch(`/transactions/${transactionId}/assign-payee`, {
+      payeeId,
+      payeeName
+    }),
+    bulkAssign: (transactionIds, payeeId, payeeName) => api.patch('/transactions/bulk-assign-payee', {
+      transactionIds,
+      payeeId,
+      payeeName
+    }),
+    getTransactionsByPayee: (payeeId, params) => api.get(`/payees/${payeeId}/transactions`, { params }),
+    getPayeeSummary: (payeeId, params) => api.get(`/payees/${payeeId}/summary`, { params })
+  },
 };
 
 export { apiClient };

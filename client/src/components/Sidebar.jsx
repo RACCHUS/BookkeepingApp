@@ -8,7 +8,8 @@ import {
   Cog6ToothIcon,
   TagIcon,
   BuildingOfficeIcon,
-  FolderIcon
+  FolderIcon,
+  UserGroupIcon
 } from '@heroicons/react/24/outline';
 
 const Sidebar = () => {
@@ -18,6 +19,7 @@ const Sidebar = () => {
     { name: 'Dashboard', href: '/dashboard', icon: HomeIcon },
     { name: 'Transactions', href: '/transactions', icon: DocumentTextIcon },
     { name: 'Companies', href: '/companies', icon: BuildingOfficeIcon },
+    { name: 'Payees', href: '/payees', icon: UserGroupIcon },
     { name: 'Upload PDF', href: '/upload', icon: CloudArrowUpIcon },
     { name: 'Uploads', href: '/uploads', icon: FolderIcon },
     { name: 'Classification', href: '/classification', icon: TagIcon },

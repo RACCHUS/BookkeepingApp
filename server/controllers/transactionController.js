@@ -605,7 +605,105 @@ export const getCategoryStats = async (req, res) => {
   }
 };
 
-// Helper function to determine quarter from date
+/**
+ * Assign payee to a transaction
+ */
+export const assignPayeeToTransaction = async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        error: 'Validation failed',
+        details: errors.array()
+      });
+    }
+
+    const { uid: userId } = req.user;
+    const { id: transactionId } = req.params;
+    const { payeeId, payeeName } = req.body;
+
+    const result = await firebaseService.assignPayeeToTransaction(userId, transactionId, payeeId, payeeName);
+
+    res.json({
+      success: true,
+      message: 'Payee assigned to transaction successfully',
+      ...result
+    });
+
+  } catch (error) {
+    console.error('Assign payee to transaction error:', error);
+    const status = error.message.includes('not found') ? 404 : 
+                   error.message.includes('Unauthorized') ? 403 : 500;
+    res.status(status).json({
+      error: 'Failed to assign payee to transaction',
+      message: error.message
+    });
+  }
+};
+
+/**
+ * Bulk assign payee to multiple transactions
+ */
+export const bulkAssignPayeeToTransactions = async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        error: 'Validation failed',
+        details: errors.array()
+      });
+    }
+
+    const { uid: userId } = req.user;
+    const { transactionIds, payeeId, payeeName } = req.body;
+
+    if (!Array.isArray(transactionIds) || transactionIds.length === 0) {
+      return res.status(400).json({
+        error: 'Invalid request',
+        message: 'transactionIds must be a non-empty array'
+      });
+    }
+
+    const result = await firebaseService.bulkAssignPayeeToTransactions(userId, transactionIds, payeeId, payeeName);
+
+    res.json({
+      success: true,
+      message: `Payee assigned to ${result.updatedCount} transactions`,
+      ...result
+    });
+
+  } catch (error) {
+    console.error('Bulk assign payee error:', error);
+    res.status(500).json({
+      error: 'Failed to bulk assign payee',
+      message: error.message
+    });
+  }
+};
+
+/**
+ * @deprecated Use bulkAssignPayeeToTransactions instead
+ */
+export const deprecated_bulkAssignPayeeToTransactions = async (req, res) => {
+  return res.status(410).json({
+    error: 'Deprecated',
+    message: 'This endpoint is deprecated. Use /bulk-assign-payee instead.'
+  });
+};
+
+/**
+ * @deprecated Use assignPayeeToTransaction instead
+ */
+export const deprecated_assignPayeeToTransaction = async (req, res) => {
+  return res.status(410).json({
+    error: 'Deprecated',
+    message: 'This endpoint is deprecated. Use /assign-payee instead.'
+  });
+};
+
+/**
+ * Helper function to determine quarter from date
+ */
 function getQuarterFromDate(date) {
   const month = date.getMonth() + 1; // getMonth() returns 0-11
   

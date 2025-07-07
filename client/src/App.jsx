@@ -21,6 +21,7 @@ import Classification from './features/Classification/Classification';
 import Reports from './features/Reports/Reports';
 import CompanyManagement from './features/Companies/CompanyManagement';
 import UploadManagement from './features/Uploads/UploadManagement';
+import PayeeManagement from './features/Payees/PayeeManagement';
 
 // Create a client
 const queryClient = new QueryClient({
@@ -141,6 +142,7 @@ function App() {
                   <Route path="classification" element={<Classification />} />
                   <Route path="reports" element={<Reports />} />
                   <Route path="companies" element={<CompanyManagement />} />
+                  <Route path="payees" element={<PayeeManagement />} />
                 </Route>
                 
                 {/* Catch all route */}

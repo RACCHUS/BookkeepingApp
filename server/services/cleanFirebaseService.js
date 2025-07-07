@@ -744,6 +744,195 @@ class FirebaseService {
     }
   }
 
+  // === PAYEE MANAGEMENT METHODS ===
+
+  /**
+   * Assign payee to a transaction
+   */
+  async assignPayeeToTransaction(userId, transactionId, payeeId, payeeName) {
+    try {
+      if (!this.isInitialized) {
+        throw new Error('Firebase not initialized - cannot assign payee to transaction');
+      }
+
+      const transactionRef = this.db.collection('transactions').doc(transactionId);
+      const transactionDoc = await transactionRef.get();
+
+      if (!transactionDoc.exists) {
+        throw new Error('Transaction not found');
+      }
+
+      const transactionData = transactionDoc.data();
+      if (transactionData.userId !== userId) {
+        throw new Error('Unauthorized access to transaction');
+      }
+
+      // Update transaction with payee information
+      await transactionRef.update({
+        payeeId: payeeId,
+        payee: payeeName,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        lastModifiedBy: userId
+      });
+
+      return {
+        success: true,
+        id: transactionId
+      };
+    } catch (error) {
+      console.error('Error assigning payee to transaction:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Bulk assign payee to multiple transactions
+   */
+  async bulkAssignPayeeToTransactions(userId, transactionIds, payeeId, payeeName) {
+    try {
+      if (!this.isInitialized) {
+        throw new Error('Firebase not initialized - cannot bulk assign payee');
+      }
+
+      const batch = this.db.batch();
+      const results = [];
+
+      for (const transactionId of transactionIds) {
+        const transactionRef = this.db.collection('transactions').doc(transactionId);
+        const transactionDoc = await transactionRef.get();
+
+        if (!transactionDoc.exists) {
+          results.push({ id: transactionId, success: false, error: 'Transaction not found' });
+          continue;
+        }
+
+        const transactionData = transactionDoc.data();
+        if (transactionData.userId !== userId) {
+          results.push({ id: transactionId, success: false, error: 'Unauthorized access' });
+          continue;
+        }
+
+        batch.update(transactionRef, {
+          payeeId: payeeId,
+          payee: payeeName,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          lastModifiedBy: userId
+        });
+
+        results.push({ id: transactionId, success: true });
+      }
+
+      await batch.commit();
+
+      return {
+        success: true,
+        results,
+        updatedCount: results.filter(r => r.success).length
+      };
+    } catch (error) {
+      console.error('Error bulk assigning payee:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get transactions by payee
+   */
+  async getTransactionsByPayee(userId, payeeId, filters = {}) {
+    try {
+      if (!this.isInitialized) {
+        throw new Error('Firebase not initialized - cannot get transactions by payee');
+      }
+
+      let query = this.db.collection('transactions')
+        .where('userId', '==', userId)
+        .where('payeeId', '==', payeeId);
+
+      // Apply date filters if provided
+      if (filters.startDate) {
+        query = query.where('date', '>=', filters.startDate);
+      }
+      if (filters.endDate) {
+        query = query.where('date', '<=', filters.endDate);
+      }
+
+      // Order by date descending
+      query = query.orderBy('date', 'desc');
+
+      const snapshot = await query.get();
+      const transactions = [];
+
+      snapshot.forEach(doc => {
+        transactions.push({
+          id: doc.id,
+          ...doc.data()
+        });
+      });
+
+      return transactions;
+    } catch (error) {
+      console.error('Error getting transactions by payee:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get payee summary with total payments and transaction count
+   */
+  async getPayeeSummary(userId, payeeId, year = null) {
+    try {
+      if (!this.isInitialized) {
+        throw new Error('Firebase not initialized - cannot get payee summary');
+      }
+
+      let query = this.db.collection('transactions')
+        .where('userId', '==', userId)
+        .where('payeeId', '==', payeeId);
+
+      // Filter by year if provided
+      if (year) {
+        const startDate = new Date(`${year}-01-01`);
+        const endDate = new Date(`${year}-12-31`);
+        query = query.where('date', '>=', startDate).where('date', '<=', endDate);
+      }
+
+      const snapshot = await query.get();
+      
+      let totalPaid = 0;
+      let transactionCount = 0;
+      let lastPaymentDate = null;
+      let lastPaymentAmount = 0;
+
+      snapshot.forEach(doc => {
+        const transaction = doc.data();
+        const transactionDate = new Date(transaction.date);
+        
+        if (transaction.type === 'expense') {
+          totalPaid += transaction.amount;
+        }
+        
+        transactionCount++;
+        
+        if (!lastPaymentDate || transactionDate > lastPaymentDate) {
+          lastPaymentDate = transactionDate;
+          lastPaymentAmount = transaction.amount;
+        }
+      });
+
+      return {
+        payeeId,
+        totalPaid,
+        transactionCount,
+        lastPaymentDate,
+        lastPaymentAmount,
+        year: year || 'all'
+      };
+    } catch (error) {
+      console.error('Error getting payee summary:', error);
+      throw error;
+    }
+  }
+
   isUsingFirebase() {
     return this.isInitialized;
   }
