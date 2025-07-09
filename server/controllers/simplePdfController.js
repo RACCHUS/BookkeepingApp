@@ -100,7 +100,6 @@ export const processPDF = async (req, res) => {
         category: 'Office Expenses',
         type: 'expense',
         payee: 'Staples Inc',
-        confidence: 0.95,
         statementId
       },
       {
@@ -110,7 +109,6 @@ export const processPDF = async (req, res) => {
         category: 'Business Income',
         type: 'income',
         payee: 'ABC Company',
-        confidence: 0.98,
         statementId
       },
       {
@@ -120,7 +118,6 @@ export const processPDF = async (req, res) => {
         category: 'Car and Truck Expenses',
         type: 'expense',
         payee: 'Shell',
-        confidence: 0.92,
         statementId
       }
     ];
@@ -130,8 +127,11 @@ export const processPDF = async (req, res) => {
     if (autoSave) {
       try {
         for (const transaction of mockTransactions) {
+          // Defensive: ensure category is always a string
+          const safeCategory = typeof transaction.category === 'string' ? transaction.category : '';
           const result = await firebaseService.createTransaction(userId, {
             ...transaction,
+            category: safeCategory,
             statementId, // Always set statementId for robust linking
             source: 'pdf_import',
             sourceFile: `${fileId}.pdf`,

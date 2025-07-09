@@ -21,7 +21,7 @@ See FIRESTORE_INDEX_SETUP.md for setup instructions
 App Features & Implementation (Concise)
 Multi-company support: Assign/filter transactions and uploads by company (frontend: React Query, selectors; backend: Firestore, companyId fields, compound indexes).
 PDF import & extraction: Upload, parse, and extract Chase bank statements (frontend: file upload, status tracking; backend: multer, pdf-parse, async processing, Firestore record, Storage).
-Auto transaction classification: IRS categories using keyword/historical matching, confidence score, and user corrections (backend: service layer, rules, Firestore; frontend: display/confidence, correction UI).
+Rule-based transaction classification: IRS categories assigned by user-defined rules mapping transaction names to categories. If no rule matches, the category is left empty. (Backend: service layer, rules, Firestore; Frontend: display, correction UI for user to set rules.)
 Manual transaction entry/editing: Add/edit transactions in UI (React Hook Form, validation, REST API, Firestore updates).
 Upload management: CRUD, rename, delete, link to transactions, assign to company (frontend: UploadManagement, optimistic React Query; backend: Firestore, Storage, batch ops).
 Financial reports: P&L, tax, expense summaries, export to PDF (backend: reportService, pdfkit; frontend: reporting UI, export button).
@@ -99,9 +99,8 @@ multer for file uploads
 Specific Implementation Notes
 Transaction Classification
 Use IRS tax categories defined in shared/constants/categories.js
-Implement machine learning-like classification using keyword matching and historical data
-Store classification rules and user corrections for future improvements
-Provide confidence scores for auto-classifications
+Only rule-based classification: assign categories based on user-defined rules mapping transaction names to categories. If no rule matches, the category is left empty. No machine learning, historical data, or confidence scores are used.
+Allow user to manage rules for name-to-category mapping via the UI.
 PDF Processing
 Support Chase bank statement format primarily
 Implement generic PDF parsing as fallback

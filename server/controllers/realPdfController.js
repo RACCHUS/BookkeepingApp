@@ -286,36 +286,31 @@ async function processUploadedFile(fileId, filePath, userId, bankType, processId
     // Auto-save transactions if requested
     let savedTransactionIds = [];
     if (autoSave && parseResult.transactions.length > 0) {
-      // Prepare transactions for saving with advanced classification
       const transactionsToSave = [];
       for (const transaction of parseResult.transactions) {
-        // Use advanced classification
-        const classificationResult = await chasePDFParser.classifyTransactionAdvanced(transaction, userId);
+        // Use rule-based classification only
+        let { category } = await chasePDFParser.classifyTransaction(transaction, userId);
+        // Ensure category is always a string
+        if (typeof category !== 'string') category = '';
         const enhancedTransaction = {
           ...transaction,
-          category: classificationResult.category,
-          classificationInfo: {
-            autoClassified: true,
-            confidence: classificationResult.confidence,
-            source: classificationResult.source,
-            needsReview: classificationResult.needsReview
-          },
+          category,
           source: 'chase_pdf_import',
           sourceFile: path.basename(filePath),
           sourceFileId: fileId,
-          statementId: fileId, // <-- This is the key fix: always link to the statement/PDF
+          statementId: fileId, // always link to the statement/PDF
           isManuallyReviewed: false,
           createdBy: userId,
-          importedAt: new Date().toISOString(),
-          // Add company information
-          companyId: companyInfo.companyId,
-          companyName: companyInfo.companyName
+          companyId: companyInfo.companyId || null,
+          companyName: companyInfo.companyName || null
         };
         transactionsToSave.push(enhancedTransaction);
       }
       // Save transactions one by one to get IDs
       for (const transaction of transactionsToSave) {
         try {
+          // Defensive: ensure category is always a string
+          if (typeof transaction.category !== 'string') transaction.category = '';
           const result = await firebaseService.createTransaction(userId, transaction);
           savedTransactionIds.push(result.id);
         } catch (error) {

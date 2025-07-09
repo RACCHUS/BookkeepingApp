@@ -509,6 +509,7 @@ class ChasePDFParser {
   }
 
   classifyTransaction(description, type) {
+    if (typeof description !== 'string') return IRS_CATEGORIES.UNCATEGORIZED;
     const upperDesc = description.toUpperCase();
     
     // Check for exact matches first

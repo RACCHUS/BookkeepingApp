@@ -1,6 +1,6 @@
-import firebaseService from '../services/firebaseService.js';
 import transactionClassifierService from '../services/transactionClassifierService.js';
 
+// Classify a transaction using rule-based logic only
 export const classifyTransaction = async (req, res) => {
   try {
     const { uid: userId } = req.user;
@@ -29,54 +29,9 @@ export const classifyTransaction = async (req, res) => {
   }
 };
 
-export const trainClassifier = async (req, res) => {
-  try {
-    const { uid: userId } = req.user;
-    const { transactions } = req.body;
+// Remove training and learning endpoints (no longer needed)
 
-    if (!Array.isArray(transactions) || transactions.length === 0) {
-      return res.status(400).json({
-        error: 'Training data required',
-        message: 'Array of classified transactions is required for training'
-      });
-    }
-
-    const trainingResult = await transactionClassifierService.trainFromTransactions(transactions, userId);
-
-    res.json({
-      success: true,
-      message: 'Classifier training completed',
-      result: trainingResult
-    });
-
-  } catch (error) {
-    console.error('Training error:', error);
-    res.status(500).json({
-      error: 'Training failed',
-      message: error.message
-    });
-  }
-};
-
-export const getClassificationRules = async (req, res) => {
-  try {
-    const { uid: userId } = req.user;
-
-    const rules = await firebaseService.getClassificationRules(userId);
-
-    res.json({
-      success: true,
-      rules
-    });
-
-  } catch (error) {
-    console.error('Get classification rules error:', error);
-    res.status(500).json({
-      error: 'Failed to get classification rules',
-      message: error.message
-    });
-  }
-};
+// Optionally, keep getClassificationRules if you want to expose user rules
 
 export const createClassificationRule = async (req, res) => {
   try {

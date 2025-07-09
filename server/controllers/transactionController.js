@@ -171,18 +171,11 @@ export const createTransaction = async (req, res) => {
     const { uid: userId } = req.user;
     const transactionData = req.body;
 
-    // Auto-classify if category is not provided
-    let category = transactionData.category;
-    let classificationInfo = null;
-    
+    // Rule-based: always ensure category is a string
+    let category = typeof transactionData.category === 'string' ? transactionData.category : '';
     if (!category) {
       const classification = await transactionClassifierService.classifyTransaction(transactionData, userId);
-      category = classification.category;
-      classificationInfo = {
-        autoClassified: true,
-        confidence: classification.confidence,
-        source: classification.source
-      };
+      category = typeof classification.category === 'string' ? classification.category : '';
     }
 
     // Create transaction object based on schema
@@ -190,16 +183,13 @@ export const createTransaction = async (req, res) => {
       ...TransactionSchema,
       ...transactionData,
       category,
-      classificationInfo,
       date: new Date(transactionData.date),
       userId,
       createdBy: userId,
       lastModifiedBy: userId,
       taxYear: new Date(transactionData.date).getFullYear(),
       quarterlyPeriod: getQuarterFromDate(new Date(transactionData.date))
-
     };
-    // Business purpose is now optional for business expenses
 
     const transactionId = await firebaseService.createTransaction(userId, transaction);
 

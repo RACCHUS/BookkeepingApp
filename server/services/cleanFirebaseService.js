@@ -106,10 +106,15 @@ class FirebaseService {
   }
 
   async createTransaction(userId, transactionData) {
+    // Always ensure category is a string (never undefined/null)
+    const safeTransactionData = {
+      ...transactionData,
+      category: typeof transactionData.category === 'string' ? transactionData.category : '',
+    };
     if (this.isInitialized) {
       try {
         const docRef = await this.db.collection('transactions').add({
-          ...transactionData,
+          ...safeTransactionData,
           userId,
           createdAt: admin.firestore.FieldValue.serverTimestamp(),
           updatedAt: admin.firestore.FieldValue.serverTimestamp()
@@ -137,12 +142,11 @@ class FirebaseService {
       const id = this._generateId();
       const transaction = {
         id,
-        ...transactionData,
+        ...safeTransactionData,
         userId,
         createdAt: new Date(),
         updatedAt: new Date()
       };
-      
       this.mockData.transactions.push(transaction);
       console.log(`🎭 Mock: Created transaction ${id}`);
       return { id, data: transaction };
