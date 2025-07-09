@@ -169,7 +169,7 @@ const TransactionList = () => {
   const queryParams = useMemo(() => {
     const params = { ...filters };
     
-    if (categoryFilter) params.category = categoryFilter;
+    if (categoryFilter && categoryFilter !== '__uncategorized__') params.category = categoryFilter;
     if (typeFilter) params.type = typeFilter;
     if (sectionFilter) params.sectionCode = sectionFilter;
     if (companyFilter) params.companyId = companyFilter;
@@ -458,7 +458,12 @@ const TransactionList = () => {
 
     // Category filter
     if (categoryFilter) {
-      filtered = filtered.filter(transaction => transaction.category === categoryFilter);
+      if (categoryFilter === '__uncategorized__') {
+        // Show transactions with empty, null, undefined, or category === 'Uncategorized' (legacy)
+        filtered = filtered.filter(transaction => !transaction.category || transaction.category === '' || transaction.category === null || transaction.category === 'Uncategorized');
+      } else {
+        filtered = filtered.filter(transaction => transaction.category === categoryFilter);
+      }
     }
 
     // Statement/PDF filter
@@ -664,11 +669,13 @@ const TransactionList = () => {
                     disabled={bulkOperating}
                   >
                     <option value="">Change Category...</option>
-                    <option value="Office Expenses">Office Expenses</option>
-                    <option value="Gross Receipts or Sales">Gross Receipts or Sales</option>
-                    <option value="Meals and Entertainment">Meals and Entertainment</option>
-                    <option value="Travel">Travel</option>
-                    <option value="Utilities">Utilities</option>
+                    {Object.entries(CATEGORY_GROUPS).map(([group, cats]) => (
+                      <optgroup key={group} label={group.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}>
+                        {cats.map(category => (
+                          <option key={category} value={category}>{category}</option>
+                        ))}
+                      </optgroup>
+                    ))}
                   </select>
                   
                   <button
@@ -738,13 +745,14 @@ const TransactionList = () => {
             <option value="">All Categories</option>
             {Object.entries(CATEGORY_GROUPS).map(([group, cats]) => (
               <optgroup key={group} label={group.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}>
-                {cats.map(category => (
+                {cats.filter(category => category !== 'Uncategorized').map(category => (
                   <option key={category} value={category}>
                     {category}
                   </option>
                 ))}
               </optgroup>
             ))}
+            <option value="__uncategorized__">Uncategorized</option>
           </select>
         </div>
 

@@ -347,7 +347,8 @@ export const bulkUpdateTransactions = async (req, res) => {
         updateData.isManuallyReviewed = true;
         updateData.isTrainingData = true;
 
-        await firebaseService.updateTransaction(id, userId, updateData);
+        // FIX: Correct parameter order: userId, transactionId, updateData
+        await firebaseService.updateTransaction(userId, id, updateData);
         results.push({ id, success: true });
       } catch (error) {
         results.push({ id: transactionUpdate.id, success: false, error: error.message });

@@ -1,4 +1,5 @@
 import transactionClassifierService from '../services/transactionClassifierService.js';
+import firebaseService from '../services/cleanFirebaseService.js';
 
 // Classify a transaction using rule-based logic only
 export const classifyTransaction = async (req, res) => {

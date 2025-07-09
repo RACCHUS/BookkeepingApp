@@ -937,6 +937,49 @@ class FirebaseService {
     }
   }
 
+  /**
+   * Get uncategorized transactions for a user (category is empty string or 'Uncategorized')
+   * @param {string} userId
+   * @param {number} limit
+   * @returns {Promise<Array>}
+   */
+  async getUncategorizedTransactions(userId, limit = 50) {
+    if (!this.isInitialized) {
+      // Mock mode: filter mock transactions
+      return this.mockData.transactions
+        .filter(t => t.userId === userId && (!t.category || t.category === '' || t.category === 'Uncategorized'))
+        .slice(0, limit);
+    }
+    try {
+      // Try Firestore compound query first
+      let query = this.db.collection('transactions')
+        .where('userId', '==', userId)
+        .where('category', 'in', ['', 'Uncategorized'])
+        .orderBy('date', 'desc')
+        .limit(limit);
+      let snapshot;
+      try {
+        snapshot = await query.get();
+      } catch (err) {
+        // Fallback: Firestore may not support 'in' queries on category if not indexed
+        query = this.db.collection('transactions')
+          .where('userId', '==', userId)
+          .orderBy('date', 'desc')
+          .limit(limit * 2);
+        snapshot = await query.get();
+        // Filter manually
+        return snapshot.docs
+          .map(doc => ({ id: doc.id, ...doc.data() }))
+          .filter(t => !t.category || t.category === '' || t.category === 'Uncategorized')
+          .slice(0, limit);
+      }
+      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    } catch (error) {
+      console.error('Error getting uncategorized transactions:', error);
+      return [];
+    }
+  }
+
   isUsingFirebase() {
     return this.isInitialized;
   }
