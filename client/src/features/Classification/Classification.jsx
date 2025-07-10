@@ -133,8 +133,8 @@ const Classification = () => {
             >
               <option value="">Select category...</option>
               {Object.entries(IRS_CATEGORIES).map(([key, category]) => (
-                <option key={key} value={category.name}>
-                  {category.name}
+                <option key={key} value={category}>
+                  {category}
                 </option>
               ))}
             </select>

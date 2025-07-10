@@ -1,7 +1,102 @@
 // Clean Firebase service now that Firestore API is enabled
 import admin from '../config/firebaseAdmin.js';
-
 class FirebaseService {
+  /**
+   * Get all classification rules for a user
+   * @param {string} userId
+   * @returns {Promise<Array>}
+   */
+  async getClassificationRules(userId) {
+    if (!this.isInitialized) {
+      // Mock mode
+      return (this.mockData.rules || []).filter(r => r.userId === userId);
+    }
+    try {
+      const snapshot = await this.db.collection('classificationRules')
+        .where('userId', '==', userId)
+        .orderBy('createdAt', 'desc')
+        .get();
+      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    } catch (error) {
+      console.error('Error getting classification rules:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Update a classification rule for a user
+   * @param {string} userId
+   * @param {string} ruleId
+   * @param {object} ruleData
+   * @returns {Promise<void>}
+   */
+  async updateClassificationRule(userId, ruleId, ruleData) {
+    if (!this.isInitialized) {
+      // Mock mode
+      if (!this.mockData.rules) return;
+      const idx = this.mockData.rules.findIndex(r => r.id === ruleId && r.userId === userId);
+      if (idx !== -1) {
+        this.mockData.rules[idx] = { ...this.mockData.rules[idx], ...ruleData, updatedAt: new Date() };
+      }
+      return;
+    }
+    try {
+      const docRef = this.db.collection('classificationRules').doc(ruleId);
+      await docRef.update({ ...ruleData, updatedAt: admin.firestore.FieldValue.serverTimestamp() });
+    } catch (error) {
+      console.error('Error updating classification rule:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Delete a classification rule for a user
+   * @param {string} userId
+   * @param {string} ruleId
+   * @returns {Promise<void>}
+   */
+  async deleteClassificationRule(userId, ruleId) {
+    if (!this.isInitialized) {
+      // Mock mode
+      if (!this.mockData.rules) return;
+      this.mockData.rules = this.mockData.rules.filter(r => !(r.id === ruleId && r.userId === userId));
+      return;
+    }
+    try {
+      await this.db.collection('classificationRules').doc(ruleId).delete();
+    } catch (error) {
+      console.error('Error deleting classification rule:', error);
+      throw error;
+    }
+  }
+  /**
+   * Create a classification rule for a user
+   * @param {string} userId
+   * @param {object} ruleData
+   * @returns {Promise<string>} The new rule's ID
+   */
+  async createClassificationRule(userId, ruleData) {
+    if (!this.isInitialized) {
+      // Mock mode: just push to mock array
+      if (!this.mockData.rules) this.mockData.rules = [];
+      const id = this._generateId();
+      this.mockData.rules.push({ id, userId, ...ruleData });
+      return id;
+    }
+    try {
+      const docRef = await this.db.collection('classificationRules').add({
+        ...ruleData,
+        userId,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+      await docRef.update({ id: docRef.id });
+      return docRef.id;
+    } catch (error) {
+      console.error('Error creating classification rule:', error);
+      throw error;
+    }
+  }
   constructor() {
     this.isInitialized = false;
     this.mockData = {

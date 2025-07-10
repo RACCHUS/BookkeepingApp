@@ -269,7 +269,7 @@ async function processUploadedFile(fileId, filePath, userId, bankType, processId
     });
 
     // Parse the PDF using our Chase parser
-    const parseResult = await chasePDFParser.parsePDF(filePath);
+    const parseResult = await chasePDFParser.parsePDF(filePath, userId, companyInfo.companyId, companyInfo.companyName);
 
     if (!parseResult.success) {
       throw new Error(parseResult.error || 'PDF parsing failed');
@@ -441,12 +441,15 @@ export const getUserUploads = async (req, res) => {
           
           // Calculate date range from transactions
           let dateRange = null;
-          if (transactions.length > 0) {
-            const dates = transactions.map(t => new Date(t.date)).sort((a, b) => a - b);
+          const validTransactions = transactions.filter(t => t.date && !isNaN(Date.parse(t.date)));
+          if (validTransactions.length > 0) {
+            const dates = validTransactions.map(t => new Date(t.date)).sort((a, b) => a - b);
             dateRange = {
               start: dates[0].toISOString().split('T')[0],
               end: dates[dates.length - 1].toISOString().split('T')[0]
             };
+          } else {
+            dateRange = null;
           }
           
           return {
@@ -681,12 +684,15 @@ export const getUploadDetails = async (req, res) => {
       
       // Calculate date range from transactions
       let dateRange = null;
-      if (transactions.length > 0) {
-        const dates = transactions.map(t => new Date(t.date)).sort((a, b) => a - b);
+      const validTransactions = transactions.filter(t => t.date && !isNaN(Date.parse(t.date)));
+      if (validTransactions.length > 0) {
+        const dates = validTransactions.map(t => new Date(t.date)).sort((a, b) => a - b);
         dateRange = {
           start: dates[0].toISOString().split('T')[0],
           end: dates[dates.length - 1].toISOString().split('T')[0]
         };
+      } else {
+        dateRange = null;
       }
       
       const uploadDetails = {

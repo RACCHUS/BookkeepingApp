@@ -32,7 +32,20 @@ export const classifyTransaction = async (req, res) => {
 
 // Remove training and learning endpoints (no longer needed)
 
-// Optionally, keep getClassificationRules if you want to expose user rules
+// Get all classification rules for the current user
+export const getClassificationRules = async (req, res) => {
+  try {
+    const { uid: userId } = req.user;
+    const rules = await firebaseService.getClassificationRules(userId);
+    res.json({ rules });
+  } catch (error) {
+    console.error('Get classification rules error:', error);
+    res.status(500).json({
+      error: 'Failed to get classification rules',
+      message: error.message
+    });
+  }
+};
 
 export const createClassificationRule = async (req, res) => {
   try {

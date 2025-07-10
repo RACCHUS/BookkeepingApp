@@ -7,6 +7,7 @@ import ChaseDateUtils from './parsers/ChaseDateUtils.js';
 import ChaseClassifier from './parsers/ChaseClassifier.js';
 import ChaseSummary from './parsers/ChaseSummary.js';
 import { IRS_CATEGORIES } from '../../shared/constants/categories.js';
+import { parseTransactionLine, extractCompanyInfo, createTransaction } from './parsers/index.js';
 
 class ChasePDFParser {
   constructor() {
@@ -174,24 +175,29 @@ class ChasePDFParser {
     };
   }
 
-  async parsePDF(filePath) {
+  /**
+   * Parse a Chase PDF and extract transactions using user rules.
+   * @param {string} filePath
+   * @param {string} userId
+   */
+  async parsePDF(filePath, userId, companyId = '', companyName = '') {
     try {
       console.log(`📄 Parsing Chase PDF: ${filePath}`);
-      
+
       const dataBuffer = await fs.readFile(filePath);
       const pdfData = await pdfParse(dataBuffer);
       const text = pdfData.text;
-      
+
       console.log(`📖 Extracted ${text.length} characters from PDF`);
-      
+
       // Extract account information
       const accountInfo = this.extractAccountInfo(text);
       console.log('📋 Account Info:', accountInfo);
-      
-      // Extract transactions
-      const transactions = this.extractTransactions(text, accountInfo);
-      console.log(`📊 Found ${transactions.length} transactions`);
-      
+
+      // Extract transactions (await async)
+      const transactions = await this.extractTransactions(text, accountInfo, userId, companyId, companyName);
+      console.log(`📊 Found ${Array.isArray(transactions) ? transactions.length : 'undefined'} transactions`);
+
       return {
         success: true,
         accountInfo,
@@ -207,7 +213,7 @@ class ChasePDFParser {
           sectionBreakdown: this.getAvailableSections(transactions)
         }
       };
-      
+
     } catch (error) {
       console.error('❌ PDF parsing error:', error);
       return {
@@ -240,7 +246,7 @@ class ChasePDFParser {
     }
 
     // Extract company information from statement header
-    const companyInfo = this.extractCompanyInfo(text);
+    const companyInfo = extractCompanyInfo(text);
 
     return {
       accountNumber: accountMatch ? accountMatch[1] : null,
@@ -252,90 +258,20 @@ class ChasePDFParser {
   }
 
   /**
-   * Extract company information from Chase PDF statement header
-   * @param {string} text - PDF text content
-   * @returns {object} Company information object
+   * Extracts transactions from PDF text, applying user rules via userId.
+   * @param {string} text
+   * @param {object} accountInfo
+   * @param {string} userId
+   * @returns {Promise<Array>} transactions
    */
-  extractCompanyInfo(text) {
-    // Look for company name patterns in the first few lines of the statement
-    const lines = text.split('\n').slice(0, 20); // Check first 20 lines
-    
-    let companyName = null;
-    let companyAddress = null;
-    
-    // Common patterns for business names in Chase statements
-    const businessPatterns = [
-      /^([A-Z\s]+(?:INC|LLC|CORP|CORPORATION|COMPANY|CO|LTD|LIMITED|CONSTRUCTION|ENTERPRISES|SERVICES|GROUP)\.?),?\s*$/i,
-      /^([A-Z\s]+(?:&|AND)\s+[A-Z\s]+(?:INC|LLC|CORP|CONSTRUCTION)\.?),?\s*$/i,
-      /^([A-Z][A-Za-z\s]+(?:CONSTRUCTION|CONTRACTING|BUILDER|BUILDERS|COMPANY)\.?),?\s*$/i,
-      /^([A-Z][A-Za-z\s]{10,50})\s*$/  // General business name pattern (10-50 chars, starts with capital)
-    ];
-    
-    // Address patterns
-    const addressPatterns = [
-      /^\d+\s+[A-Za-z\s]+(?:Street|St|Avenue|Ave|Road|Rd|Drive|Dr|Lane|Ln|Boulevard|Blvd|Circle|Cir|Court|Ct|Way|Place|Pl)\.?\s*$/i,
-      /^[A-Za-z\s]+,\s*[A-Z]{2}\s+\d{5}(?:-\d{4})?\s*$/  // City, State ZIP
-    ];
-    
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i].trim();
-      
-      // Skip empty lines and common header text
-      if (!line || 
-          line.includes('Chase') || 
-          line.includes('Statement') || 
-          line.includes('Account') || 
-          line.includes('Period') ||
-          line.includes('Balance') ||
-          line.includes('Page') ||
-          line.match(/^\d+$/)) {
-        continue;
-      }
-      
-      // Check for business name patterns
-      if (!companyName) {
-        for (const pattern of businessPatterns) {
-          const match = line.match(pattern);
-          if (match) {
-            companyName = match[1].trim();
-            console.log(`🏢 Extracted company name: ${companyName}`);
-            break;
-          }
-        }
-      }
-      
-      // Check for address patterns (usually appears after company name)
-      if (companyName && !companyAddress) {
-        for (const pattern of addressPatterns) {
-          if (pattern.test(line)) {
-            companyAddress = line;
-            console.log(`📍 Extracted company address: ${companyAddress}`);
-            break;
-          }
-        }
-      }
-      
-      // If we have both, we can stop looking
-      if (companyName && companyAddress) {
-        break;
-      }
-    }
-    
-    return {
-      name: companyName,
-      address: companyAddress,
-      extracted: !!(companyName || companyAddress)
-    };
-  }
-
-  extractTransactions(text, accountInfo) {
+  async extractTransactions(text, accountInfo, userId, companyId = '', companyName = '') {
     const transactions = [];
     this.extractionLog = []; // Reset log
-    
+
     // Get the statement year from period or current year
     const currentYear = new Date().getFullYear();
     let statementYear = currentYear;
-    
+
     // Try to extract year from statement period
     if (accountInfo.statementPeriod) {
       const yearMatch = accountInfo.statementPeriod.end.match(/\d{4}/);
@@ -347,17 +283,17 @@ class ChasePDFParser {
     this.extractionLog.push(`Using statement year: ${statementYear}`);
 
     // Extract different types of transactions (section-based)
-    const deposits = this.extractDeposits(text, statementYear);
-    const checks = this.extractChecks(text, statementYear);
-    const cardTransactions = this.extractCardTransactions(text, statementYear);
-    const electronicTransactions = this.extractElectronicTransactions(text, statementYear);
+    const deposits = await this.extractDeposits(text, statementYear, userId, companyId, companyName);
+    const checks = await this.extractChecks(text, statementYear, userId, companyId, companyName);
+    const cardTransactions = await this.extractCardTransactions(text, statementYear, userId, companyId, companyName);
+    const electronicTransactions = await this.extractElectronicTransactions(text, statementYear, userId, companyId, companyName);
 
     transactions.push(...deposits, ...checks, ...cardTransactions, ...electronicTransactions);
 
     // Fallback: line-by-line extraction if total is suspiciously low (< 25)
     if (transactions.length < 25) {
       this.extractionLog.push('⚠️ Low transaction count, running line-by-line fallback extraction');
-      const fallbackTxs = this.extractTransactionsLineByLine(text, statementYear);
+      const fallbackTxs = await this.extractTransactionsLineByLine(text, statementYear, userId, companyId, companyName);
       // Only add transactions not already present (by date, amount, description)
       for (const tx of fallbackTxs) {
         if (!transactions.some(t => t.date === tx.date && t.amount === tx.amount && t.description === tx.description)) {
@@ -373,7 +309,7 @@ class ChasePDFParser {
     return transactions.sort((a, b) => new Date(a.date) - new Date(b.date));
   }
   // Fallback: line-by-line extraction logic from improvedChasePDFParser.js
-  extractTransactionsLineByLine(text, year) {
+  async extractTransactionsLineByLine(text, year, userId, companyId = '', companyName = '') {
     const transactions = [];
     const lines = text.split('\n');
     for (let i = 0; i < lines.length; i++) {
@@ -382,12 +318,15 @@ class ChasePDFParser {
       // Deposits: 01/08Remote Online Deposit 1$3,640.00
       const depositMatch = line.match(/^(\d{2}\/\d{2})Remote Online Deposit \d+\$?([\d,]+\.?\d{2})$/);
       if (depositMatch) {
-        const transaction = this.createTransaction(
+        const transaction = await createTransaction(
           depositMatch[1],
           'Remote Online Deposit',
           depositMatch[2],
           'income',
-          year
+          year,
+          userId,
+          companyId,
+          companyName
         );
         if (transaction) {
           transaction.section = 'DEPOSITS AND ADDITIONS';
@@ -399,12 +338,15 @@ class ChasePDFParser {
       // Card Purchases: 01/02Card Purchase 12/29 Chevron 0202648 Plantation FL Card 1819$38.80
       const cardMatch = line.match(/^(\d{2}\/\d{2})Card Purchase(?: With Pin)?(?: \d{2}\/\d{2})?\s+(.+?)\s+Card \d+\$?([\d,]+\.?\d{2})$/);
       if (cardMatch) {
-        const transaction = this.createTransaction(
+        const transaction = await createTransaction(
           cardMatch[1],
           cardMatch[2].trim(),
           cardMatch[3],
           'expense',
-          year
+          year,
+          userId,
+          companyId,
+          companyName
         );
         if (transaction) {
           transaction.section = 'ATM & DEBIT CARD WITHDRAWALS';
@@ -427,12 +369,15 @@ class ChasePDFParser {
           }
         }
         if (amount) {
-          const transaction = this.createTransaction(
+          const transaction = await createTransaction(
             electronicMatch[1],
             `Electronic Payment: ${description}`,
             amount,
             'expense',
-            year
+            year,
+            userId,
+            companyId,
+            companyName
           );
           if (transaction) {
             transaction.section = 'ELECTRONIC WITHDRAWALS';
@@ -445,12 +390,15 @@ class ChasePDFParser {
       // Checks: 01/19 CHECK #538 $2,500.00 or similar
       const checkMatch = line.match(/^(\d{2}\/\d{2}).*CHECK.*#?(\d+).*$([\d,]+\.?\d{2})$/i);
       if (checkMatch) {
-        const transaction = this.createTransaction(
+        const transaction = await createTransaction(
           checkMatch[1],
           `Check #${checkMatch[2]}`,
           checkMatch[3],
           'expense',
-          year
+          year,
+          userId,
+          companyId,
+          companyName
         );
         if (transaction) {
           transaction.section = 'CHECKS PAID';
@@ -464,48 +412,7 @@ class ChasePDFParser {
   }
 
   parseTransactionLine(line, year) {
-    // Pattern for Chase transaction: MM/DD DESCRIPTION AMOUNT
-    const match = line.match(/^(\d{1,2}\/\d{1,2})\s+(.+?)\s+([-$]?[\d,]+\.?\d{2})\s*$/);
-    
-    if (!match) return null;
-
-    const [, dateStr, description, amountStr] = match;
-    
-    // Parse date
-    const dateParts = dateStr.split('/');
-    const month = parseInt(dateParts[0]);
-    const day = parseInt(dateParts[1]);
-    // Always output as ISO 8601 with T12:00:00 to avoid timezone issues
-    const fullDate = `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}T12:00:00`;
-    
-    // Parse amount
-    let amount = parseFloat(amountStr.replace(/[$,]/g, ''));
-    const isNegative = amountStr.includes('-') || amount < 0;
-    amount = Math.abs(amount);
-    
-    // Determine transaction type
-    const type = isNegative ? 'expense' : 'income';
-    
-    // Clean up description
-    const cleanDescription = description.trim();
-    
-    // Auto-classify based on description
-    const category = this.classifyTransaction(cleanDescription, type);
-    
-    // Extract payee from description
-    const payee = this.extractPayee(cleanDescription);
-    
-    return {
-      date: fullDate,
-      amount: amount,
-      description: cleanDescription,
-      category: category,
-      type: type,
-      payee: payee,
-      confidence: category !== IRS_CATEGORIES.UNCATEGORIZED ? 0.8 : 0.3,
-      source: 'chase_pdf',
-      needsReview: category === IRS_CATEGORIES.UNCATEGORIZED || !payee
-    };
+    return parseTransactionLine(line, year);
   }
 
   classifyTransaction(description, type) {
@@ -659,20 +566,34 @@ class ChasePDFParser {
     return summary;
   }
 
-  extractDeposits(text, year) {
-    // Use new section extractor and transaction parser
+  /**
+   * Asynchronously extract deposit transactions and apply user rule-based classification.
+   */
+  async extractDeposits(text, year, userId, companyId = '', companyName = '') {
     const sectionText = ChaseSectionExtractor.extractDepositsSection(text);
     const deposits = [];
     if (sectionText) {
       const lines = sectionText.split('\n');
       for (const line of lines) {
         if (line.includes('DATE') || line.includes('DESCRIPTION') || line.includes('Total')) continue;
-        const tx = ChaseTransactionParser.parseDepositLine(line, year);
-        if (tx) {
-          // Add section metadata for filtering
-          tx.section = 'DEPOSITS AND ADDITIONS';
-          tx.sectionCode = 'deposits';
-          deposits.push(tx);
+        const txRaw = ChaseTransactionParser.parseDepositLine(line, year);
+        if (txRaw) {
+          // Use our async createTransaction to apply user rules
+          const tx = await createTransaction(
+            txRaw.date ? txRaw.date.split('T')[0].slice(5) : '', // MM/DD from ISO
+            txRaw.description || '',
+            txRaw.amount != null ? txRaw.amount.toString() : '',
+            'income',
+            year,
+            userId,
+            companyId,
+            companyName
+          );
+          if (tx) {
+            tx.section = 'DEPOSITS AND ADDITIONS';
+            tx.sectionCode = 'deposits';
+            deposits.push(tx);
+          }
         }
       }
     }
@@ -680,20 +601,33 @@ class ChasePDFParser {
     return deposits;
   }
 
-  extractChecks(text, year) {
-    // Use new section extractor and transaction parser
+  /**
+   * Asynchronously extract check transactions and apply user rule-based classification.
+   */
+  async extractChecks(text, year, userId, companyId = '', companyName = '') {
     const sectionText = ChaseSectionExtractor.extractChecksSection(text);
     const checks = [];
     if (sectionText) {
       const lines = sectionText.split('\n');
       for (const line of lines) {
         if (line.includes('DATE') || line.includes('DESCRIPTION') || line.includes('Total')) continue;
-        const tx = ChaseTransactionParser.parseCheckLine ? ChaseTransactionParser.parseCheckLine(line, year) : null;
-        if (tx) {
-          // Add section metadata for filtering
-          tx.section = 'CHECKS PAID';
-          tx.sectionCode = 'checks';
-          checks.push(tx);
+        const txRaw = ChaseTransactionParser.parseCheckLine ? ChaseTransactionParser.parseCheckLine(line, year) : null;
+        if (txRaw) {
+          const tx = await createTransaction(
+            txRaw.date ? txRaw.date.split('T')[0].slice(5) : '',
+            txRaw.description || '',
+            txRaw.amount != null ? txRaw.amount.toString() : '',
+            'expense',
+            year,
+            userId,
+            companyId,
+            companyName
+          );
+          if (tx) {
+            tx.section = 'CHECKS PAID';
+            tx.sectionCode = 'checks';
+            checks.push(tx);
+          }
         }
       }
     }
@@ -701,20 +635,33 @@ class ChasePDFParser {
     return checks;
   }
 
-  extractCardTransactions(text, year) {
-    // Use new section extractor and transaction parser
+  /**
+   * Asynchronously extract card transactions and apply user rule-based classification.
+   */
+  async extractCardTransactions(text, year, userId, companyId = '', companyName = '') {
     const sectionText = ChaseSectionExtractor.extractCardSection(text);
     const cardTransactions = [];
     if (sectionText) {
       const lines = sectionText.split('\n');
       for (const line of lines) {
         if (line.includes('DATE') || line.includes('DESCRIPTION') || line.includes('Total')) continue;
-        const tx = ChaseTransactionParser.parseCardLine ? ChaseTransactionParser.parseCardLine(line, year) : null;
-        if (tx) {
-          // Add section metadata for filtering
-          tx.section = 'ATM & DEBIT CARD WITHDRAWALS';
-          tx.sectionCode = 'card';
-          cardTransactions.push(tx);
+        const txRaw = ChaseTransactionParser.parseCardLine ? ChaseTransactionParser.parseCardLine(line, year) : null;
+        if (txRaw) {
+          const tx = await createTransaction(
+            txRaw.date ? txRaw.date.split('T')[0].slice(5) : '',
+            txRaw.description || '',
+            txRaw.amount != null ? txRaw.amount.toString() : '',
+            'expense',
+            year,
+            userId,
+            companyId,
+            companyName
+          );
+          if (tx) {
+            tx.section = 'ATM & DEBIT CARD WITHDRAWALS';
+            tx.sectionCode = 'card';
+            cardTransactions.push(tx);
+          }
         }
       }
     }
@@ -722,31 +669,33 @@ class ChasePDFParser {
     return cardTransactions;
   }
 
-  extractElectronicTransactions(text, year) {
-    // Use new section extractor and transaction parser
+  /**
+   * Asynchronously extract electronic transactions and apply user rule-based classification.
+   */
+  async extractElectronicTransactions(text, year, userId, companyId = '', companyName = '') {
     const sectionText = ChaseSectionExtractor.extractElectronicSection(text);
     const electronicTransactions = [];
     if (sectionText) {
       const lines = sectionText.split('\n').map(line => line.trim()).filter(line => line.length > 0);
-      
+
       // Parse multi-line electronic transactions
       for (let i = 0; i < lines.length; i++) {
         const line = lines[i];
-        
+
         // Skip headers and totals
         if (line.includes('DATE') || line.includes('DESCRIPTION') || line.includes('AMOUNT') || line.includes('Total')) {
           continue;
         }
-        
+
         // Look for date + company line (handle both single-line and multi-line formats)
         const dateCompanyMatch = line.match(/^(\d{2}\/\d{2}).*?Orig CO Name:([^O\n]+?)(?:Orig|$)/);
         if (dateCompanyMatch) {
           const dateStr = dateCompanyMatch[1];
-          let companyName = dateCompanyMatch[2].trim();
-          
+          let companyNameVal = dateCompanyMatch[2].trim();
+
           // Clean up company name (remove extra info)
-          companyName = companyName.replace(/\s+ID:.*$/, '').trim();
-          
+          companyNameVal = companyNameVal.replace(/\s+ID:.*$/, '').trim();
+
           // Try to find amount on the same line first
           let amount = null;
           const sameLineAmountMatch = line.match(/\$?([\d,]+\.\d{2})/);
@@ -756,12 +705,12 @@ class ChasePDFParser {
             // Look ahead for the amount in the next few lines (multi-line format)
             for (let j = i + 1; j < Math.min(i + 10, lines.length); j++) {
               const nextLine = lines[j].trim();
-              
+
               // Stop if we hit another date line or total
               if (nextLine.match(/^\d{2}\/\d{2}/) || nextLine.includes('Total')) {
                 break;
               }
-              
+
               // Look for amount pattern
               const amountMatch = nextLine.match(/^\$?([\d,]+\.\d{2})$/);
               if (amountMatch) {
@@ -770,22 +719,23 @@ class ChasePDFParser {
               }
             }
           }
-          
+
           if (amount && amount > 0 && amount <= 50000) {
-            const date = this.parseDateToISO(dateStr, year);
-            const transaction = {
-              date,
-              amount,
-              description: `Electronic Payment: ${companyName}`,
-              type: 'expense',
-              category: 'Business Expenses',
-              subCategory: 'Electronic Payments',
-              source: 'chase_pdf',
-              // Add section metadata for filtering
-              section: 'ELECTRONIC WITHDRAWALS',
-              sectionCode: 'electronic'
-            };
-            electronicTransactions.push(transaction);
+            const tx = await createTransaction(
+              dateStr,
+              `Electronic Payment: ${companyNameVal}`,
+              amount.toString(),
+              'expense',
+              year,
+              userId,
+              companyId,
+              companyName
+            );
+            if (tx) {
+              tx.section = 'ELECTRONIC WITHDRAWALS';
+              tx.sectionCode = 'electronic';
+              electronicTransactions.push(tx);
+            }
           }
         }
       }
@@ -794,53 +744,18 @@ class ChasePDFParser {
     return electronicTransactions;
   }
 
-  createTransaction(dateStr, description, amountStr, type, year) {
-    try {
-      // Parse date: MM/DD format
-      const dateParts = dateStr.split('/');
-      const month = parseInt(dateParts[0]);
-      const day = parseInt(dateParts[1]);
-      
-      // Validate date components
-      if (month < 1 || month > 12 || day < 1 || day > 31) {
-        return null;
-      }
-      // Always output as ISO 8601 with T12:00:00 to avoid timezone issues
-      const fullDate = `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}T12:00:00`;
-      
-      // Parse amount
-      const amount = parseFloat(amountStr.replace(/[$,]/g, ''));
-      
-      // Validate amount is reasonable
-      if (isNaN(amount) || amount <= 0 || amount > 1000000) {
-        console.warn(`Invalid amount: ${amountStr} -> ${amount}`);
-        return null;
-      }
-      
-      // Clean up description
-      const cleanDescription = description.replace(/\s+/g, ' ').trim();
-      
-      // Auto-classify based on description
-      const category = this.classifyTransaction(cleanDescription, type);
-      
-      // Extract payee from description (null if not available, e.g., for checks)
-      const payee = this.extractPayee(cleanDescription);
-      
-      return {
-        date: fullDate,
-        amount: amount,
-        description: cleanDescription,
-        category: category,
-        type: type,
-        payee: payee, // Can be null for transactions without payee info (like checks)
-        confidence: category !== 'Uncategorized' ? 0.8 : 0.3,
-        source: 'chase_pdf',
-        needsReview: category === 'Uncategorized' || payee === null
-      };
-    } catch (error) {
-      console.error('Error creating transaction:', error);
-      return null;
-    }
+  /**
+   * Asynchronously creates a transaction object, applying user rule-based classification.
+   * @param {string} dateStr - MM/DD format
+   * @param {string} description
+   * @param {string} amountStr
+   * @param {string} type - 'income' or 'expense'
+   * @param {number} year
+   * @param {string} userId
+   * @returns {Promise<Object|null>} Transaction object or null if invalid
+   */
+  async createTransaction(dateStr, description, amountStr, type, year, userId, companyId = '', companyName = '') {
+    return await createTransaction(dateStr, description, amountStr, type, year, userId, companyId, companyName);
   }
 
   async classifyTransactionAdvanced(transaction, userId) {
