@@ -180,6 +180,24 @@ const PDFUpload = () => {
     }
   });
 
+  // Mutation for updating upload company information
+  const updateUploadCompanyMutation = useMutation({
+    mutationFn: ({ uploadId, companyId, companyName }) => 
+      apiClient.pdf.updateUploadCompany(uploadId, { companyId, companyName }),
+    onSuccess: (response, { uploadId, companyId, companyName }) => {
+      // Update the local file state
+      setUploadedFiles(prev => prev.map(file => 
+        file.id === uploadId 
+          ? { ...file, companyId, companyName: companyName }
+          : file
+      ));
+    },
+    onError: (error) => {
+      console.error('Failed to update upload company:', error);
+      toast.error('Failed to update upload company');
+    }
+  });
+
   // Function to poll processing status
   const pollProcessingStatus = async (processId, uploadId) => {
     const maxAttempts = 60; // 5 minutes max (5 second intervals)
@@ -277,10 +295,34 @@ const PDFUpload = () => {
     if ((companyId || companyId === '') && companyData) {
       setSelectedCompany(companyId);
       setSelectedCompanyData(companyData);
+      
+      // Update company for all uploaded files that are not yet processed
+      uploadedFiles.forEach(file => {
+        if (file.id && file.status === 'uploaded') {
+          updateUploadCompanyMutation.mutate({
+            uploadId: file.id,
+            companyId: companyId,
+            companyName: companyData.name
+          });
+        }
+      });
+      
     } else if (companyData && (companyData.id || companyData.id === '')) {
       // Fallback: use ID from company data if companyId is missing
       setSelectedCompany(companyData.id);
       setSelectedCompanyData(companyData);
+      
+      // Update company for all uploaded files that are not yet processed
+      uploadedFiles.forEach(file => {
+        if (file.id && file.status === 'uploaded') {
+          updateUploadCompanyMutation.mutate({
+            uploadId: file.id,
+            companyId: companyData.id,
+            companyName: companyData.name
+          });
+        }
+      });
+      
     } else {
       console.warn('Invalid company selection:', { companyId, companyData });
     }

@@ -9,6 +9,7 @@ import {
   deleteUpload,
   renameUpload,
   getUploadDetails,
+  updateUploadCompany,
   testChasePDF
 } from '../controllers/realPdfController.js';
 
@@ -43,6 +44,12 @@ router.put('/uploads/:uploadId/rename',
   param('uploadId').notEmpty().withMessage('Upload ID is required'),
   body('name').isLength({ min: 1, max: 255 }).withMessage('Name must be between 1 and 255 characters'),
   renameUpload
+);
+router.put('/uploads/:uploadId/company', 
+  param('uploadId').notEmpty().withMessage('Upload ID is required'),
+  body('companyId').optional().isString(),
+  body('companyName').optional().isString(),
+  updateUploadCompany
 );
 router.delete('/uploads/:uploadId', 
   param('uploadId').notEmpty().withMessage('Upload ID is required'),

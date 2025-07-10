@@ -64,6 +64,7 @@ const apiClient = {
     getUploads: (params) => api.get('/pdf/uploads', { params }),
     deleteUpload: (uploadId) => api.delete(`/pdf/uploads/${uploadId}`),
     renameUpload: (uploadId, data) => api.put(`/pdf/uploads/${uploadId}/rename`, data),
+    updateUploadCompany: (uploadId, data) => api.put(`/pdf/uploads/${uploadId}/company`, data),
     getUploadDetails: (uploadId) => api.get(`/pdf/uploads/${uploadId}`)
   },
 

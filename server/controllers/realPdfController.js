@@ -921,3 +921,88 @@ export const deleteUpload = async (req, res) => {
     });
   }
 };
+
+// Update upload company information
+export const updateUploadCompany = async (req, res) => {
+  try {
+    const { uid: userId } = req.user;
+    const { uploadId } = req.params;
+    const { companyId, companyName } = req.body;
+
+    if (!userId) {
+      return res.status(401).json({
+        error: 'Authentication required',
+        message: 'User must be authenticated to update uploads'
+      });
+    }
+
+    // Sanitize company information (handle empty strings)
+    const sanitizedCompanyId = companyId && companyId.trim() !== '' ? companyId.trim() : null;
+    const sanitizedCompanyName = companyName && companyName.trim() !== '' ? companyName.trim() : null;
+
+    console.log(`📄 Updating upload ${uploadId} company: ${sanitizedCompanyName || sanitizedCompanyId || 'None'}`);
+
+    // Find the upload file
+    const uploadsDir = path.join(__dirname, '../../uploads');
+    const files = await fs.readdir(uploadsDir);
+    const uploadFile = files.find(fileName => fileName.startsWith(uploadId));
+
+    if (!uploadFile) {
+      return res.status(404).json({
+        error: 'Upload not found',
+        message: 'The requested upload could not be found'
+      });
+    }
+
+    const filePath = path.join(uploadsDir, uploadFile);
+    const metaPath = filePath + '.meta.json';
+
+    // Load existing metadata
+    let metadata = {};
+    try {
+      const metaRaw = await fs.readFile(metaPath, 'utf-8');
+      metadata = JSON.parse(metaRaw);
+    } catch (e) {
+      // Create new metadata if none exists
+      metadata = { id: uploadId };
+    }
+
+    // Update the company information
+    metadata.companyId = sanitizedCompanyId;
+    metadata.companyName = sanitizedCompanyName;
+    metadata.updatedAt = new Date().toISOString();
+
+    // Save updated metadata to file system
+    await fs.writeFile(metaPath, JSON.stringify(metadata, null, 2));
+
+    // Also update the Firestore record if it exists
+    try {
+      await firebaseService.updateUpload(userId, uploadId, {
+        companyId: sanitizedCompanyId,
+        companyName: sanitizedCompanyName,
+        updatedAt: new Date().toISOString()
+      });
+      console.log(`✅ Updated Firestore record for upload: ${uploadId}`);
+    } catch (firestoreError) {
+      console.warn('Failed to update Firestore record, but file system updated:', firestoreError.message);
+      // Don't fail the request if Firestore update fails, file system is updated
+    }
+
+    res.json({
+      success: true,
+      message: 'Upload company information updated successfully',
+      data: {
+        id: uploadId,
+        companyId: sanitizedCompanyId,
+        companyName: sanitizedCompanyName
+      }
+    });
+
+  } catch (error) {
+    console.error('Error updating upload company:', error);
+    res.status(500).json({
+      error: 'Failed to update upload company',
+      message: error.message
+    });
+  }
+};
