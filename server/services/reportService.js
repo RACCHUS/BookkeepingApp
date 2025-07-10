@@ -1,6 +1,7 @@
 import TransactionSummaryReport from './reports/TransactionSummaryReport.js';
 import TaxSummaryReport from './reports/TaxSummaryReport.js';
 import CategoryBreakdownReport from './reports/CategoryBreakdownReport.js';
+import ChecksPaidReport from './reports/ChecksPaidReport.js';
 import fsPromises from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -20,6 +21,7 @@ class ReportService {
     this.transactionSummaryReport = new TransactionSummaryReport();
     this.taxSummaryReport = new TaxSummaryReport();
     this.categoryBreakdownReport = new CategoryBreakdownReport();
+    this.checksPaidReport = new ChecksPaidReport();
   }
 
   async ensureReportsDirectory() {
@@ -52,6 +54,14 @@ class ReportService {
   async generateCategoryBreakdownPDF(transactions, summary, options = {}) {
     console.log('📊 Generating Category Breakdown PDF...');
     return this.categoryBreakdownReport.generate(transactions, summary, options);
+  }
+
+  /**
+   * Generate a checks paid report as PDF
+   */
+  async generateChecksPaidPDF(transactions, summary, options = {}) {
+    console.log('💳 Generating Checks Paid PDF...');
+    return this.checksPaidReport.generate(transactions, summary, options);
   }
 
   /**
@@ -97,6 +107,11 @@ class ReportService {
         name: 'Category Breakdown',
         description: 'Detailed category-focused financial report',
         generator: 'categoryBreakdownReport'
+      },
+      checksPaid: {
+        name: 'Checks Paid',
+        description: 'Report of check payments grouped by payee/vendor',
+        generator: 'checksPaidReport'
       }
     };
   }
@@ -127,6 +142,8 @@ class ReportService {
       case 'taxSummary':
         return generator.generate(transactions, summary, options.taxYear || new Date().getFullYear(), options);
       case 'categoryBreakdown':
+        return generator.generate(transactions, summary, options);
+      case 'checksPaid':
         return generator.generate(transactions, summary, options);
       default:
         throw new Error(`Unsupported report type: ${reportType}`);

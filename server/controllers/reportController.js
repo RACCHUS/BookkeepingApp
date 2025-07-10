@@ -650,3 +650,60 @@ export const downloadReport = async (req, res) => {
     });
   }
 };
+
+export const generateChecksPaidReportPDF = async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        error: 'Validation failed',
+        details: errors.array()
+      });
+    }
+
+    const { uid: userId } = req.user;
+    const { startDate, endDate, includeDetails = true } = req.body;
+
+    // Get transactions and summary
+    const transactions = await firebaseService.getTransactions(userId, {
+      startDate: new Date(startDate),
+      endDate: new Date(endDate),
+      limit: 10000
+    });
+
+    const summary = await firebaseService.getTransactionSummary(
+      userId,
+      new Date(startDate),
+      new Date(endDate)
+    );
+
+    // Generate checks paid PDF
+    const reportResult = await reportService.generateChecksPaidPDF(
+      transactions.transactions || [],
+      summary,
+      {
+        title: 'Checks Paid Report',
+        dateRange: {
+          start: new Date(startDate).toLocaleDateString(),
+          end: new Date(endDate).toLocaleDateString()
+        },
+        userId,
+        includeDetails
+      }
+    );
+
+    res.json({
+      success: true,
+      message: 'Checks paid report generated successfully',
+      fileName: reportResult.fileName,
+      filePath: reportResult.filePath
+    });
+
+  } catch (error) {
+    console.error('Generate checks paid report PDF error:', error);
+    res.status(500).json({
+      error: 'Failed to generate checks paid report',
+      message: error.message
+    });
+  }
+};

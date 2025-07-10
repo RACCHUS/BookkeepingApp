@@ -16,7 +16,8 @@ import {
   ClockIcon,
   ArrowPathIcon,
   FolderIcon,
-  XMarkIcon
+  XMarkIcon,
+  CreditCardIcon
 } from '@heroicons/react/24/outline';
 
 const Reports = () => {
@@ -139,6 +140,12 @@ const Reports = () => {
           });
           break;
           
+        case 'checks':
+          response = await apiClient.reports.generateChecksPaidPDF({
+            ...reportFilters
+          });
+          break;
+          
         default:
           throw new Error('Unknown report type');
       }
@@ -185,6 +192,14 @@ const Reports = () => {
       description: 'Detailed breakdown of expenses and income by IRS category',
       icon: ChartBarIcon,
       color: 'purple',
+      recommended: false
+    },
+    {
+      id: 'checks',
+      title: 'Checks Paid Report',
+      description: 'Summary of all check and ACH payments grouped by payee/vendor',
+      icon: CreditCardIcon,
+      color: 'indigo',
       recommended: false
     }
   ];
@@ -288,10 +303,36 @@ const Reports = () => {
             {summary.transactionCount || 0} transactions in selected period
           </div>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {reportTypes.map((report) => {
             const Icon = report.icon;
             const isGenerating = generating === report.id;
+            
+            // Define color classes to ensure they're included in Tailwind build
+            const colorClasses = {
+              blue: {
+                icon: 'bg-blue-100 dark:bg-blue-900/20',
+                iconColor: 'text-blue-600 dark:text-blue-400',
+                button: 'bg-blue-600 hover:bg-blue-700 focus:ring-blue-500'
+              },
+              green: {
+                icon: 'bg-green-100 dark:bg-green-900/20',
+                iconColor: 'text-green-600 dark:text-green-400',
+                button: 'bg-green-600 hover:bg-green-700 focus:ring-green-500'
+              },
+              purple: {
+                icon: 'bg-purple-100 dark:bg-purple-900/20',
+                iconColor: 'text-purple-600 dark:text-purple-400',
+                button: 'bg-purple-600 hover:bg-purple-700 focus:ring-purple-500'
+              },
+              indigo: {
+                icon: 'bg-indigo-100 dark:bg-indigo-900/20',
+                iconColor: 'text-indigo-600 dark:text-indigo-400',
+                button: 'bg-indigo-600 hover:bg-indigo-700 focus:ring-indigo-500'
+              }
+            };
+            
+            const colors = colorClasses[report.color] || colorClasses.blue;
             
             return (
               <div key={report.id} className={`
@@ -307,8 +348,8 @@ const Reports = () => {
                   </div>
                 )}
                 <div className="flex items-center mb-4">
-                  <div className={`p-2 rounded-lg bg-${report.color}-100 dark:bg-${report.color}-900/20`}>
-                    <Icon className={`h-6 w-6 text-${report.color}-600 dark:text-${report.color}-400`} />
+                  <div className={`p-2 rounded-lg ${colors.icon}`}>
+                    <Icon className={`h-6 w-6 ${colors.iconColor}`} />
                   </div>
                 </div>
                 <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
@@ -324,7 +365,7 @@ const Reports = () => {
                     w-full flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white 
                     ${report.recommended 
                       ? 'bg-green-600 hover:bg-green-700 focus:ring-green-500' 
-                      : `bg-${report.color}-600 hover:bg-${report.color}-700 focus:ring-${report.color}-500`
+                      : colors.button
                     }
                     focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors
                   `}

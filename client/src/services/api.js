@@ -93,6 +93,9 @@ const apiClient = {
     generateCategoryBreakdownPDF: (params) => api.post('/reports/category-breakdown-pdf', params, {
       responseType: 'blob'
     }),
+    generateChecksPaidPDF: (params) => api.post('/reports/checks-paid-pdf', params, {
+      responseType: 'blob'
+    }),
     download: (fileName) => api.get(`/reports/download/${fileName}`, {
       responseType: 'blob'
     }),

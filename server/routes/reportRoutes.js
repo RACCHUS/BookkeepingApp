@@ -10,6 +10,7 @@ import {
   generateSummaryReportPDF,
   generateTaxSummaryReportPDF,
   generateCategoryBreakdownReportPDF,
+  generateChecksPaidReportPDF,
   downloadReport
 } from '../controllers/reportController.js';
 
@@ -41,6 +42,7 @@ router.get('/history', getReportHistory);
 router.post('/summary-pdf', pdfReportValidation, generateSummaryReportPDF);
 router.post('/tax-summary-pdf', pdfReportValidation, generateTaxSummaryReportPDF);
 router.post('/category-breakdown-pdf', pdfReportValidation, generateCategoryBreakdownReportPDF);
+router.post('/checks-paid-pdf', pdfReportValidation, generateChecksPaidReportPDF);
 router.get('/download/:fileName', downloadReport);
 
 export default router;

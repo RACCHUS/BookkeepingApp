@@ -347,10 +347,22 @@ app.post('/api/test/pdf', async (req, res) => {
       }
     );
     
+    const checksPaidPdfResult = await reportService.generateChecksPaidPDF(
+      transactions,
+      summary,
+      {
+        userId,
+        title: 'Test Checks Paid Report',
+        dateRange: { start: '2024-01-01', end: '2024-12-31' },
+        includeDetails: true
+      }
+    );
+    
     console.log('✅ All PDFs generated successfully:');
     console.log('  - Tax Summary:', taxPdfResult.fileName);
     console.log('  - Transaction Summary:', summaryPdfResult.fileName);
     console.log('  - Category Breakdown:', categoryPdfResult.fileName);
+    console.log('  - Checks Paid Report:', checksPaidPdfResult.fileName);
     
     res.json({
       success: true,
@@ -358,7 +370,8 @@ app.post('/api/test/pdf', async (req, res) => {
       files: {
         taxSummary: taxPdfResult.fileName,
         transactionSummary: summaryPdfResult.fileName,
-        categoryBreakdown: categoryPdfResult.fileName
+        categoryBreakdown: categoryPdfResult.fileName,
+        checksPaidReport: checksPaidPdfResult.fileName
       },
       transactionCount: transactions.length,
       summary
@@ -432,6 +445,131 @@ app.post('/api/test/category-breakdown', async (req, res) => {
       error: 'Category breakdown PDF test failed',
       message: error.message,
       stack: error.stack
+    });
+  }
+});
+
+// Debug endpoint to check transactions by section
+app.post('/api/test/sections', async (req, res) => {
+  try {
+    const firebaseServiceModule = await import('./services/cleanFirebaseService.js');
+    const firebaseService = firebaseServiceModule.default;
+    
+    const userId = 'dev-user-123';
+    
+    // First, add some test transactions with proper sections
+    const testTransactionsWithSections = [
+      {
+        date: '2024-01-08',
+        amount: 180,
+        description: 'CHECK #534',
+        category: '',
+        type: 'expense',
+        payee: 'Ric Flair',
+        section: 'CHECKS PAID',
+        sectionCode: 'checks',
+        source: 'chase_pdf_import'
+      },
+      {
+        date: '2024-01-15', 
+        amount: 250,
+        description: 'CHECK #535',
+        category: '',
+        type: 'expense',
+        payee: 'Richard',
+        section: 'CHECKS PAID',
+        sectionCode: 'checks',
+        source: 'chase_pdf_import'
+      },
+      {
+        date: '2024-01-19',
+        amount: 91.95,
+        description: 'Lipton Toyota FT',
+        category: '',
+        type: 'expense',
+        payee: 'Lipton Toyota FT',
+        section: 'ATM & DEBIT CARD WITHDRAWALS',
+        sectionCode: 'card',
+        source: 'chase_pdf_import'
+      }
+    ];
+    
+    // Add these test transactions
+    for (const txData of testTransactionsWithSections) {
+      try {
+        await firebaseService.createTransaction(userId, txData);
+        console.log(`✅ Created test transaction: ${txData.description}`);
+      } catch (error) {
+        console.log(`⚠️ Transaction might already exist: ${txData.description}`);
+      }
+    }
+    
+    const transactionResult = await firebaseService.getTransactions(userId, {
+      startDate: '2024-01-01',
+      endDate: '2024-12-31'
+    });
+    const transactions = transactionResult.transactions || [];
+    
+    // Group transactions by section
+    const sectionGroups = {};
+    const sectionCodeGroups = {};
+    
+    transactions.forEach(transaction => {
+      const section = transaction.section || 'No Section';
+      const sectionCode = transaction.sectionCode || 'No Section Code';
+      
+      if (!sectionGroups[section]) {
+        sectionGroups[section] = [];
+      }
+      if (!sectionCodeGroups[sectionCode]) {
+        sectionCodeGroups[sectionCode] = [];
+      }
+      
+      sectionGroups[section].push({
+        description: transaction.description,
+        payee: transaction.payee,
+        amount: transaction.amount,
+        date: transaction.date
+      });
+      
+      sectionCodeGroups[sectionCode].push({
+        description: transaction.description,
+        payee: transaction.payee,
+        amount: transaction.amount,
+        date: transaction.date
+      });
+    });
+    
+    // Focus on checks paid specifically
+    const checksPaidSection = sectionGroups['CHECKS PAID'] || [];
+    const checksCode = sectionCodeGroups['checks'] || [];
+    
+    console.log('📊 Section Analysis:');
+    console.log('🏷️  All sections:', Object.keys(sectionGroups));
+    console.log('🏷️  All section codes:', Object.keys(sectionCodeGroups));
+    console.log('💳 CHECKS PAID section transactions:', checksPaidSection.length);
+    console.log('💳 checks code transactions:', checksCode.length);
+    
+    res.json({
+      success: true,
+      message: 'Transaction sections analyzed',
+      allSections: Object.keys(sectionGroups),
+      allSectionCodes: Object.keys(sectionCodeGroups),
+      sectionCounts: Object.fromEntries(
+        Object.entries(sectionGroups).map(([key, value]) => [key, value.length])
+      ),
+      sectionCodeCounts: Object.fromEntries(
+        Object.entries(sectionCodeGroups).map(([key, value]) => [key, value.length])
+      ),
+      checksPaidTransactions: checksPaidSection,
+      checksCodeTransactions: checksCode,
+      totalTransactions: transactions.length
+    });
+  } catch (error) {
+    console.error('❌ Error analyzing sections:', error);
+    res.status(500).json({
+      error: 'Section analysis failed',
+      message: error.message
     });
   }
 });
