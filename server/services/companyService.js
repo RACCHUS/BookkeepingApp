@@ -1,12 +1,26 @@
+/**
+ * @fileoverview Company Service - Business entity management service
+ * @description Handles company creation, management, and bank account operations
+ * @version 2.0.0 - Enhanced with utils integration and professional patterns
+ */
+
 import { getFirestore } from 'firebase-admin/firestore';
 import { CompanySchema, CompanyBankAccountSchema } from '../../shared/schemas/companySchema.js';
 import { withIndexFallback, logIndexError } from '../utils/errorHandler.js';
+import { logger } from '../utils/index.js';
+import { validateRequired, validateUUID } from '../utils/index.js';
 
+/**
+ * Company Service - Manages business entities and bank accounts
+ * Provides comprehensive company management with validation and error handling
+ */
 class CompanyService {
   constructor() {
     this.db = getFirestore();
     this.companiesCollection = 'companies';
     this.bankAccountsCollection = 'companyBankAccounts';
+    
+    logger.info('🏢 CompanyService: Initialized');
   }
 
   /**
@@ -17,6 +31,15 @@ class CompanyService {
    */
   async createCompany(userId, companyData) {
     try {
+      // Validate required fields
+      if (!validateRequired({ userId, companyData })) {
+        throw new Error('Missing required fields: userId and companyData');
+      }
+
+      if (!validateRequired(companyData, ['name'])) {
+        throw new Error('Company name is required');
+      }
+
       const company = {
         ...CompanySchema,
         ...companyData,
@@ -34,11 +57,13 @@ class CompanyService {
       }
 
       const docRef = await this.db.collection(this.companiesCollection).add(company);
-      console.log(`✅ Created company: ${company.name} (${docRef.id})`);
+      
+      logger.info(`✅ Created company: ${company.name} (${docRef.id})`);
+      logger.debug('Company data:', { companyId: docRef.id, userId, name: company.name });
       
       return docRef.id;
     } catch (error) {
-      console.error('Error creating company:', error);
+      logger.error('Error creating company:', error);
       throw error;
     }
   }

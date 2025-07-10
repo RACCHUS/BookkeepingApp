@@ -1,5 +1,18 @@
-// Clean Firebase service now that Firestore API is enabled
+/**
+ * @fileoverview Firebase Service - Core database and authentication service
+ * @description Provides centralized Firebase operations with automatic fallback to mock mode
+ * @version 2.0.0 - Enhanced with utils integration and professional patterns
+ */
+
 import admin from '../config/firebaseAdmin.js';
+import { logger } from '../utils/index.js';
+import { validateRequired, validateEmail, validateUUID } from '../utils/index.js';
+import { sendSuccess, sendError, sendValidationError } from '../utils/index.js';
+
+/**
+ * Firebase Service - Centralized database and authentication operations
+ * Automatically falls back to mock mode when Firebase is not available
+ */
 class FirebaseService {
   /**
    * Get all classification rules for a user
@@ -97,10 +110,18 @@ class FirebaseService {
       throw error;
     }
   }
+  /**
+   * Initialize Firebase Service
+   * Sets up Firestore and Auth or falls back to mock mode
+   */
   constructor() {
     this.isInitialized = false;
     this.mockData = {
-      transactions: []
+      transactions: [],
+      companies: [],
+      uploads: [],
+      users: {},
+      rules: []
     };
     this.nextId = 1;
     
@@ -109,16 +130,19 @@ class FirebaseService {
         this.db = admin.firestore();
         this.auth = admin.auth();
         this.isInitialized = true;
-        console.log('🔥 FirebaseService: Initialized with Firestore and Auth');
+        
+        logger.info('🔥 FirebaseService: Initialized with Firestore and Auth');
+        logger.debug('Firebase configuration loaded successfully');
+        
         // Note: Auto-seeding disabled to prevent unwanted sample data
         // this._seedInitialData();
       } catch (error) {
-        console.error('FirebaseService initialization error:', error);
+        logger.error('FirebaseService initialization error:', error);
         this.isInitialized = false;
         this._initMockData();
       }
     } else {
-      console.log('🎭 FirebaseService: Running in mock mode');
+      logger.info('🎭 FirebaseService: Running in mock mode');
       this._initMockData();
     }
   }
@@ -200,53 +224,86 @@ class FirebaseService {
     return `mock_${this.nextId++}_${Date.now()}`;
   }
 
+  /**
+   * Create a new transaction
+   * @param {string} userId - User ID
+   * @param {Object} transactionData - Transaction data
+   * @returns {Promise<Object>} Created transaction with ID
+   */
   async createTransaction(userId, transactionData) {
-    // Always ensure category is a string (never undefined/null)
-    const safeTransactionData = {
-      ...transactionData,
-      category: typeof transactionData.category === 'string' ? transactionData.category : '',
-    };
-    if (this.isInitialized) {
-      try {
-        const docRef = await this.db.collection('transactions').add({
+    try {
+      // Validate required fields
+      if (!validateRequired({ userId, transactionData })) {
+        throw new Error('Missing required fields: userId and transactionData');
+      }
+
+      if (!validateRequired(transactionData, ['amount', 'description', 'date'])) {
+        throw new Error('Missing required transaction fields: amount, description, date');
+      }
+
+      // Always ensure category is a string (never undefined/null)
+      const safeTransactionData = {
+        ...transactionData,
+        category: typeof transactionData.category === 'string' ? transactionData.category : '',
+        userId,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+
+      if (this.isInitialized) {
+        try {
+          const docRef = await this.db.collection('transactions').add({
+            ...safeTransactionData,
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+          });
+          
+          // Patch the document to include its Firestore ID as a field
+          await docRef.update({ id: docRef.id });
+          const doc = await docRef.get();
+          const data = doc.data();
+          
+          logger.info(`🔥 Firebase: Created transaction ${docRef.id}`);
+          return { 
+            id: docRef.id, 
+            data: { 
+              id: docRef.id, 
+              ...data,
+              createdAt: data.createdAt?.toDate?.() || new Date(),
+              updatedAt: data.updatedAt?.toDate?.() || new Date()
+            } 
+          };
+        } catch (error) {
+          logger.error('Firebase createTransaction error:', error);
+          throw error;
+        }
+      } else {
+        // Mock implementation
+        const id = this._generateId();
+        const transaction = {
+          id,
           ...safeTransactionData,
           userId,
-          createdAt: admin.firestore.FieldValue.serverTimestamp(),
-          updatedAt: admin.firestore.FieldValue.serverTimestamp()
-        });
-        // Patch the document to include its Firestore ID as a field
-        await docRef.update({ id: docRef.id });
-        const doc = await docRef.get();
-        const data = doc.data();
-        console.log(`🔥 Firebase: Created transaction ${docRef.id}`);
-        return { 
-          id: docRef.id, 
-          data: { 
-            id: docRef.id, 
-            ...data,
-            createdAt: data.createdAt?.toDate?.() || new Date(),
-            updatedAt: data.updatedAt?.toDate?.() || new Date()
-          } 
+          createdAt: new Date(),
+          updatedAt: new Date()
         };
-      } catch (error) {
-        console.error('Firebase createTransaction error:', error);
-        throw error;
+        this.mockData.transactions.push(transaction);
+        
+        logger.info(`🎭 Mock: Created transaction ${id}`);
+        return { id, data: transaction };
       }
-    } else {
-      // Mock implementation
-      const id = this._generateId();
-      const transaction = {
-        id,
-        ...safeTransactionData,
-        userId,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      };
-      this.mockData.transactions.push(transaction);
-      console.log(`🎭 Mock: Created transaction ${id}`);
-      return { id, data: transaction };
+    } catch (error) {
+      logger.error('Error creating transaction:', error);
+      throw error;
     }
   }
+
+  /**
+   * Get transactions for a user with optional filtering
+   * @param {string} userId - User ID
+   * @param {Object} filters - Optional filters
+   * @returns {Promise<Array>} Array of transactions
+   */
   async getTransactions(userId, filters = {}) {
     if (this.isInitialized) {
       try {

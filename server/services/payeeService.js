@@ -1,15 +1,46 @@
+/**
+ * @fileoverview Payee Service - Employee and vendor management service
+ * @description Handles payee (employee/vendor) operations and 1099 tracking
+ * @version 2.0.0 - Enhanced with utils integration and professional patterns
+ */
+
 import { getFirestore } from 'firebase-admin/firestore';
 import { PayeeSchema, PAYEE_TYPES } from '../../shared/schemas/payeeSchema.js';
+import { logger } from '../utils/index.js';
+import { validateRequired, validateEmail } from '../utils/index.js';
 
+/**
+ * Payee Service - Manages employees and vendors
+ * Provides comprehensive payee management with validation and 1099 tracking
+ */
 class PayeeService {
   constructor() {
     this.db = getFirestore();
+    
+    logger.info('👥 PayeeService: Initialized');
   }
   /**
    * Create a new payee (employee/vendor)
+   * @param {string} userId - User ID
+   * @param {Object} payeeData - Payee data
+   * @returns {Promise<string>} Payee ID
    */
   async createPayee(userId, payeeData) {
     try {
+      // Validate required fields
+      if (!validateRequired({ userId, payeeData })) {
+        throw new Error('Missing required fields: userId and payeeData');
+      }
+
+      if (!validateRequired(payeeData, ['name'])) {
+        throw new Error('Payee name is required');
+      }
+
+      // Validate email if provided
+      if (payeeData.email && !validateEmail(payeeData.email)) {
+        throw new Error('Invalid email format');
+      }
+
       const docRef = this.db.collection('payees').doc();
       
       // Create a clean payee object with only the necessary fields

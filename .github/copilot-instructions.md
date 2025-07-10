@@ -3,6 +3,8 @@
 ## Project Overview
 Full-stack bookkeeping application built with React (frontend) and Node.js/Express (backend), using Firebase for authentication, database, and storage. The app specializes in importing PDF bank statements, automatically classifying transactions into IRS tax categories, and generating financial reports.
 
+**Server Architecture**: The backend has been comprehensively enhanced with professional patterns, featuring 70+ utility functions, enterprise security middleware, complete testing infrastructure, and centralized organization across all server modules.
+
 ## Key API Endpoints
 - `POST /api/pdf/upload` – Upload PDF bank statement
 - `GET /api/uploads` – List uploads (with company filter)
@@ -83,15 +85,87 @@ client/src/
 ### Backend Structure
 ```
 server/
-├── controllers/      # Route handlers
-├── routes/           # Express routes
-├── services/         # Business logic
-├── middlewares/      # Express middleware
-├── config/           # Configuration files
-├── utils/            # Helper functions
-├── scripts/          # Scripts for automation and maintenance
-├── test/             # Test files
-└── uploads/          # File uploads (if applicable)
+├── index.js                     # Main server entry point
+├── package.json                 # Server dependencies and scripts
+├── config/                      # 🔧 Configuration files
+│   ├── firebaseAdmin.js         # Firebase Admin SDK configuration
+│   ├── database.js              # Database configuration
+│   ├── security.js              # Security configuration
+│   └── index.js                 # Centralized config exports
+├── controllers/                 # 🎯 Route handlers (enhanced with professional patterns)
+│   ├── classificationController.js
+│   ├── companyController.js
+│   ├── payeeController.js
+│   ├── pdfController.js
+│   ├── reportController.js
+│   ├── transactionController.js
+│   └── index.js                 # Centralized controller exports
+├── middlewares/                 # 🛡️ Express middleware (comprehensive security & validation)
+│   ├── authMiddleware.js        # Firebase authentication
+│   ├── validationMiddleware.js  # Input validation and sanitization
+│   ├── securityMiddleware.js    # Security headers and protection
+│   ├── loggingMiddleware.js     # Request/response logging
+│   ├── errorMiddleware.js       # Centralized error handling
+│   ├── rateLimitMiddleware.js   # Rate limiting protection
+│   └── index.js                 # Centralized middleware exports
+├── routes/                      # 🛣️ Express routes (enhanced with validation & middleware)
+│   ├── classificationRoutes.js
+│   ├── companyRoutes.js
+│   ├── payeeRoutes.js
+│   ├── pdfRoutes.js
+│   ├── reportRoutes.js
+│   ├── transactionRoutes.js
+│   └── index.js                 # Centralized route exports
+├── services/                    # ⚡ Business logic (enhanced with utils integration)
+│   ├── cleanFirebaseService.js  # Main Firebase operations
+│   ├── companyService.js        # Company management
+│   ├── payeeService.js          # Employee/vendor management
+│   ├── chasePDFParser.js        # PDF processing
+│   ├── transactionClassifier.js # Transaction classification
+│   ├── transactionClassifierService.js
+│   ├── reportGenerator.js       # Report generation
+│   ├── reportService.js
+│   ├── parsers/                 # PDF parsing utilities
+│   │   ├── ChaseClassifier.js
+│   │   ├── ChaseDateUtils.js
+│   │   ├── ChaseTransactionParser.js
+│   │   └── index.js             # Parser exports
+│   ├── reports/                 # Report generators
+│   │   ├── BaseReportGenerator.js
+│   │   ├── CategoryBreakdownReport.js
+│   │   ├── TaxSummaryReport.js
+│   │   └── index.js             # Report exports
+│   └── index.js                 # Centralized service exports
+├── utils/                       # 🧰 Professional utility toolkit (70+ functions)
+│   ├── pathUtils.js             # Path and file utilities
+│   ├── validation.js            # Business validation functions
+│   ├── responseHelpers.js       # Standardized API responses
+│   ├── dateUtils.js             # Financial date utilities
+│   ├── financialUtils.js        # Financial calculations
+│   ├── errorHandler.js          # Enhanced error handling
+│   ├── sectionFiltering.js      # PDF section filtering
+│   └── index.js                 # Centralized utils exports
+├── test/                        # 🧪 Comprehensive testing infrastructure
+│   ├── unit/                    # Unit tests
+│   │   ├── services/            # Service tests
+│   │   ├── utils/               # Utility tests
+│   │   └── controllers/         # Controller tests
+│   ├── integration/             # Integration tests
+│   │   ├── api/                 # API endpoint tests
+│   │   └── database/            # Database tests
+│   ├── fixtures/                # Test data and mocks
+│   │   ├── mocks/               # Mock objects
+│   │   └── helpers/             # Test utilities
+│   ├── setup/                   # Test configuration
+│   │   ├── jest.config.js       # Jest configuration
+│   │   └── testSetup.js         # Global test setup
+│   ├── data/                    # Test data files
+│   │   ├── pdfs/                # PDF test files
+│   │   ├── csv/                 # CSV test files
+│   │   └── json/                # JSON test files
+│   └── index.js                 # Test exports
+├── scripts/                     # Scripts for automation and maintenance
+└── uploads/                     # File uploads (if applicable)
 ```
 ## Key Technologies & Libraries
 
