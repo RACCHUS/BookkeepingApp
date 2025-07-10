@@ -51,6 +51,9 @@ import companyRoutes from './routes/companyRoutes.js';
 // Import payee routes
 import payeeRoutes from './routes/payeeRoutes.js';
 
+// Import report routes
+import reportRoutes from './routes/reportRoutes.js';
+
 const app = express();
 const PORT = process.env.PORT || 5000;
 
@@ -215,6 +218,223 @@ app.use('/api/companies', optionalAuthMiddleware, companyRoutes);
 
 // Add payee routes with optional auth
 app.use('/api/payees', optionalAuthMiddleware, payeeRoutes);
+
+// Add report routes with optional auth
+app.use('/api/reports', optionalAuthMiddleware, reportRoutes);
+
+// Test endpoint for PDF generation (no auth required)
+app.post('/api/test/pdf', async (req, res) => {
+  try {
+    console.log('🧪 Testing PDF generation...');
+    
+    const reportServiceModule = await import('./services/reportService.js');
+    const reportService = reportServiceModule.default;
+    
+    const firebaseServiceModule = await import('./services/cleanFirebaseService.js');
+    const firebaseService = firebaseServiceModule.default;
+    
+    // Check Firebase status
+    console.log('🔥 Firebase status:', firebaseService.getStatus());
+    
+    // Use mock user ID for testing
+    const userId = 'dev-user-123'; // Use the dev user that might have data
+    const startDate = new Date('2024-01-01');
+    const endDate = new Date('2024-12-31');
+    
+    // First, let's add some test transactions
+    console.log('🌱 Seeding test transactions...');
+    
+    const testTransactions = [
+      {
+        date: '2024-06-01',
+        amount: 3500.00,
+        description: 'Software Development Consulting',
+        category: 'Business Income',
+        type: 'income',
+        payee: 'Tech Corp Ltd'
+      },
+      {
+        date: '2024-06-02',
+        amount: 85.50,
+        description: 'Office Supplies - Staples',
+        category: 'Office Expenses',
+        type: 'expense',
+        payee: 'Staples'
+      },
+      {
+        date: '2024-06-03',
+        amount: 1200.00,
+        description: 'Rent Payment',
+        category: 'Rent or Lease',
+        type: 'expense',
+        payee: 'Property Management Co'
+      },
+      {
+        date: '2024-06-04',
+        amount: 450.00,
+        description: 'Marketing Campaign',
+        category: 'Advertising',
+        type: 'expense',
+        payee: 'AdCorp'
+      },
+      {
+        date: '2024-06-05',
+        amount: 2200.00,
+        description: 'Client Payment - ABC Corp',
+        category: 'Business Income',
+        type: 'income',
+        payee: 'ABC Corp'
+      }
+    ];
+    
+    // Add transactions to database using the service method signature
+    for (const transaction of testTransactions) {
+      try {
+        await firebaseService.createTransaction(userId, transaction);
+        console.log('✅ Created transaction:', transaction.description);
+      } catch (error) {
+        console.log('⚠️ Transaction might already exist:', transaction.description, error.message);
+      }
+    }
+    
+    console.log('📊 Fetching transactions for PDF test...');
+    
+    // Get transactions for the test user
+    const transactionResult = await firebaseService.getTransactions(userId, {
+      startDate,
+      endDate,
+      limit: 100
+    });
+    
+    const transactions = transactionResult.transactions || [];
+    
+    console.log(`📝 Found ${transactions.length} transactions for test`);
+    
+    // Generate tax summary
+    const summary = await firebaseService.getTransactionSummary(userId, startDate, endDate);
+    
+    console.log('📄 Generating PDF...');
+    
+    // Test all PDF generation methods
+    const taxPdfResult = await reportService.generateTaxSummaryPDF(
+      transactions,
+      summary,
+      2024,
+      {
+        userId,
+        includeTransactionDetails: true
+      }
+    );
+    
+    const summaryPdfResult = await reportService.generateTransactionSummaryPDF(
+      transactions,
+      summary,
+      {
+        userId,
+        includeDetails: true,
+        title: 'Test Transaction Summary',
+        dateRange: { start: '2024-01-01', end: '2024-12-31' }
+      }
+    );
+    
+    const categoryPdfResult = await reportService.generateCategoryBreakdownPDF(
+      transactions,
+      summary,
+      {
+        userId,
+        title: 'Test Category Breakdown',
+        dateRange: { start: '2024-01-01', end: '2024-12-31' }
+      }
+    );
+    
+    console.log('✅ All PDFs generated successfully:');
+    console.log('  - Tax Summary:', taxPdfResult.fileName);
+    console.log('  - Transaction Summary:', summaryPdfResult.fileName);
+    console.log('  - Category Breakdown:', categoryPdfResult.fileName);
+    
+    res.json({
+      success: true,
+      message: 'All PDF reports generated successfully',
+      files: {
+        taxSummary: taxPdfResult.fileName,
+        transactionSummary: summaryPdfResult.fileName,
+        categoryBreakdown: categoryPdfResult.fileName
+      },
+      transactionCount: transactions.length,
+      summary
+    });
+  } catch (error) {
+    console.error('❌ Error testing PDF generation:', error);
+    res.status(500).json({
+      error: 'PDF generation test failed',
+      message: error.message,
+      stack: error.stack
+    });
+  }
+});
+
+// Test endpoint specifically for category breakdown debugging
+app.post('/api/test/category-breakdown', async (req, res) => {
+  try {
+    console.log('🧪 Testing Category Breakdown PDF generation...');
+    
+    const reportServiceModule = await import('./services/reportService.js');
+    const reportService = reportServiceModule.default;
+    
+    const firebaseServiceModule = await import('./services/cleanFirebaseService.js');
+    const firebaseService = firebaseServiceModule.default;
+    
+    const userId = 'dev-user-123';
+    const startDate = new Date('2020-01-01'); // Expanded date range
+    const endDate = new Date('2025-12-31');
+    
+    // Get transactions
+    const transactionResult = await firebaseService.getTransactions(userId, {
+      startDate,
+      endDate,
+      limit: 100
+    });
+    
+    const transactions = transactionResult.transactions || [];
+    console.log('📝 Found transactions:', transactions.length);
+    console.log('📝 Sample transaction:', transactions[0]);
+    
+    // Generate summary
+    const summary = await firebaseService.getTransactionSummary(userId, startDate, endDate);
+    console.log('📊 Summary:', summary);
+    
+    // Test category breakdown PDF generation
+    const pdfResult = await reportService.generateCategoryBreakdownPDF(
+      transactions,
+      summary,
+      {
+        title: 'Category Breakdown Report',
+        dateRange: {
+          start: startDate.toLocaleDateString(),
+          end: endDate.toLocaleDateString()
+        },
+        userId
+      }
+    );
+    
+    console.log('✅ Category Breakdown PDF generated:', pdfResult.fileName);
+    
+    res.json({
+      success: true,
+      message: 'Category breakdown PDF generated successfully',
+      fileName: pdfResult.fileName,
+      transactionCount: transactions.length,
+      summary
+    });
+  } catch (error) {
+    console.error('❌ Error testing category breakdown PDF:', error);
+    res.status(500).json({
+      error: 'Category breakdown PDF test failed',
+      message: error.message,
+      stack: error.stack
+    });
+  }
+});
 
 // Error handling middleware
 app.use((err, req, res, next) => {

@@ -565,7 +565,7 @@ export const generateCategoryBreakdownReportPDF = async (req, res) => {
     );
 
     // Generate PDF with detailed category breakdown
-    const reportResult = await reportService.generateTransactionSummaryPDF(
+    const reportResult = await reportService.generateCategoryBreakdownPDF(
       transactions.transactions || [],
       summary,
       {
@@ -574,8 +574,7 @@ export const generateCategoryBreakdownReportPDF = async (req, res) => {
           start: new Date(startDate).toLocaleDateString(),
           end: new Date(endDate).toLocaleDateString()
         },
-        userId,
-        includeDetails: true
+        userId
       }
     );
 

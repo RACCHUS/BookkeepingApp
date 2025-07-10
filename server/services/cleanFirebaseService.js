@@ -268,10 +268,18 @@ class FirebaseService {
 
         // Apply filters in memory for now
         if (filters.startDate) {
-          transactions = transactions.filter(t => new Date(t.date) >= new Date(filters.startDate));
+          transactions = transactions.filter(t => {
+            if (!t.date) return false;
+            const transactionDate = new Date(t.date);
+            return !isNaN(transactionDate) && transactionDate >= new Date(filters.startDate);
+          });
         }
         if (filters.endDate) {
-          transactions = transactions.filter(t => new Date(t.date) <= new Date(filters.endDate));
+          transactions = transactions.filter(t => {
+            if (!t.date) return false;
+            const transactionDate = new Date(t.date);
+            return !isNaN(transactionDate) && transactionDate <= new Date(filters.endDate);
+          });
         }
         if (filters.category) {
           transactions = transactions.filter(t => t.category === filters.category);
@@ -284,8 +292,23 @@ class FirebaseService {
         const orderBy = filters.orderBy || 'date';
         const order = filters.order || 'desc';
         transactions.sort((a, b) => {
-          const aVal = a[orderBy];
-          const bVal = b[orderBy];
+          let aVal = a[orderBy];
+          let bVal = b[orderBy];
+          
+          // Handle null/undefined values
+          if (aVal == null && bVal == null) return 0;
+          if (aVal == null) return order === 'asc' ? -1 : 1;
+          if (bVal == null) return order === 'asc' ? 1 : -1;
+          
+          // Handle date comparisons
+          if (orderBy === 'date') {
+            aVal = new Date(aVal);
+            bVal = new Date(bVal);
+            if (isNaN(aVal) && isNaN(bVal)) return 0;
+            if (isNaN(aVal)) return order === 'asc' ? -1 : 1;
+            if (isNaN(bVal)) return order === 'asc' ? 1 : -1;
+          }
+          
           if (order === 'asc') {
             return aVal > bVal ? 1 : -1;
           } else {

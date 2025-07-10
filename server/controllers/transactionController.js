@@ -570,12 +570,15 @@ export const getCategoryStats = async (req, res) => {
     const { uid: userId } = req.user;
     const { startDate, endDate, companyId, uploadId } = req.query;
 
+    console.log(`📊 Getting category stats for user ${userId}`, { startDate, endDate, companyId, uploadId });
+
     let dateRange = null;
     if (startDate && endDate) {
       dateRange = {
         start: new Date(startDate),
         end: new Date(endDate)
       };
+      console.log(`📅 Date range: ${dateRange.start} to ${dateRange.end}`);
     }
 
     const filters = {};
@@ -587,13 +590,30 @@ export const getCategoryStats = async (req, res) => {
       filters.uploadId = uploadId;
     }
 
+    console.log(`🔍 Applying filters:`, filters);
+
     // Get basic stats from transactions (simplified implementation)
-    const transactions = await firebaseService.getTransactions(userId, { 
+    const result = await firebaseService.getTransactions(userId, { 
       limit: 10000, // Get all transactions for stats
       ...filters,
       startDate: dateRange?.start,
       endDate: dateRange?.end
     });
+    
+    // Extract transactions from the result object
+    const transactions = result?.transactions || [];
+    
+    console.log(`📈 Retrieved ${transactions.length} transactions for stats`);
+    console.log(`📈 Total available: ${result?.total || 0}`);
+    
+    // Ensure transactions is an array
+    if (!Array.isArray(transactions)) {
+      console.error(`❌ getTransactions returned non-array:`, transactions);
+      return res.status(500).json({
+        error: 'Failed to retrieve transactions',
+        details: 'getTransactions returned invalid data'
+      });
+    }
     
     const stats = {
       totalTransactions: transactions.length,
