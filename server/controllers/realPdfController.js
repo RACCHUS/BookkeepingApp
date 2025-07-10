@@ -288,10 +288,10 @@ async function processUploadedFile(fileId, filePath, userId, bankType, processId
     if (autoSave && parseResult.transactions.length > 0) {
       const transactionsToSave = [];
       for (const transaction of parseResult.transactions) {
-        // Use rule-based classification only
-        let { category } = await chasePDFParser.classifyTransaction(transaction, userId);
+        // Transactions are already classified during parsing with user rules
         // Ensure category is always a string
-        if (typeof category !== 'string') category = '';
+        const category = typeof transaction.category === 'string' ? transaction.category : '';
+        console.log(`[PDF Controller] Transaction: "${transaction.description}" -> Category: "${category}"`);
         const enhancedTransaction = {
           ...transaction,
           category,

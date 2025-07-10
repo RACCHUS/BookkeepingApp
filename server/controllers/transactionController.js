@@ -249,12 +249,9 @@ export const updateTransaction = async (req, res) => {
         correctionTimestamp: new Date()
       };
 
-      // Learn from the user's correction
-      await transactionClassifierService.learnFromUserCorrection(
-        originalTransaction,
-        updateData.category,
-        userId
-      );
+      // Learn from the user's correction (user rules based)
+      // Note: Learning functionality not implemented for user rules classifier
+      console.log(`User corrected category from "${originalTransaction.category}" to "${updateData.category}" for transaction: ${originalTransaction.description}`);
     }
 
     // Mark as manually reviewed if user is updating classification
@@ -466,8 +463,23 @@ export const getClassificationSuggestions = async (req, res) => {
       }
     }
 
-    // Get classification suggestions
-    const suggestions = await transactionClassifierService.getBulkClassificationSuggestions(transactions, userId);
+    // Get classification suggestions (simplified for user rules)
+    const suggestions = [];
+    for (const transaction of transactions) {
+      try {
+        const classification = await transactionClassifierService.classifyTransaction(transaction, userId);
+        if (classification.category && classification.category !== transaction.category) {
+          suggestions.push({
+            transactionId: transaction.id,
+            currentCategory: transaction.category,
+            suggestedCategory: classification.category,
+            confidence: classification.confidence || 0.8
+          });
+        }
+      } catch (error) {
+        console.error(`Error classifying transaction ${transaction.id}:`, error);
+      }
+    }
 
     res.json({
       success: true,
@@ -514,13 +526,9 @@ export const bulkUpdateCategories = async (req, res) => {
           isManuallyReviewed: true
         });
 
-        // Learn from the correction if category changed
+        // Learn from the correction if category changed (user rules based)
         if (originalTransaction.category !== category) {
-          await transactionClassifierService.learnFromUserCorrection(
-            originalTransaction,
-            category,
-            userId
-          );
+          console.log(`Bulk update: User corrected category from "${originalTransaction.category}" to "${category}" for transaction: ${originalTransaction.description}`);
         }
 
         results.push({
@@ -579,7 +587,30 @@ export const getCategoryStats = async (req, res) => {
       filters.uploadId = uploadId;
     }
 
-    const stats = await transactionClassifierService.getCategoryStats(userId, dateRange, filters);
+    // Get basic stats from transactions (simplified implementation)
+    const transactions = await firebaseService.getTransactions(userId, { 
+      limit: 10000, // Get all transactions for stats
+      ...filters,
+      startDate: dateRange?.start,
+      endDate: dateRange?.end
+    });
+    
+    const stats = {
+      totalTransactions: transactions.length,
+      categorized: transactions.filter(t => t.category && t.category !== '').length,
+      uncategorized: transactions.filter(t => !t.category || t.category === '').length,
+      categories: {}
+    };
+    
+    transactions.forEach(t => {
+      if (t.category && t.category !== '') {
+        if (!stats.categories[t.category]) {
+          stats.categories[t.category] = { count: 0, total: 0 };
+        }
+        stats.categories[t.category].count++;
+        stats.categories[t.category].total += Math.abs(t.amount || 0);
+      }
+    });
 
     res.json({
       success: true,

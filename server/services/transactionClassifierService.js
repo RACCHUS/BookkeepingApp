@@ -1,11 +1,11 @@
 
 import { IRS_CATEGORIES } from '../../shared/constants/categories.js';
+import firebaseService from './cleanFirebaseService.js';
 
 class TransactionClassifierService {
   constructor() {
-    // Example: user-defined rules could be loaded from Firestore or passed in
-    // For now, use a static mapping for demonstration
-    this.rules = {
+    // Hardcoded fallback rules (kept for compatibility)
+    this.fallbackRules = {
       [IRS_CATEGORIES.GROSS_RECEIPTS]: ['deposit', 'payment received', 'invoice payment', 'customer payment'],
       [IRS_CATEGORIES.OFFICE_EXPENSES]: ['staples', 'office depot', 'office supplies'],
       [IRS_CATEGORIES.SOFTWARE_SUBSCRIPTIONS]: ['microsoft', 'adobe', 'quickbooks', 'software', 'subscription'],
@@ -21,9 +21,9 @@ class TransactionClassifierService {
   }
 
   /**
-   * Rule-based classification: assign category if a rule matches, else empty
+   * Rule-based classification: Check user rules first, then fallback rules
    * @param {Object} transaction - Transaction object
-   * @param {string} userId - User ID (unused, for compatibility)
+   * @param {string} userId - User ID to load user-specific rules
    * @returns {Object} Classification result with category (or empty)
    */
   async classifyTransaction(transaction, userId) {
@@ -33,23 +33,56 @@ class TransactionClassifierService {
     if (!description) description = '';
     if (!payee) payee = '';
     const searchText = `${description} ${payee}`;
-    if (!this.rules || Object.keys(this.rules).length === 0) {
-      console.warn('[Classifier] No rules loaded!');
-    }
-    // Debug: log only the first 100 chars of searchText and rule count
-    console.log(`[Classifier] classifyTransaction: searchText="${searchText.slice(0,100)}" | rules=${Object.keys(this.rules).length}`);
 
-    for (const [category, keywords] of Object.entries(this.rules)) {
-      for (const keyword of keywords) {
-        if (
-          typeof keyword === 'string' &&
-          searchText.toLowerCase().includes(keyword.toLowerCase())
-        ) {
-          console.log(`[Classifier] Matched keyword "${keyword}" for category "${category}"`);
-          return { category };
+    try {
+      // First, try user-defined rules from Firestore
+      const userRules = await firebaseService.getClassificationRules(userId);
+      console.log(`[Classifier] classifyTransaction: searchText="${searchText.slice(0,100)}" | rules=${userRules.length}`);
+
+      for (const rule of userRules) {
+        if (rule.keywords && Array.isArray(rule.keywords)) {
+          for (const keyword of rule.keywords) {
+            if (
+              typeof keyword === 'string' &&
+              searchText.toLowerCase().includes(keyword.toLowerCase())
+            ) {
+              console.log(`[Classifier] Matched keyword "${keyword}" for category "${rule.category}"`);
+              return { category: rule.category };
+            }
+          }
+        }
+      }
+
+      // If no user rules matched, try fallback rules
+      for (const [category, keywords] of Object.entries(this.fallbackRules)) {
+        for (const keyword of keywords) {
+          if (
+            typeof keyword === 'string' &&
+            searchText.toLowerCase().includes(keyword.toLowerCase())
+          ) {
+            console.log(`[Classifier] Matched fallback keyword "${keyword}" for category "${category}"`);
+            return { category };
+          }
+        }
+      }
+
+    } catch (error) {
+      console.error('[Classifier] Error loading user rules, using fallback only:', error);
+      
+      // Try fallback rules only
+      for (const [category, keywords] of Object.entries(this.fallbackRules)) {
+        for (const keyword of keywords) {
+          if (
+            typeof keyword === 'string' &&
+            searchText.toLowerCase().includes(keyword.toLowerCase())
+          ) {
+            console.log(`[Classifier] Matched fallback keyword "${keyword}" for category "${category}"`);
+            return { category };
+          }
         }
       }
     }
+
     console.log('[Classifier] No rule matched for transaction:', { description, payee });
     // No rule matched
     return { category: '' };

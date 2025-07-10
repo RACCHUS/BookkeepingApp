@@ -50,33 +50,62 @@ class TransactionClassifier {
   }
 
   applyUserRules(transaction, rules) {
-    const payeeLower = transaction.payee.toLowerCase();
-    const descriptionLower = transaction.description.toLowerCase();
-    const amount = Math.abs(transaction.amount);
+    const payeeLower = (transaction.payee || '').toLowerCase();
+    const descriptionLower = (transaction.description || '').toLowerCase();
+    const searchText = `${descriptionLower} ${payeeLower}`.toLowerCase();
+    const amount = Math.abs(transaction.amount || 0);
+
+    console.log(`[User Rules] Checking ${rules.length} user rules against: "${searchText}"`);
 
     for (const rule of rules) {
       let score = 0;
       let matchCount = 0;
 
-      // Check payee matches
-      if (rule.payeeContains && rule.payeeContains.length > 0) {
-        const payeeMatches = rule.payeeContains.some(keyword => 
-          payeeLower.includes(keyword.toLowerCase())
-        );
-        if (payeeMatches) {
-          score += this.keywordWeights.payee;
-          matchCount++;
+      // Handle both old structure (payeeContains/descriptionContains) and new structure (keywords)
+      let keywordsToCheck = [];
+      
+      if (rule.keywords && Array.isArray(rule.keywords)) {
+        // New structure from frontend
+        keywordsToCheck = rule.keywords;
+      } else {
+        // Old structure
+        if (rule.payeeContains && rule.payeeContains.length > 0) {
+          keywordsToCheck = keywordsToCheck.concat(rule.payeeContains);
+        }
+        if (rule.descriptionContains && rule.descriptionContains.length > 0) {
+          keywordsToCheck = keywordsToCheck.concat(rule.descriptionContains);
         }
       }
 
-      // Check description matches
-      if (rule.descriptionContains && rule.descriptionContains.length > 0) {
-        const descriptionMatches = rule.descriptionContains.some(keyword => 
-          descriptionLower.includes(keyword.toLowerCase())
-        );
-        if (descriptionMatches) {
-          score += this.keywordWeights.description;
+      // Check if any keyword matches
+      for (const keyword of keywordsToCheck) {
+        if (keyword && searchText.includes(keyword.toLowerCase())) {
+          console.log(`[User Rules] Matched keyword "${keyword}" for category "${rule.category}"`);
+          score += this.keywordWeights.payee;
           matchCount++;
+          break; // Found a match, no need to check more keywords for this rule
+        }
+      }
+
+      // If we found matches, return this rule
+      if (matchCount > 0) {
+        return {
+          category: rule.category,
+          confidence: rule.confidence || 0.9,
+          method: 'user_rule',
+          ruleId: rule.id,
+          matchedKeywords: keywordsToCheck.filter(k => k && searchText.includes(k.toLowerCase()))
+        };
+      }
+    }
+
+    console.log(`[User Rules] No user rule matched`);
+    return {
+      category: '',
+      confidence: 0,
+      method: 'no_rule_match'
+    };
+  }
         }
       }
 
