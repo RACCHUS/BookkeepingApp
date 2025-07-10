@@ -4,8 +4,8 @@ import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { apiClient } from '../../services/api';
-import LoadingSpinner from '../../components/LoadingSpinner';
-import CompanySelector from '../../components/CompanySelector';
+import { LoadingSpinner } from '../../components/ui';
+import { CompanySelector } from '../../components/common';
 import {
   CloudArrowUpIcon,
   DocumentTextIcon,

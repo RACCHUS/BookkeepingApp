@@ -1,0 +1,30 @@
+# Ignore all generated report files
+generated/
+
+# Ignore specific generated file patterns
+*.pdf
+*.csv
+*.xlsx
+*.xls
+
+# Keep directory structure but ignore content
+!generated/.gitkeep
+!templates/
+!samples/
+
+# Ignore temporary files
+temp/
+tmp/
+*.tmp
+
+# Ignore log files
+*.log
+
+# Keep sample files for testing (override above rules)
+!samples/*.pdf
+!samples/*.csv
+
+# Keep template files
+!templates/*.html
+!templates/*.css
+!templates/*.js

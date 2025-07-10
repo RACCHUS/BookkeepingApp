@@ -1,0 +1,183 @@
+
+
+02079300201000000022
+14Pageof
+*start*summary
+*end*summary
+*start*postsummarymessage1
+*end*postsummarymessage1
+*start*depositsandadditions
+*end*depositsandadditions
+JPMorgan Chase Bank, N.A. 
+P   O    Box 182051 
+Columbus, OH 43218 -  2051
+00207930 DRE 021 210 03224 NNNNNNNNNNN 1   000000000 64 0000
+SHAMDAT CONSTRUCTION, INC. 
+7411 NW 23RD ST 
+SUNRISE FL 33313-2811
+December 30, 2023 through January 31, 2024
+Account Number: 000000507025697
+CUSTOMER SERVICE INFORMATION
+Web site:Chase.com
+Service Center:1-800-242-7338
+Para Espanol:1-888-622-4273
+International Calls:
+1-713-262-1679
+We accept operator relay calls
+CHECKING SUMMARY 
+Chase Business Complete Checking
+INSTANCESAMOUNT
+Beginning Balance$6,710.17
+Deposits and Additions713,290.00
+Checks Paid10-8,194.25
+ATM &   Debit Card Withdrawals14-829.62
+Electronic Withdrawals2-805.45
+Ending Balance33$10,170.85
+Congratulations, we waived the $15 Monthly Service Fee for this statement period, based on your qualifying activity.
+How to Avoid the Monthly Service Fee (MSF)
+If   you meet any of the following qualifying activities for this Chase Business Complete Checking
+SM 
+account in    a   statement 
+period, we will waive the $15 MSF.
+Here's the business activity we used to determine if   you qualified for the MSF waiver:
+•$2,000 Minimum Daily Ending Balance
+SM 
+:  Your lowest daily ending balance was $3,020.85.
+•$2,000 Chase Payment Solutions Activity:  $0.00 was deposited into this account.
+•$2,000 Chase Ink
+® 
+Business Card Activity:  $0.00 was your total Ink activity.
+You can also avoid the MSF if   you:
+•Maintain a   linked Chase Private Client Checking
+SM 
+account OR
+•Meet Chase Military Banking requirements
+For complete details on all requirements to avoid the MSF, please review the Additional Banking Services and Fees for 
+Business Accounts at chase.com/business/disclosures or visit a   Chase branch.
+DEPOSITS AND ADDITIONS
+DATEDESCRIPTIONAMOUNT
+01/08Remote Online Deposit 1$3,640.00
+01/19Remote Online Deposit 12,500.00
+01/31Remote Online Deposit 12,910.00
+01/31Remote Online Deposit 11,790.00
+01/31Remote Online Deposit 11,550.00
+01/31Remote Online Deposit 1450.00
+01/31Remote Online Deposit 1450.00
+Total Deposits and Additions $13,290.00
+
+24Pageof
+*start*checkspaidsection3
+*end*checkspaidsection3
+*start*atmdebitwithdrawal
+*end*atmdebitwithdrawal
+*start*atmanddebitcardsummary
+*end*atmanddebitcardsummary
+December 30, 2023 through January 31, 2024
+Account Number: 000000507025697
+CHECKS PAID
+*All of your recent checks may not be on this statement, either because they haven't cleared yet or they were listed on 
+one of your previous statements.
+^An image of this check may be available for you to view on Chase.com.
+CHECK NO.DESCRIPTION
+DATE 
+PAID
+AMOUNT
+529^01/03$1,000.00
+530^01/031,500.00
+531^01/02180.00
+532^01/081,244.25
+533^01/0301/03400.00
+534^01/08180.00
+535^01/11360.00
+536^01/16650.00
+538*^01/192,500.00
+539^01/29180.00
+Total Checks Paid $8,194.25
+If   you see a   description in    the Checks Paid section, it   means that we received only electronic information about the check, 
+not the original or an image of the check. As a   result, we're not able to return the check to you or show you an image.
+ATM &    DEBIT CARD WITHDRAWALS
+DATEDESCRIPTIONAMOUNT
+01/02Card Purchase 12/29 Chevron 0202648 Plantation FL Card 1819$38.80
+01/02Card Purchase 12/30 Goldenrod Petroleum Orlando FL Card 181930.00
+01/04Card Purchase With Pin 01/04 Chevron/Sunshine 39 Plantation FL Card 181960.00
+01/08Card Purchase With Pin 01/07 2185 N    Universi Sunrise FL Card 181948.38
+01/09Card Purchase With Pin 01/09 Lowe's #1681 Pembroke Pnes FL Card 181987.74
+01/11Card Purchase With Pin 01/11 Port Everglades Fort Lauderda FL Card 181940.00
+01/12Card Purchase With Pin 01/12 Sunshine #   379 Plantation FL Card 181930.00
+01/16Card Purchase 01/12 Nic*-FL Sunbiz.Org Egov.Com FL Card 1819158.75
+01/16Card Purchase With Pin 01/13 2185 N    Universi Sunrise FL Card 181930.00
+01/16Card Purchase 01/15 Exxon Sunshine 63 Sunrise FL Card 181960.00
+01/19Card Purchase With Pin 01/19 Lipton Toyota FT Lauderdale FL Card 181991.95
+01/22Card Purchase With Pin 01/20 Westar 6000 Sunrise FL Card 181944.00
+01/22Card Purchase With Pin 01/20 Sunshine 817 (3 Sunrise FL Card 181950.00
+01/26Card Purchase With Pin 01/26 Sunshine #   379 Plantation FL Card 181960.00
+Total ATM &    Debit Card Withdrawals $829.62
+ATM &    DEBIT CARD SUMMARY
+Shamdat Shailendra Card 1819
+Total ATM Withdrawals &   Debits$0.00
+Total Card Purchases$829.62
+Total Card Deposits &   Credits$0.00
+ATM &   Debit Card Totals
+Total ATM Withdrawals &   Debits$0.00
+Total Card Purchases$829.62
+Total Card Deposits &   Credits$0.00
+
+12079300202000000062
+34Pageof
+*start*electronicwithdrawal
+*end*electronicwithdrawal
+*start*dailyendingbalance2
+*end*dailyendingbalance2
+*start*dreportraitdisclosuremessagearea
+*end*dreportraitdisclosuremessagearea
+December 30, 2023 through January 31, 2024
+Account Number: 000000507025697
+ELECTRONIC WITHDRAWALS
+DATEDESCRIPTIONAMOUNT
+01/11Orig CO Name:Home Depot Orig ID:Citictp Desc Date:240110 CO Entry 
+Descr:Online Pmtsec:Web Trace#:091409686796442 Eed:240111 Ind 
+ID:611273035887559 Ind Name:Shamdatconstruction Trn: 0116796442Tc
+$389.20
+01/12Orig CO Name:Geico Orig ID:3530075853 Desc Date:240111 CO Entry Descr:Prem 
+Coll Sec:PPD Trace#:021000028946089 Eed:240112 Ind ID: Ind 
+Name:Shailendra Shamdat Trn: 0128946089Tc
+416.25
+Total Electronic Withdrawals $805.45
+DAILY ENDING BALANCE
+DATEAMOUNT
+01/02$6,461.37
+01/033,561.37
+01/043,501.37
+01/085,668.74
+01/095,581.00
+DATEAMOUNT
+01/114,791.80
+01/124,345.55
+01/163,446.80
+01/193,354.85
+DATEAMOUNT
+01/223,260.85
+01/263,200.85
+01/293,020.85
+01/3110,170.85
+IN CASE OF ERRORS OR QUESTIONS ABOUT YOUR ELECTRONIC FUNDS TRANSFERS:
+Call us at 1-866-564-2262 or write us at the address on the front of this statement immediately if   you think your statement or receipt is    incorrect or if 
+you need more information about a   transfer listed on the statement or receipt.
+For personal accounts only:We must hear from you no later than 60 days after we sent you the FIRST statement on which the problem or error 
+appeared. Be prepared to give us the following information:
+•Your name and account number;
+•A   description of the error or the transaction you are unsure about, and why you think it   is    an error or want more information; and
+•The amount of the suspected error.
+We will investigate your complaint and will correct any error promptly. If   we take more than 10 business days (or 20 business days for new 
+accounts) to do this, we will credit your account for the amount you think is    in    error so that you will have use of the money during the time it   takes 
+us to complete our investigation.
+For business accounts,  see your deposit account agreement or other applicable agreements that govern your account for details.
+IN CASE OF ERRORS OR QUESTIONS ABOUT NON-ELECTRONIC FUNDS TRANSFERS:  Contact us immediately if   your statement is 
+incorrect or if   you need more information about any non-electronic funds transfers on this statement. For more details, see your deposit account 
+agreement or other applicable agreements that govern your account.
+JPMorgan Chase Bank, N.A. Member FDIC
+
+44Pageof
+December 30, 2023 through January 31, 2024
+Account Number: 000000507025697
+This Page Intentionally Left Blank

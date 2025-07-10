@@ -62,32 +62,26 @@ A comprehensive bookkeeping application that allows users to import Chase bank P
 ## Project Structure
 
 ```
-bookkeeping-app/
-├── client/                      # React frontend
-│   ├── src/
-│   │   ├── components/         # Reusable UI components
-│   │   ├── features/           # Feature-based components
-│   │   ├── context/            # React contexts
-│   │   ├── services/           # API and Firebase services
-│   │   └── utils/              # Helper functions
-│   └── package.json
-├── server/                      # Node.js backend
-│   ├── controllers/            # Route handlers
-│   ├── routes/                 # Express routes
-│   ├── services/               # Business logic
-│   ├── middlewares/            # Express middleware
-│   ├── config/                 # Configuration files
-│   └── package.json
-├── shared/                      # Shared utilities
-│   ├── constants/              # IRS categories and keywords
-│   ├── schemas/                # Data schemas
-│   └── utils/                  # Shared functions
-├── firebase/                    # Firebase configuration
-│   ├── firestore.rules         # Security rules
-│   ├── storage.rules           # Storage rules
-│   └── firebase.json           # Firebase config
-└── package.json                # Root package file
+BookkeepingApp/
+├── 📁 client/                 # React frontend application
+├── 📁 server/                 # Node.js/Express backend
+├── 📁 shared/                 # Shared utilities and constants  
+├── 📁 docs/                   # Project documentation
+├── 📁 firebase/               # Firebase configuration files
+├── 📁 scripts/                # Automation and deployment scripts
+├── 📁 reports/                # Generated reports and templates
+├── 📁 uploads/                # Runtime file uploads (gitignored)
+├── 📁 .github/                # GitHub workflows and templates
+├── 📁 .vscode/                # VS Code workspace configuration
+├── 📄 package.json            # Root package.json for workspace commands
+├── 📄 README.md               # Project overview and setup
+├── 📄 PROJECT_STRUCTURE.md    # Detailed project structure guide
+├── 📄 CONTRIBUTING.md         # Contribution guidelines
+├── 📄 CHANGELOG.md            # Project change history
+└── 📄 .env.example            # Environment variables template
 ```
+
+For detailed project structure information, see [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md).
 
 ## Getting Started
 
@@ -256,13 +250,29 @@ All API endpoints require Bearer token authentication.
 - CORS protection
 - Helmet security headers
 
+## Documentation
+
+- **📖 [Project Structure](PROJECT_STRUCTURE.md)** - Detailed project organization guide
+- **🤝 [Contributing Guide](CONTRIBUTING.md)** - How to contribute to the project
+- **📋 [Changelog](CHANGELOG.md)** - Project version history and updates
+- **📁 [Documentation Directory](docs/)** - Complete documentation including:
+  - API Reference
+  - User Guide  
+  - Setup and Installation
+  - Architecture and Database Design
+  - Development Notes
+
 ## Contributing
 
+Please read our [Contributing Guide](CONTRIBUTING.md) for details on our code of conduct and the process for submitting pull requests.
+
+Quick start:
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+3. Follow our [coding standards](CONTRIBUTING.md#coding-standards)
+4. Commit your changes (`git commit -m 'feat: add amazing feature'`)
+5. Push to the branch (`git push origin feature/amazing-feature`)
+6. Open a Pull Request
 
 ## License
 

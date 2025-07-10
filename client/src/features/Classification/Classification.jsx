@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
 import { apiClient } from '../../services/api';
 import { IRS_CATEGORIES } from '@shared/constants/categories';
-import LoadingSpinner from '../../components/LoadingSpinner';
+import { LoadingSpinner } from '../../components/ui';
 
 const Classification = () => {
   const [rules, setRules] = useState([]);

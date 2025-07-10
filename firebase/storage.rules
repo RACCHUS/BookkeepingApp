@@ -6,7 +6,7 @@ service firebase.storage {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
 
-    // Specific rules for uploads directory
+    // Specific rules for uploads directory (PDF bank statements)
     match /users/{userId}/uploads/{fileName} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
       allow create: if request.auth != null 
@@ -15,7 +15,7 @@ service firebase.storage {
         && request.resource.contentType.matches('application/pdf|text/csv|application/vnd.ms-excel');
     }
 
-    // Receipts directory
+    // Receipts directory (images and PDFs)
     match /users/{userId}/receipts/{fileName} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
       allow create: if request.auth != null 
@@ -24,9 +24,16 @@ service firebase.storage {
         && request.resource.contentType.matches('image/.*|application/pdf');
     }
 
-    // Generated reports directory
+    // Generated reports directory (PDF exports)
     match /users/{userId}/reports/{fileName} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow create: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Temporary processing files
+    match /temp/{allPaths=**} {
+      allow read, write: if request.auth != null;
+      // Auto-delete after 24 hours (handled by Cloud Function)
     }
 
     // Deny all other access

@@ -1,0 +1,43 @@
+# Shared directory .gitignore
+
+# Build artifacts
+*.d.ts.map
+*.js.map
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# Editor files
+*.swp
+*.swo
+*~
+
+# Log files
+*.log
+
+# Coverage reports
+coverage/
+.nyc_output/
+
+# Node modules (if any)
+node_modules/
+
+# Generated type definitions (if auto-generated)
+types/generated/
+
+# Test artifacts
+.test-cache/
+test-results/
+
+# Environment files (if any are added)
+.env*
+
+# IDE specific files
+.vscode/settings.json
+.idea/

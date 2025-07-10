@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tax Summary Report</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 40px;
+            line-height: 1.4;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #333;
+            padding-bottom: 20px;
+        }
+        
+        .company-name {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        
+        .report-title {
+            font-size: 20px;
+            color: #555;
+            margin-bottom: 5px;
+        }
+        
+        .report-period {
+            font-size: 14px;
+            color: #666;
+        }
+        
+        .section {
+            margin: 30px 0;
+        }
+        
+        .section-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #333;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 5px;
+        }
+        
+        .tax-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        
+        .tax-table th,
+        .tax-table td {
+            padding: 10px 12px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .tax-table th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+        }
+        
+        .amount {
+            text-align: right;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .total-row {
+            font-weight: bold;
+            border-top: 2px solid #333;
+            background-color: #f8f9fa;
+        }
+        
+        .deductible {
+            color: #2e7d32;
+        }
+        
+        .non-deductible {
+            color: #d32f2f;
+        }
+        
+        .form-reference {
+            font-size: 12px;
+            color: #666;
+            font-style: italic;
+        }
+        
+        .warning-box {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        
+        .warning-title {
+            font-weight: bold;
+            color: #856404;
+            margin-bottom: 10px;
+        }
+        
+        .footer {
+            margin-top: 40px;
+            text-align: center;
+            font-size: 12px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="company-name">{{companyName}}</div>
+        <div class="report-title">Tax Summary Report</div>
+        <div class="report-period">Tax Year: {{taxYear}}</div>
+    </div>
+
+    <div class="section">
+        <div class="section-title">Business Deductions</div>
+        <table class="tax-table">
+            <thead>
+                <tr>
+                    <th>Category</th>
+                    <th>Form/Schedule</th>
+                    <th class="amount">Amount</th>
+                    <th>Notes</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{#each businessDeductions}}
+                <tr>
+                    <td>{{categoryName}}</td>
+                    <td class="form-reference">{{formReference}}</td>
+                    <td class="amount deductible">${{formatCurrency amount}}</td>
+                    <td>{{notes}}</td>
+                </tr>
+                {{/each}}
+                <tr class="total-row">
+                    <td colspan="2">Total Business Deductions</td>
+                    <td class="amount deductible">${{formatCurrency totalBusinessDeductions}}</td>
+                    <td></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="section">
+        <div class="section-title">Employee Payments</div>
+        <table class="tax-table">
+            <thead>
+                <tr>
+                    <th>Employee/Contractor</th>
+                    <th>Type</th>
+                    <th class="amount">Total Paid</th>
+                    <th>1099 Required</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{#each employeePayments}}
+                <tr>
+                    <td>{{employeeName}}</td>
+                    <td>{{paymentType}}</td>
+                    <td class="amount">${{formatCurrency totalAmount}}</td>
+                    <td>{{#if requires1099}}Yes{{else}}No{{/if}}</td>
+                </tr>
+                {{/each}}
+                <tr class="total-row">
+                    <td colspan="2">Total Employee Payments</td>
+                    <td class="amount">${{formatCurrency totalEmployeePayments}}</td>
+                    <td></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="section">
+        <div class="section-title">Non-Deductible Expenses</div>
+        <table class="tax-table">
+            <thead>
+                <tr>
+                    <th>Category</th>
+                    <th class="amount">Amount</th>
+                    <th>Reason</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{#each nonDeductibleExpenses}}
+                <tr>
+                    <td>{{categoryName}}</td>
+                    <td class="amount non-deductible">${{formatCurrency amount}}</td>
+                    <td>{{reason}}</td>
+                </tr>
+                {{/each}}
+                <tr class="total-row">
+                    <td>Total Non-Deductible</td>
+                    <td class="amount non-deductible">${{formatCurrency totalNonDeductible}}</td>
+                    <td></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="section">
+        <div class="section-title">Tax Summary</div>
+        <table class="tax-table">
+            <tbody>
+                <tr>
+                    <td><strong>Total Business Income</strong></td>
+                    <td class="amount"><strong>${{formatCurrency totalIncome}}</strong></td>
+                </tr>
+                <tr>
+                    <td><strong>Total Deductible Expenses</strong></td>
+                    <td class="amount deductible"><strong>${{formatCurrency totalDeductibleExpenses}}</strong></td>
+                </tr>
+                <tr>
+                    <td><strong>Net Business Income (Schedule C)</strong></td>
+                    <td class="amount"><strong>${{formatCurrency netBusinessIncome}}</strong></td>
+                </tr>
+                <tr>
+                    <td><strong>Self-Employment Tax Base</strong></td>
+                    <td class="amount"><strong>${{formatCurrency selfEmploymentTaxBase}}</strong></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="warning-box">
+        <div class="warning-title">Important Tax Notice</div>
+        <p>This report is for informational purposes only and should not be considered professional tax advice. Please consult with a qualified tax professional or CPA for official tax preparation and advice.</p>
+        <p><strong>Key reminders:</strong></p>
+        <ul>
+            <li>File Form 1099-NEC for contractors paid $600 or more</li>
+            <li>Self-employment tax applies if net earnings exceed $400</li>
+            <li>Quarterly estimated taxes may be required</li>
+            <li>Keep all receipts and documentation for at least 3 years</li>
+        </ul>
+    </div>
+
+    <div class="footer">
+        <p>Generated on {{generatedDate}} by Bookkeeping App</p>
+        <p>This report contains confidential tax information</p>
+    </div>
+</body>
+</html>

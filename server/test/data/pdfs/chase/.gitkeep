@@ -1,0 +1,3 @@
+# This file preserves the chase directory in git
+# Add Chase bank statement PDFs here for testing PDF parsing logic
+# Ensure all personal information is removed before adding files

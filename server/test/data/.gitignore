@@ -1,0 +1,47 @@
+# Test data directory .gitignore
+
+# Sensitive test files (never commit real bank statements)
+**/real-*
+**/personal-*
+**/actual-*
+
+# Large test files (store separately if needed)
+*.pdf
+!sample-*.pdf
+!test-*.pdf
+!mock-*.pdf
+
+# Temporary test files
+*.tmp
+*.temp
+*.bak
+*-temp.*
+
+# Generated test files
+generated/
+output/
+processed/
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# Editor temporary files
+*~
+*.swp
+*.swo
+
+# Log files from tests
+*.log
+test-*.log
+
+# Coverage files
+coverage/
+.nyc_output/
+
+# Test artifacts
+screenshots/
+recordings/
+
+# Node modules (shouldn't be here but just in case)
+node_modules/

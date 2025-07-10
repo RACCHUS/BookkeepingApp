@@ -1,0 +1,9 @@
+Date,Description,Amount,Category,Company,Payee,Type
+2024-01-15,Office Supplies - Staples,89.47,Office Supplies,Acme Corp,Staples,Expense
+2024-01-16,Internet Service,79.99,Utilities,Acme Corp,Comcast,Expense
+2024-01-18,Client Payment - Project ABC,2500.00,Service Revenue,Acme Corp,ABC Client,Income
+2024-01-20,Fuel - Gas Station,45.23,Vehicle Expenses,Acme Corp,Shell,Expense
+2024-01-22,Software License - Adobe,29.99,Software,Acme Corp,Adobe,Expense
+2024-01-25,Freelancer Payment,800.00,Contract Labor,Acme Corp,John Doe,Expense
+2024-01-28,Bank Fee,15.00,Bank Charges,Acme Corp,First National Bank,Expense
+2024-01-30,Client Deposit,1000.00,Service Revenue,Acme Corp,XYZ Company,Income

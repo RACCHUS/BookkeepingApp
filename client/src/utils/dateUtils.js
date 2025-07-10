@@ -91,25 +91,6 @@ export const formatDate = (date) => {
 };
 
 /**
- * Format currency amount for display
- * @param {number} amount - Amount to format
- * @param {string} currency - Currency code (default: 'USD')
- * @returns {string} Formatted currency string
- */
-export const formatCurrency = (amount, currency = 'USD') => {
-  if (typeof amount !== 'number' || isNaN(amount)) {
-    return '$0.00';
-  }
-  
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: currency,
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-  }).format(amount);
-};
-
-/**
  * Validate that a date range has the correct format and order
  * @param {object} dateRange - Object with start and end properties
  * @returns {boolean} True if valid, false otherwise

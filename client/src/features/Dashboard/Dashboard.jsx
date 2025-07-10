@@ -2,8 +2,8 @@ import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { apiClient } from '../../services/api';
-import LoadingSpinner from '../../components/LoadingSpinner';
-import QuickReports from '../../components/QuickReports';
+import { LoadingSpinner } from '../../components/ui';
+import { QuickReports } from '../../components/common';
 import {
   CurrencyDollarIcon,
   DocumentTextIcon,
@@ -11,7 +11,7 @@ import {
   ArrowTrendingUpIcon,
   ArrowTrendingDownIcon
 } from '@heroicons/react/24/outline';
-import TransactionModal from '../../components/TransactionModal';
+import { TransactionModal } from '../../components/forms';
 
 const Dashboard = () => {
   const navigate = useNavigate();

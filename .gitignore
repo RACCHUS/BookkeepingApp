@@ -113,4 +113,6 @@ firebase-adminsdk*.json
 # Uploaded files and temp processing
 uploads/
 temp-processing/
-generated-reports/
+reports/generated/
+server/test/data/pdfs/*.pdf
+!server/test/data/pdfs/.gitkeep

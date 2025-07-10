@@ -4,9 +4,9 @@ import { useSearchParams } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { apiClient } from '../../services/api.js';
 import { useAuth } from '../../context/AuthContext';
-import LoadingSpinner from '../../components/LoadingSpinner';
-import SmartDateSelector from '../../components/SmartDateSelector';
-import CompanySelector from '../../components/CompanySelector.jsx';
+import { LoadingSpinner } from '../../components/ui';
+import { SmartDateSelector } from "../../components/forms";
+import { CompanySelector } from '../../components/common';
 import {
   DocumentArrowDownIcon,
   CalendarIcon,

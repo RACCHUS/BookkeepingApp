@@ -1,0 +1,49 @@
+{
+  "companyName": "Sample Business LLC",
+  "startDate": "2024-01-01",
+  "endDate": "2024-01-31",
+  "totalIncome": 3500.00,
+  "totalExpenses": 1059.68,
+  "netIncome": 2440.32,
+  "income": [
+    {
+      "categoryName": "Service Revenue",
+      "amount": 3500.00,
+      "percentage": 100.00
+    }
+  ],
+  "expenses": [
+    {
+      "categoryName": "Contract Labor",
+      "amount": 800.00,
+      "percentage": 75.51
+    },
+    {
+      "categoryName": "Office Supplies",
+      "amount": 89.47,
+      "percentage": 8.44
+    },
+    {
+      "categoryName": "Utilities",
+      "amount": 79.99,
+      "percentage": 7.55
+    },
+    {
+      "categoryName": "Vehicle Expenses",
+      "amount": 45.23,
+      "percentage": 4.27
+    },
+    {
+      "categoryName": "Software",
+      "amount": 29.99,
+      "percentage": 2.83
+    },
+    {
+      "categoryName": "Bank Charges",
+      "amount": 15.00,
+      "percentage": 1.42
+    }
+  ],
+  "generatedDate": "2024-01-31T12:00:00Z",
+  "isNegative": false
+}

@@ -4,9 +4,16 @@
   "type": "module",
   "scripts": {
     "dev": "vite --port 3000 --host localhost",
+    "dev:host": "vite --port 3000 --host 0.0.0.0",
     "build": "vite build",
+    "preview": "vite preview",
     "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0",
-    "preview": "vite preview"
+    "lint:fix": "eslint . --ext js,jsx --fix",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "clean": "rm -rf dist node_modules/.vite",
+    "analyze": "vite-bundle-analyzer"
   },
   "dependencies": {
     "react": "^18.2.0",

@@ -1,0 +1,11 @@
+Date,Description,Amount,Category,Company,Payee,Type
+invalid-date,Missing Amount,,Office Supplies,Acme Corp,Staples,expense
+2024-01-01,Negative Income,-100.00,Service Revenue,Acme Corp,Bad Client,income
+2024-13-01,Invalid Month,50.00,Office Supplies,Acme Corp,Office Store,expense
+2024-01-01,"Special ""Characters"" Test",100.00,Office Supplies,Acme Corp,Test Store,expense
+2024-01-01,Very Very Very Very Very Very Very Very Very Very Very Very Very Very Very Very Very Very Very Very Very Very Very Very Very Very Very Very Very Very Very Very Very Very Very Very Very Very Very Very Very Very Long Description That Exceeds Normal Limits,50.00,Office Supplies,Acme Corp,Long Name Store,expense
+2024-01-01,Missing Category,50.00,,Acme Corp,Store,expense
+2024-01-01,Invalid Amount,not-a-number,Office Supplies,Acme Corp,Store,expense
+,Empty Date,50.00,Office Supplies,Acme Corp,Store,expense
+2024-01-01,Empty Description,,Office Supplies,Acme Corp,Store,expense
+2024-01-01,SQL Injection Test'; DROP TABLE transactions; --,50.00,Office Supplies,Acme Corp,Store,expense

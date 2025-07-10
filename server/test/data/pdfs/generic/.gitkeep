@@ -1,0 +1,3 @@
+# This file preserves the generic directory in git
+# Add non-Chase bank statement PDFs here for testing fallback parsing
+# Ensure all personal information is removed before adding files

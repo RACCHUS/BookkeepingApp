@@ -8,8 +8,8 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 
 // Components
-import Layout from './components/Layout';
-import LoadingSpinner from './components/LoadingSpinner';
+import { Layout } from './components/layout';
+import { LoadingSpinner } from './components/ui';
 import TestPage from './components/TestPage';
 
 // Feature components

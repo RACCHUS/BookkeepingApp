@@ -3,8 +3,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-hot-toast';
 import { apiClient } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
-import LoadingSpinner from '../../components/LoadingSpinner';
-import TransactionModal from '../../components/TransactionModal';
+import { LoadingSpinner } from '../../components/ui';
+import { TransactionModal } from '../../components/forms';
 import {
   PlusIcon,
   FunnelIcon,

@@ -1,0 +1,69 @@
+[
+  {
+    "id": "test-upload-001",
+    "userId": "test-user-1",
+    "companyId": "company-001",
+    "originalFileName": "chase-statement-january-2024.pdf",
+    "fileName": "stmt-001-chase-jan-2024.pdf",
+    "fileSize": 245760,
+    "fileType": "application/pdf",
+    "uploadDate": "2024-01-20T10:30:00.000Z",
+    "processingStatus": "completed",
+    "extractedTransactions": 15,
+    "bankName": "Chase",
+    "accountNumber": "****1234",
+    "statementPeriod": {
+      "startDate": "2024-01-01",
+      "endDate": "2024-01-31"
+    },
+    "processingErrors": [],
+    "tags": ["chase", "january", "2024"],
+    "notes": "Monthly statement import",
+    "createdAt": "2024-01-20T10:30:00.000Z",
+    "updatedAt": "2024-01-20T10:35:00.000Z"
+  },
+  {
+    "id": "test-upload-002",
+    "userId": "test-user-1",
+    "companyId": "company-001",
+    "originalFileName": "bank-statement-february.pdf",
+    "fileName": "stmt-002-generic-feb-2024.pdf",
+    "fileSize": 189324,
+    "fileType": "application/pdf",
+    "uploadDate": "2024-02-15T14:22:00.000Z",
+    "processingStatus": "failed",
+    "extractedTransactions": 0,
+    "bankName": "Unknown",
+    "processingErrors": [
+      "Unable to parse bank statement format",
+      "No transaction data found"
+    ],
+    "tags": ["generic", "failed", "february"],
+    "notes": "Failed processing - unsupported format",
+    "createdAt": "2024-02-15T14:22:00.000Z",
+    "updatedAt": "2024-02-15T14:25:00.000Z"
+  },
+  {
+    "id": "test-upload-003",
+    "userId": "test-user-2",
+    "companyId": "company-002",
+    "originalFileName": "chase-business-march-2024.pdf",
+    "fileName": "stmt-003-chase-mar-2024.pdf",
+    "fileSize": 312891,
+    "fileType": "application/pdf",
+    "uploadDate": "2024-03-10T09:15:00.000Z",
+    "processingStatus": "processing",
+    "extractedTransactions": 0,
+    "bankName": "Chase",
+    "accountNumber": "****5678",
+    "statementPeriod": {
+      "startDate": "2024-03-01",
+      "endDate": "2024-03-31"
+    },
+    "processingErrors": [],
+    "tags": ["chase", "business", "march", "processing"],
+    "notes": "Large statement - processing in progress",
+    "createdAt": "2024-03-10T09:15:00.000Z",
+    "updatedAt": "2024-03-10T09:15:00.000Z"
+  }
+]

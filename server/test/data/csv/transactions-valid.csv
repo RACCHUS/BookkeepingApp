@@ -1,0 +1,16 @@
+Date,Description,Amount,Category,Company,Payee,Type,PaymentMethod,CheckNumber,ReferenceNumber
+2024-01-01,Opening Balance,1000.00,Transfer,Acme Corp,,income,bank_transfer,,
+2024-01-02,Office Supplies - Staples,89.47,Office Supplies,Acme Corp,Staples,expense,credit_card,,REF001
+2024-01-03,Internet Service,79.99,Utilities,Acme Corp,Comcast,expense,bank_transfer,,
+2024-01-05,Client Payment - Project ABC,2500.00,Service Revenue,Acme Corp,ABC Client,income,check,1001,
+2024-01-07,Fuel - Gas Station,45.23,Vehicle Expenses,Acme Corp,Shell,expense,credit_card,,
+2024-01-08,Software License - Adobe,29.99,Software,Acme Corp,Adobe,expense,credit_card,,
+2024-01-10,Freelancer Payment,800.00,Contract Labor,Acme Corp,John Doe,expense,check,1002,
+2024-01-12,Bank Fee,15.00,Bank Charges,Acme Corp,First National Bank,expense,bank_transfer,,
+2024-01-15,Client Deposit,1000.00,Service Revenue,Acme Corp,XYZ Company,income,bank_transfer,,
+2024-01-18,Parking Fee,12.00,Vehicle Expenses,Acme Corp,Downtown Parking,expense,cash,,
+2024-01-20,Phone Bill,65.00,Utilities,Acme Corp,Verizon,expense,bank_transfer,,
+2024-01-22,Marketing Campaign,450.00,Advertising,Acme Corp,Google Ads,expense,credit_card,,
+2024-01-25,Equipment Purchase,320.00,Equipment,Acme Corp,Best Buy,expense,credit_card,,
+2024-01-28,Monthly Rent,2000.00,Rent,Acme Corp,Property Management LLC,expense,check,1003,
+2024-01-30,Interest Earned,5.50,Interest Income,Acme Corp,First National Bank,income,bank_transfer,,

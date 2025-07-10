@@ -1,13 +1,13 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import StatementSelector from '../Statements/StatementSelector';
-import CompanySelector from '../../components/CompanySelector.jsx';
+import { CompanySelector } from '../../components/common';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-hot-toast';
 import { apiClient } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
-import LoadingSpinner from '../../components/LoadingSpinner';
-import TransactionModal from '../../components/TransactionModal';
+import { LoadingSpinner } from '../../components/ui';
+import { TransactionModal } from '../../components/forms';
 import { 
   IRS_CATEGORIES, 
   CATEGORY_GROUPS, 
