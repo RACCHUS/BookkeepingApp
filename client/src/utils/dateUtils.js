@@ -64,12 +64,32 @@ export const formatDate = (date) => {
     
     // Handle different date formats
     if (typeof date === 'string') {
+      // If it's an ISO string with time (e.g., "2024-01-29T12:00:00")
+      if (date.includes('T')) {
+        const parsedDate = new Date(date);
+        if (!isNaN(parsedDate.getTime())) {
+          return parsedDate.toLocaleDateString();
+        }
+      }
+      
       // If it's already in YYYY-MM-DD format
-      if (date.includes('-')) {
+      if (date.includes('-') && !date.includes('T')) {
         return formatDateForDisplay(date);
       }
-      // If it's an ISO string, extract the date part
-      return formatDateForDisplay(date.split('T')[0]);
+      
+      // If it's in MM/DD format (common in PDF parsing)
+      if (date.includes('/') && date.length <= 5) {
+        const currentYear = new Date().getFullYear();
+        const [month, day] = date.split('/');
+        const fullDate = `${currentYear}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+        return formatDateForDisplay(fullDate);
+      }
+      
+      // Try to parse as date string
+      const parsedDate = new Date(date);
+      if (!isNaN(parsedDate.getTime())) {
+        return parsedDate.toLocaleDateString();
+      }
     }
     
     // If it's a Date object

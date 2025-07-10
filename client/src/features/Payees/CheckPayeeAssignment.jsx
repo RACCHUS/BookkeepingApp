@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-hot-toast';
 import apiClient from '../../services/api';
-import { formatDate, formatCurrency } from '../../utils';
+import { formatDate } from '../../utils/dateUtils';
+import { formatCurrency } from '../../utils/currencyUtils';
 
 const CheckPayeeAssignment = ({ onAssignmentComplete }) => {
   const [selectedTransactions, setSelectedTransactions] = useState(new Set());
