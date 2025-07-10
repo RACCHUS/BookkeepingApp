@@ -11,10 +11,19 @@ import {
   extractCompanyFromPDF,
   findCompanyByName
 } from '../controllers/companyController.js';
+import { 
+  handleValidationErrors,
+  validateObjectId,
+  requestSizeLimit,
+  apiRateLimit
+} from '../middlewares/index.js';
 
 const router = express.Router();
 
-// Validation middleware
+// Apply rate limiting to all company routes
+router.use(apiRateLimit);
+
+// Validation schemas
 const createCompanyValidation = [
   body('name')
     .isLength({ min: 1, max: 200 })
@@ -70,53 +79,137 @@ const createCompanyValidation = [
   body('accountingMethod')
     .optional()
     .isIn(['cash', 'accrual'])
-    .withMessage('Accounting method must be cash or accrual')
+    .withMessage('Accounting method must be cash or accrual'),
+  handleValidationErrors
 ];
 
 const updateCompanyValidation = [
   param('id').isLength({ min: 1 }).withMessage('Company ID is required'),
-  ...createCompanyValidation.map(validation => validation.optional())
+  body('name')
+    .optional()
+    .isLength({ min: 1, max: 200 })
+    .withMessage('Company name must be less than 200 characters'),
+  body('legalName')
+    .optional()
+    .isLength({ max: 200 })
+    .withMessage('Legal name must be less than 200 characters'),
+  body('ein')
+    .optional()
+    .matches(/^\d{2}-\d{7}$/)
+    .withMessage('EIN must be in XX-XXXXXXX format'),
+  body('address')
+    .optional()
+    .isLength({ max: 500 })
+    .withMessage('Address must be less than 500 characters'),
+  body('phone')
+    .optional()
+    .matches(/^\+?[\d\s\-\(\)]+$/)
+    .withMessage('Phone number format is invalid'),
+  body('email')
+    .optional()
+    .isEmail()
+    .withMessage('Email must be valid'),
+  body('website')
+    .optional()
+    .isURL()
+    .withMessage('Website must be a valid URL'),
+  body('industry')
+    .optional()
+    .isLength({ max: 100 })
+    .withMessage('Industry must be less than 100 characters'),
+  body('businessType')
+    .optional()
+    .isIn(['llc', 'corporation', 'partnership', 'sole_proprietorship', 'other'])
+    .withMessage('Business type must be valid'),
+  body('fiscalYearEnd')
+    .optional()
+    .matches(/^\d{2}\/\d{2}$/)
+    .withMessage('Fiscal year end must be in MM/DD format'),
+  body('accountingMethod')
+    .optional()
+    .isIn(['cash', 'accrual'])
+    .withMessage('Accounting method must be cash or accrual'),
+  handleValidationErrors
 ];
 
 const extractPDFValidation = [
   body('pdfText')
     .isLength({ min: 10 })
-    .withMessage('PDF text is required and must contain at least 10 characters')
+    .withMessage('PDF text is required and must contain at least 10 characters'),
+  requestSizeLimit('500kb'),
+  handleValidationErrors
 ];
 
 const findByNameValidation = [
   query('name')
     .isLength({ min: 1 })
-    .withMessage('Company name is required for search')
+    .withMessage('Company name is required for search'),
+  handleValidationErrors
 ];
 
-// Routes
+// Enhanced Company Routes with comprehensive validation
 
-// GET /api/companies - Get all companies for user
+/**
+ * @route GET /api/companies
+ * @desc Get all companies for authenticated user
+ * @access Private
+ */
 router.get('/', getCompanies);
 
-// GET /api/companies/default - Get default company
+/**
+ * @route GET /api/companies/default
+ * @desc Get user's default company
+ * @access Private
+ */
 router.get('/default', getDefaultCompany);
 
-// GET /api/companies/search - Find company by name
+/**
+ * @route GET /api/companies/search
+ * @desc Find company by name
+ * @access Private
+ */
 router.get('/search', findByNameValidation, findCompanyByName);
 
-// GET /api/companies/:id - Get specific company
-router.get('/:id', param('id').isLength({ min: 1 }).withMessage('Company ID is required'), getCompanyById);
+/**
+ * @route GET /api/companies/:id
+ * @desc Get specific company by ID
+ * @access Private
+ */
+router.get('/:id', validateObjectId('id'), getCompanyById);
 
-// POST /api/companies - Create new company
+/**
+ * @route POST /api/companies
+ * @desc Create new company
+ * @access Private
+ */
 router.post('/', createCompanyValidation, createCompany);
 
-// POST /api/companies/extract-from-pdf - Extract company info from PDF
+/**
+ * @route POST /api/companies/extract-from-pdf
+ * @desc Extract company information from PDF text
+ * @access Private
+ */
 router.post('/extract-from-pdf', extractPDFValidation, extractCompanyFromPDF);
 
-// PUT /api/companies/:id - Update company
+/**
+ * @route PUT /api/companies/:id
+ * @desc Update company information
+ * @access Private
+ */
 router.put('/:id', updateCompanyValidation, updateCompany);
 
-// PUT /api/companies/:id/set-default - Set as default company
-router.put('/:id/set-default', param('id').isLength({ min: 1 }).withMessage('Company ID is required'), setDefaultCompany);
+/**
+ * @route PUT /api/companies/:id/set-default
+ * @desc Set company as user's default
+ * @access Private
+ */
+router.put('/:id/set-default', validateObjectId('id'), setDefaultCompany);
 
-// DELETE /api/companies/:id - Delete company
-router.delete('/:id', param('id').isLength({ min: 1 }).withMessage('Company ID is required'), deleteCompany);
+/**
+ * @route DELETE /api/companies/:id
+ * @desc Delete company
+ * @access Private
+ */
+router.delete('/:id', validateObjectId('id'), deleteCompany);
 
 export default router;

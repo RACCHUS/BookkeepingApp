@@ -2,52 +2,69 @@ import { validationResult } from 'express-validator';
 import firebaseService from '../services/cleanFirebaseService.js';
 import transactionClassifierService from '../services/transactionClassifierService.js';
 import { TransactionSchema } from '../../shared/schemas/transactionSchema.js';
+import { logger } from '../config/index.js';
+import { asyncHandler } from '../middlewares/index.js';
 
-export const getTransactions = async (req, res) => {
-  try {
-    // Check for validation errors
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({
-        error: 'Validation failed',
-        details: errors.array()
-      });
-    }
+/**
+ * Get transactions with filtering and pagination
+ * @route GET /api/transactions
+ * @access Private - Requires authentication
+ */
+export const getTransactions = asyncHandler(async (req, res) => {
+  // Check for validation errors
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    logger.warn('Transaction query validation failed', {
+      errors: errors.array(),
+      userId: req.user?.uid,
+      requestId: req.id
+    });
+    return res.status(400).json({
+      error: 'Validation failed',
+      details: errors.array()
+    });
+  }
 
-    const { uid: userId } = req.user;
-    const {
-      limit = 50,
-      offset = 0,
-      startDate,
-      endDate,
-      category,
-      type,
-      payee,
-      sectionCode,
-      uploadId,
-      companyId,
-      orderBy = 'date',
-      order = 'desc'
-    } = req.query;
+  const { uid: userId } = req.user;
+  const {
+    limit = 50,
+    offset = 0,
+    startDate,
+    endDate,
+    category,
+    type,
+    payee,
+    sectionCode,
+    uploadId,
+    companyId,
+    orderBy = 'date',
+    order = 'desc'
+  } = req.query;
 
-    // Build filters
-    const filters = {
-      limit: parseInt(limit),
-      offset: parseInt(offset),
-      orderBy,
-      order
-    };
+  logger.debug('Getting transactions', {
+    userId,
+    filters: { limit, offset, startDate, endDate, category, orderBy, order },
+    requestId: req.id
+  });
 
-    if (startDate && endDate) {
-      filters.startDate = new Date(startDate);
-      filters.endDate = new Date(endDate);
-    }
+  // Build filters
+  const filters = {
+    limit: parseInt(limit),
+    offset: parseInt(offset),
+    orderBy,
+    order
+  };
 
-    if (category) {
-      filters.category = category;
-    }
+  if (startDate && endDate) {
+    filters.startDate = new Date(startDate);
+    filters.endDate = new Date(endDate);
+  }
 
-    if (type) {
+  if (category) {
+    filters.category = category;
+  }
+
+  if (type) {
       filters.type = type;
     }
 
@@ -117,15 +134,7 @@ export const getTransactions = async (req, res) => {
         }
       }
     });
-
-  } catch (error) {
-    console.error('Get transactions error:', error);
-    res.status(500).json({
-      error: 'Failed to get transactions',
-      message: error.message
-    });
-  }
-};
+});
 
 export const getTransactionById = async (req, res) => {
   try {

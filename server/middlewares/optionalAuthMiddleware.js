@@ -1,37 +1,58 @@
-// Optional authentication middleware that works with or without Firebase
+import { firebaseAdmin, logger } from '../config/index.js';
+
+/**
+ * Optional authentication middleware that gracefully handles missing Firebase
+ * Provides mock user for development when Firebase is unavailable
+ * Use this for routes that can work with or without authentication
+ */
 const optionalAuthMiddleware = async (req, res, next) => {
   try {
-    // Check if we're in development mode or Firebase is not available
+    // Check if we're in development mode
     const isDevelopment = process.env.NODE_ENV === 'development';
     
-    // Get admin instance dynamically
-    let admin = null;
-    try {
-      const firebaseAdminModule = await import('../config/firebaseAdmin.js');
-      admin = firebaseAdminModule.default;
-    } catch (error) {
-      console.log('Firebase not available, using mock user');
-    }
-
-    if (!admin) {
-      // Mock user ONLY if Firebase is not available (not just for development)
-      req.user = {
-        uid: 'dev-user-123',
-        email: 'dev@example.com',
-        email_verified: true,
-        name: 'Development User'
-      };
-      console.log('🔓 Using mock authentication because Firebase is not available');
-      return next();
+    // Check Firebase availability
+    if (!firebaseAdmin) {
+      if (isDevelopment) {
+        // Provide mock user for development
+        req.user = {
+          uid: 'dev-user-123',
+          email: 'developer@bookkeeping.local',
+          emailVerified: true,
+          displayName: 'Development User',
+          provider: 'mock',
+          customClaims: {},
+          authTime: new Date(),
+          issuedAt: new Date(),
+          expiresAt: new Date(Date.now() + 3600000) // 1 hour from now
+        };
+        
+        logger.warn('Using mock authentication - Firebase not available', {
+          mode: 'development',
+          mockUser: req.user.email
+        });
+        
+        return next();
+      } else {
+        logger.error('Firebase Admin not available in production mode');
+        return res.status(503).json({
+          error: 'Service Unavailable',
+          message: 'Authentication service is temporarily unavailable'
+        });
+      }
     }
 
     // Get the authorization header
     const authHeader = req.headers.authorization;
     
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      logger.info('No authorization header provided for optional auth', {
+        path: req.path,
+        ip: req.ip
+      });
+      
       return res.status(401).json({
         error: 'Unauthorized',
-        message: 'No valid authorization token provided'
+        message: 'Authentication token is required'
       });
     }
 
@@ -40,31 +61,54 @@ const optionalAuthMiddleware = async (req, res, next) => {
 
     try {
       // Verify the token with Firebase Admin
-      const decodedToken = await admin.auth().verifyIdToken(token);
+      const decodedToken = await firebaseAdmin.auth().verifyIdToken(token);
       
-      // Add user information to request object
+      // Add comprehensive user information to request object
       req.user = {
         uid: decodedToken.uid,
         email: decodedToken.email,
-        email_verified: decodedToken.email_verified,
-        name: decodedToken.name || decodedToken.email,
-        firebase_claims: decodedToken
+        emailVerified: decodedToken.email_verified,
+        displayName: decodedToken.name || decodedToken.email,
+        photoURL: decodedToken.picture,
+        provider: decodedToken.firebase.sign_in_provider,
+        customClaims: decodedToken.customClaims || {},
+        authTime: new Date(decodedToken.auth_time * 1000),
+        issuedAt: new Date(decodedToken.iat * 1000),
+        expiresAt: new Date(decodedToken.exp * 1000),
+        firebaseClaims: decodedToken
       };
 
-      console.log(`✅ Authenticated user: ${req.user.email}`);
+      logger.debug('User authenticated via optional middleware', {
+        uid: req.user.uid,
+        email: req.user.email,
+        provider: req.user.provider
+      });
+
       next();
     } catch (tokenError) {
-      console.error('Token verification failed:', tokenError.message);
+      logger.warn('Token verification failed in optional auth', {
+        error: tokenError.message,
+        errorCode: tokenError.code,
+        path: req.path,
+        ip: req.ip
+      });
+      
       return res.status(401).json({
         error: 'Unauthorized',
-        message: 'Invalid or expired token'
+        message: 'Invalid or expired authentication token'
       });
     }
   } catch (error) {
-    console.error('Auth middleware error:', error);
-    res.status(500).json({
-      error: 'Internal server error',
-      message: 'Authentication service error'
+    logger.error('Optional auth middleware error', {
+      error: error.message,
+      stack: error.stack,
+      path: req.path,
+      ip: req.ip
+    });
+    
+    return res.status(500).json({
+      error: 'Authentication Error',
+      message: 'Internal authentication service error'
     });
   }
 };

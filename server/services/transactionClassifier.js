@@ -106,41 +106,6 @@ class TransactionClassifier {
       method: 'no_rule_match'
     };
   }
-        }
-      }
-
-      // Check amount range
-      if (rule.amountRange && rule.amountRange.min !== null && rule.amountRange.max !== null) {
-        if (amount >= rule.amountRange.min && amount <= rule.amountRange.max) {
-          score += this.keywordWeights.amount;
-          matchCount++;
-        }
-      }
-
-      // If we have matches, return this rule
-      if (matchCount > 0) {
-        const confidence = (score / matchCount) * rule.confidence * rule.successRate;
-        
-        if (confidence > 0.5) {
-          return {
-            category: rule.targetCategory,
-            subcategory: rule.targetSubcategory,
-            type: rule.targetType,
-            confidence,
-            method: 'user_rule',
-            ruleId: rule.id,
-            ruleName: rule.ruleName
-          };
-        }
-      }
-    }
-
-    return {
-      category: IRS_CATEGORIES.UNCATEGORIZED,
-      confidence: 0,
-      method: 'user_rule_no_match'
-    };
-  }
 
   applyBuiltInClassification(transaction) {
     const payeeLower = transaction.payee.toLowerCase();

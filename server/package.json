@@ -1,12 +1,37 @@
 {
   "name": "bookkeeping-server",
   "version": "1.0.0",
+  "description": "Express.js backend server for the Bookkeeping Application - handles PDF processing, transaction management, and financial reporting",
   "main": "index.js",
   "type": "module",
   "scripts": {
     "start": "node index.js",
-    "dev": "nodemon index.js",
-    "test": "jest"
+    "dev": "nodemon index.js --ignore uploads/ --ignore test/",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "lint": "eslint . --ext .js,.mjs",
+    "lint:fix": "eslint . --ext .js,.mjs --fix",
+    "migrate": "node scripts/migrate_uploads_metadata.js",
+    "create-company": "node scripts/create-new-company.mjs",
+    "clean": "rimraf uploads/*.pdf && rimraf uploads/*.tmp",
+    "docs": "jsdoc -c jsdoc.conf.json",
+    "health": "curl -f http://localhost:5000/health || exit 1"
+  },
+  "keywords": [
+    "bookkeeping",
+    "finance",
+    "pdf-processing",
+    "express",
+    "firebase",
+    "tax-categories",
+    "accounting"
+  ],
+  "author": "BookkeepingApp Team",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
   },
   "dependencies": {
     "canvas": "^3.1.1",
@@ -15,10 +40,10 @@
     "csv-parser": "^3.0.0",
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
-    "express-rate-limit": "^7.1.5",
+    "express-rate-limit": "^7.5.1",
     "express-validator": "^7.0.1",
     "firebase-admin": "^11.11.1",
-    "helmet": "^7.1.0",
+    "helmet": "^7.2.0",
     "morgan": "^1.10.0",
     "multer": "^1.4.5-lts.1",
     "node-cron": "^3.0.3",
@@ -26,12 +51,12 @@
     "pdfjs-dist": "^5.3.31",
     "pdfkit": "^0.14.0",
     "puppeteer": "^21.6.0",
+    "uuid": "^11.1.0",
     "winston": "^3.11.0"
   },
   "devDependencies": {
     "jest": "^29.7.0",
     "nodemon": "^3.0.2",
     "supertest": "^6.3.3"
-  },
-  "description": "Professional bookkeeping application"
+  }
 }
