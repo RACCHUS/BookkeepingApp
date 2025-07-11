@@ -12,7 +12,9 @@ class ChaseTransactionParser {
     // 01/19 Remote Online Deposit 1 2,500.00    (without $)
     
     // Clean the line first
-    let cleanLine = line.trim().replace(/^(\d{1,2}\/\d{1,2})(?! )/, '$1 ');
+    let cleanLine = line.trim();
+    // Fix missing space between date and description (e.g., 08/14Remote Online Deposit 1100.00)
+    cleanLine = cleanLine.replace(/^(\d{1,2}\/\d{1,2})([A-Za-z])/, '$1 $2');
     if (!cleanLine || cleanLine.includes('DATE') || cleanLine.includes('Total')) return null;
     
     // Look for date pattern at start
@@ -23,18 +25,15 @@ class ChaseTransactionParser {
     
     // Try multiple amount patterns to be more flexible
     let amountMatch;
-    
-    // Pattern 1: With $ sign - may or may not have space before $
-    amountMatch = cleanLine.match(/\s*\$(\d{1,3}(?:,\d{3})*\.?\d{0,2})\s*$/);
-    
-    // Pattern 2: Without $ sign but with commas - may or may not have space before amount
+    // Pattern 1: With $ sign, allow space or no space before $
+    amountMatch = /(?:\s|\d)?\$(\d{1,3}(?:,\d{3})*\.\d{2})\s*$/.exec(cleanLine);
+    // Pattern 2: Without $ sign but with commas, require space before amount
     if (!amountMatch) {
-      amountMatch = cleanLine.match(/\s*(\d{1,3}(?:,\d{3})*\.?\d{0,2})\s*$/);
+      amountMatch = /\s(\d{1,3}(?:,\d{3})*\.\d{2})\s*$/.exec(cleanLine);
     }
-    
-    // Pattern 3: Amount without commas (e.g., 450.00, 1450.00) - may or may not have space
+    // Pattern 3: Amount without commas, require space before amount
     if (!amountMatch) {
-      amountMatch = cleanLine.match(/\s*(\d{3,5}\.\d{2})\s*$/);
+      amountMatch = /\s(\d{3,6}\.\d{2})\s*$/.exec(cleanLine);
     }
     
     if (!amountMatch) {
@@ -81,27 +80,18 @@ class ChaseTransactionParser {
     
     // Extract description between date and amount
     const dateEnd = dateMatch.index + dateMatch[0].length;
-    const amountStart = amountMatch.index;
-    let descriptionPart = cleanLine.substring(dateEnd, amountStart).trim();
-
-    // Fallback: If description is empty, try to extract with regex
-    if (!descriptionPart) {
-      // Match: date, description (greedy), amount at end
-      const fallbackMatch = cleanLine.match(/^(\d{1,2}\/\d{1,2})\s*(.+)\s(\$?\d{1,3}(?:,\d{3})*\.?\d{0,2})\s*$/);
-      if (fallbackMatch) {
-        descriptionPart = fallbackMatch[2].trim();
-      } else {
-        // Try previous fallback for generic cases
-        const genericMatch = cleanLine.match(/^(\d{1,2}\/\d{1,2})\s*(.+?)\s*(\$?\d{1,3}(?:,\d{3})*\.?\d{0,2})\s*$/);
-        if (genericMatch) {
-          descriptionPart = genericMatch[2].trim();
-        }
-      }
+    let amountStart = amountMatch.index;
+    if (typeof amountStart !== 'number') {
+      amountStart = cleanLine.lastIndexOf(amountMatch[1]);
     }
-
+    let descriptionPart = cleanLine.substring(dateEnd, amountStart).trim();
+        // Edge case: if description ends with a digit and amount starts with that digit, try removing trailing digit from description and re-parse amount
+        if (/\d$/.test(descriptionPart) && correctedAmountStr.startsWith(descriptionPart.slice(-1))) {
+          descriptionPart = descriptionPart.slice(0, -1).trim();
+          correctedAmountStr = correctedAmountStr.substring(1);
+        }
     // Clean up description
     const cleanDescription = descriptionPart.replace(/\s+/g, ' ').trim();
-
     if (!cleanDescription) {
       return null;
     }

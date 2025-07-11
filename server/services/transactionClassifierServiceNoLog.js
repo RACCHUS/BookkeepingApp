@@ -1,10 +1,8 @@
-
 import { IRS_CATEGORIES } from '../../shared/constants/categories.js';
 import firebaseService from './cleanFirebaseService.js';
 
-class TransactionClassifierService {
+class TransactionClassifierServiceNoLog {
   constructor() {
-    // Hardcoded fallback rules (kept for compatibility)
     this.fallbackRules = {
       [IRS_CATEGORIES.GROSS_RECEIPTS]: ['deposit', 'payment received', 'invoice payment', 'customer payment'],
       [IRS_CATEGORIES.OFFICE_EXPENSES]: ['staples', 'office depot', 'office supplies'],
@@ -27,18 +25,12 @@ class TransactionClassifierService {
    * @returns {Object} Classification result with category (or empty)
    */
   async classifyTransaction(transaction, userId) {
-    // Always use empty string for missing description/payee
-    let description = transaction.description;
-    let payee = transaction.payee;
-    if (!description) description = '';
-    if (!payee) payee = '';
+    let description = transaction.description || '';
+    let payee = transaction.payee || '';
     const searchText = `${description} ${payee}`;
 
     try {
-      // First, try user-defined rules from Firestore
       const userRules = await firebaseService.getClassificationRules(userId);
-      // console.log(`[Classifier] classifyTransaction: searchText="${searchText.slice(0,100)}" | rules=${userRules.length}`);
-
       for (const rule of userRules) {
         if (rule.keywords && Array.isArray(rule.keywords)) {
           for (const keyword of rule.keywords) {
@@ -46,47 +38,35 @@ class TransactionClassifierService {
               typeof keyword === 'string' &&
               searchText.toLowerCase().includes(keyword.toLowerCase())
             ) {
-              // console.log(`[Classifier] Matched keyword "${keyword}" for category "${rule.category}"`);
               return { category: rule.category };
             }
           }
         }
       }
-
-      // If no user rules matched, try fallback rules
       for (const [category, keywords] of Object.entries(this.fallbackRules)) {
         for (const keyword of keywords) {
           if (
             typeof keyword === 'string' &&
             searchText.toLowerCase().includes(keyword.toLowerCase())
           ) {
-            // console.log(`[Classifier] Matched fallback keyword "${keyword}" for category "${category}"`);
             return { category };
           }
         }
       }
-
     } catch (error) {
-      // console.error('[Classifier] Error loading user rules, using fallback only:', error);
-      
-      // Try fallback rules only
       for (const [category, keywords] of Object.entries(this.fallbackRules)) {
         for (const keyword of keywords) {
           if (
             typeof keyword === 'string' &&
             searchText.toLowerCase().includes(keyword.toLowerCase())
           ) {
-            // console.log(`[Classifier] Matched fallback keyword "${keyword}" for category "${category}"`);
             return { category };
           }
         }
       }
     }
-
-    // console.log('[Classifier] No rule matched for transaction:', { description, payee });
-    // No rule matched
     return { category: '' };
   }
 }
 
-export default new TransactionClassifierService();
+export default new TransactionClassifierServiceNoLog();

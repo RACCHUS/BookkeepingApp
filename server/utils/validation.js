@@ -1,4 +1,30 @@
 /**
+ * Validate a UUID (v4)
+ * @param {string} uuid - UUID string to validate
+ * @returns {boolean} True if valid UUID v4
+ */
+export function validateUUID(uuid) {
+  if (typeof uuid !== 'string') return false;
+  // UUID v4 regex
+  const uuidV4Regex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  return uuidV4Regex.test(uuid.trim());
+}
+/**
+ * Validate required fields in an object
+ * @param {object} obj - Object to check
+ * @param {string[]} requiredFields - Array of required field names (optional)
+ * @returns {boolean} True if all required fields are present and non-empty
+ */
+export function validateRequired(obj, requiredFields = []) {
+  if (!obj || typeof obj !== 'object') return false;
+  if (requiredFields.length === 0) {
+    // Check all keys in obj
+    return Object.values(obj).every(v => v !== undefined && v !== null && v !== '');
+  }
+  // Check only required fields
+  return requiredFields.every(f => obj[f] !== undefined && obj[f] !== null && obj[f] !== '');
+}
+/**
  * Data Validation Utilities
  * 
  * Centralized validation functions for common data types and business logic.

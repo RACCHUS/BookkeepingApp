@@ -64,20 +64,16 @@ const PDFUpload = () => {
   // Upload mutation
   const uploadMutation = useMutation({
     mutationFn: ({file, tempId}) => {
-      if (selectedCompany === null || selectedCompany === undefined) {
-        throw new Error('Please select a company before uploading files');
-      }
-      
       const formData = new FormData();
       formData.append('pdf', file);
       formData.append('bankType', 'chase'); // Default to Chase for now
-      formData.append('companyId', selectedCompany);
-      
-      // Also include company name if available
-      if (selectedCompanyData?.name) {
-        formData.append('companyName', selectedCompanyData.name);
+      // Only append companyId if it is a valid non-empty string
+      if (selectedCompany && typeof selectedCompany === 'string' && selectedCompany.trim().length > 0) {
+        formData.append('companyId', selectedCompany);
+        if (selectedCompanyData?.name) {
+          formData.append('companyName', selectedCompanyData.name);
+        }
       }
-      
       return apiClient.pdf.upload(formData);
     },
     onSuccess: (data, {file, tempId}) => {
