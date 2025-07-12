@@ -11,12 +11,14 @@ class ChaseTransactionParser {
     // 01/08 Remote Online Deposit 1 $3,640.00   (with $)
     // 01/19 Remote Online Deposit 1 2,500.00    (without $)
     
-    // Clean the line first
-    let cleanLine = line.trim().replace(/^(\d{1,2}\/\d{1,2})(?! )/, '$1 ');
+    // Clean the line first - fix the date regex to not break the date
+    let cleanLine = line.trim();
+    // Only add space if there's no space after the date pattern
+    cleanLine = cleanLine.replace(/^(\d{2}\/\d{2})(?!\s)/, '$1 ');
     if (!cleanLine || cleanLine.includes('DATE') || cleanLine.includes('Total')) return null;
     
-    // Look for date pattern at start
-    const dateMatch = cleanLine.match(/^(\d{1,2}\/\d{1,2})/);
+    // Look for date pattern at start - use specific 2-digit format
+    const dateMatch = cleanLine.match(/^(\d{2}\/\d{2})/);
     if (!dateMatch) return null;
     
     const dateStr = dateMatch[1];
