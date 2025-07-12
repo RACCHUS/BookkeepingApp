@@ -48,16 +48,24 @@ class ChaseTransactionParser {
       return null;
     }
     
-    // Fix common PDF extraction issue: amounts like "12,910.00" that should be "2,910.00"
-    // This happens when "Remote Online Deposit 1 2,910.00" becomes "Remote Online Deposit 12,910.00"
+    // Only attempt correction if there's evidence of concatenation (gap is exactly '1', amountStr starts with '1', original amountStr is NOT a valid amount, and description does NOT end with a number)
     let correctedAmountStr = amountStr;
-    if (amountStr.startsWith('1') && (amountStr.includes(',') || amountStr.length >= 6)) {
-      // Check if this looks like a concatenated "1" + amount
-      const withoutFirst = amountStr.substring(1);
-      if (withoutFirst.match(/^\d{1,3}(?:,\d{3})*\.?\d{0,2}$/) || withoutFirst.match(/^\d{3,4}\.\d{2}$/)) {
-        // This looks like "1" + valid amount, so remove the "1"
-        correctedAmountStr = withoutFirst;
-      }
+    const dateEndForConcat = dateMatch.index + dateMatch[0].length;
+    const descToAmtGap = cleanLine.substring(dateEndForConcat, amountMatch.index);
+    // Extract description between date and amount for the check
+    const descriptionPartForConcat = cleanLine.substring(dateEndForConcat, amountMatch.index).trim();
+    const withoutFirst = amountStr.substring(1);
+    const originalIsValid = amountStr.match(/^\d{1,3}(?:,\d{3})*\.?\d{0,2}$/) || amountStr.match(/^\d{3,4}\.\d{2}$/);
+    const withoutFirstIsValid = withoutFirst.match(/^\d{1,3}(?:,\d{3})*\.?\d{0,2}$/) || withoutFirst.match(/^\d{3,4}\.\d{2}$/);
+    const descriptionEndsWithNumber = /\d\s*$/.test(descriptionPartForConcat);
+    const likelyConcatenated = descToAmtGap === '1' &&
+                              /^1\d/.test(amountStr) &&
+                              !originalIsValid &&
+                              withoutFirstIsValid &&
+                              !descriptionEndsWithNumber;
+
+    if (likelyConcatenated) {
+      correctedAmountStr = withoutFirst;
     }
     
     // Clean up amount string and convert to number

@@ -24,6 +24,7 @@ class ChaseDateUtils {
 
 class ChaseTransactionParser {
   static parseDepositLine(line, year) {
+    console.log('🔍 Processing deposit line:', line);
     const cleanLine = line.trim();
     if (!cleanLine || cleanLine.includes('DATE') || cleanLine.includes('Total')) return null;
 
@@ -32,11 +33,12 @@ class ChaseTransactionParser {
     const dateStr = dateMatch[1];
 
     let amountMatch =
-      cleanLine.match(/\s*\$(\d{1,3}(?:,\d{3})*\.?\d{0,2})\s*$/) ||
-      cleanLine.match(/\s*(\d{1,3}(?:,\d{3})*\.?\d{0,2})\s*$/) ||
-      cleanLine.match(/\s*(\d{3,5}\.\d{2})\s*$/);
+      cleanLine.match(/\s+\$?(\d{1,3}(?:,\d{3})*\.\d{2})\s*$/);
 
-    if (!amountMatch) return null;
+    if (!amountMatch) {
+      console.warn('⚠️  Skipping deposit line, amount not matched:', cleanLine);
+      return null;
+    }
     let amountStr = amountMatch[1];
 
     if (amountStr.startsWith('1') && (amountStr.includes(',') || amountStr.length >= 6)) {
@@ -113,13 +115,12 @@ async function test() {
   }
 
   const rawJson = fs.readFileSync(expectedJsonPath, 'utf-8');
-  console.log('DEBUG: expected-transaction-counts.json contents:\n', rawJson);
   const expectedCounts = JSON.parse(rawJson);
 
   let totalMatched = 0;
 
   // Import the regular parser
-  const parser = (await import('../services/chasePDFParser.js')).default;
+  const parser = (await import('../services/chasePDFParserLogs.js')).default;
 
   for (const { filename, deposits, checks, card, electronic } of expectedCounts) {
     const filePath = path.join(dataDir, filename);
@@ -136,6 +137,21 @@ async function test() {
     } catch (e) {
       console.error(`❌ Error parsing PDF ${filename}:`, e);
       continue;
+    }
+
+    // Log all lines in the deposits section if available
+    if (result.depositsSectionLines) {
+      console.log('--- Deposits Section Lines ---');
+      result.depositsSectionLines.forEach((line, idx) => {
+        console.log(`  [${idx + 1}]: '${line}'`);
+      });
+    }
+
+    // Log each deposit line being sent to parseDepositLine
+    if (result.depositsSectionLines) {
+      result.depositsSectionLines.forEach((line, idx) => {
+        console.log(`➡️ Sending to parseDepositLine [${idx + 1}]: '${line}'`);
+      });
     }
 
     const transactions = result.transactions || [];
