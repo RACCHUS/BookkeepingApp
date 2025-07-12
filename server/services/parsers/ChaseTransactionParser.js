@@ -58,7 +58,7 @@ class ChaseTransactionParser {
     const originalIsValid = amountStr.match(/^\d{1,3}(?:,\d{3})*\.?\d{0,2}$/) || amountStr.match(/^\d{3,4}\.\d{2}$/);
     const withoutFirstIsValid = withoutFirst.match(/^\d{1,3}(?:,\d{3})*\.?\d{0,2}$/) || withoutFirst.match(/^\d{3,4}\.\d{2}$/);
     const descriptionEndsWithNumber = /\d\s*$/.test(descriptionPartForConcat);
-    const likelyConcatenated = descToAmtGap === '1' &&
+    const likelyConcatenated = descToAmtGap.trim() === '1' &&
                               /^1\d/.test(amountStr) &&
                               !originalIsValid &&
                               withoutFirstIsValid &&
