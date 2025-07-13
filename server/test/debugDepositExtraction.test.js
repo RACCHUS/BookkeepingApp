@@ -3,10 +3,12 @@ import path from 'path';
 import pdfParse from 'pdf-parse';
 import ChaseSectionExtractor from '../services/parsers/ChaseSectionExtractor.js';
 import ChaseTransactionParser from '../services/parsers/ChaseTransactionParser.js';
+import createTransaction from '../services/parsers/createTransaction.js';
 
 /**
  * Debugs deposit extraction for a single Chase PDF statement.
- * Prints each line in the deposits section, shows which lines are parsed/skipped, and the parsed result.
+ * Shows raw extracted deposit section, cleaned lines, and final transaction objects.
+ * Only uses logic from server/services.
  */
 async function debugDeposits() {
   const filePath = path.resolve(
@@ -21,51 +23,61 @@ async function debugDeposits() {
   const pdfData = await pdfParse(dataBuffer);
   const text = pdfData.text;
 
-  // Extract deposits section
+  // Extract deposits section using service logic
   const depositsSection = ChaseSectionExtractor.extractDepositsSection(text);
   if (!depositsSection) {
     console.error('No deposits section found!');
     return;
   }
 
-  // Split into lines and debug each
+  // Show raw extracted deposit section
+  console.log('--- RAW DEPOSITS SECTION ---');
+  console.log(depositsSection);
+
+  // Split into lines and show cleaned lines
   const lines = depositsSection.split('\n').map(l => l.trim()).filter(Boolean);
-  let parsedCount = 0;
-  console.log('--- Deposits Section Lines ---');
-  // Print total number of lines and enumerate all lines before parsing
-  console.log(`Deposits section contains ${lines.length} lines:`);
+  console.log('--- CLEANED DEPOSIT LINES ---');
   lines.forEach((line, idx) => {
-    console.log(`  [LINE ${idx + 1}]: '${line}'`);
+    console.log(`[${idx + 1}]: '${line}'`);
   });
-  lines.forEach((line, idx) => {
-    let cleanedLine = line.trim()
-      // Insert space after date if missing
-      .replace(/^(\d{1,2}\/\d{1,2})([A-Za-z])/, '$1 $2')
-      // Insert space between last digit after 'Deposit' and the amount
-      .replace(/(Deposit\s*\d)(?=\d{2,}\.\d{2})/, '$1 ');
-    let parsedOriginal = ChaseTransactionParser.parseDepositLine(line, 2024);
-    let parsedCleaned = ChaseTransactionParser.parseDepositLine(cleanedLine, 2024);
-    console.log(`Line ${idx + 1}:`);
-    console.log(`  [RAW]     '${line}'`);
-    console.log(`  [CLEANED] '${cleanedLine}'`);
-    let parsed = parsedOriginal || parsedCleaned;
-    if (parsed) {
-      parsedCount++;
-      if (parsedOriginal) {
-        console.log(`  [PARSED RAW]`, parsedOriginal);
-      } else {
-        console.log(`  [PARSED CLEANED]`, parsedCleaned);
-      }
-    } else {
-      console.log(`  [SKIPPED RAW]`);
-      console.log(`  [SKIPPED CLEANED]`);
-    }
-    // Print character codes for raw line
-    const charCodes = Array.from(line).map(c => c.charCodeAt(0));
-    console.log(`  [CHARCODES]`, charCodes.join(' '));
-    console.log(`  [RUNNING COUNT]: ${parsedCount}`);
+
+  // Parse each line using the actual parser
+  const parsedDeposits = lines
+    .map(line => ChaseTransactionParser.parseDepositLine(line, 2024))
+    .filter(tx => tx);
+
+  // Show parsed deposit objects (pre-transaction)
+  console.log('--- PARSED DEPOSIT OBJECTS ---');
+  parsedDeposits.forEach((obj, idx) => {
+    console.log(`[PARSED ${idx + 1}]:`, obj);
   });
-  console.log(`Total parsed deposits: ${parsedCount}`);
+
+  // Create final transaction objects using createTransaction (async)
+  const userId = 'debug-user'; // Use a test userId
+  const companyId = '';
+  const companyName = '';
+  const finalTransactions = [];
+  for (const obj of parsedDeposits) {
+    // Only use actual service logic, no new parsing
+    const tx = await createTransaction(
+      obj.date ? obj.date.slice(5, 10) : '', // MM/DD from ISO
+      obj.description,
+      obj.amount.toString(),
+      obj.type || 'income',
+      2024,
+      userId,
+      companyId,
+      companyName
+    );
+    if (tx) finalTransactions.push(tx);
+  }
+
+  // Show final transaction objects
+  console.log('--- FINAL TRANSACTION OBJECTS ---');
+  finalTransactions.forEach((tx, idx) => {
+    console.log(`[TX ${idx + 1}]:`, tx);
+  });
+  console.log(`Total final deposit transactions: ${finalTransactions.length}`);
 }
 
 debugDeposits();

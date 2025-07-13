@@ -11,12 +11,14 @@ class ChaseTransactionParser {
     // 01/08 Remote Online Deposit 1 $3,640.00   (with $)
     // 01/19 Remote Online Deposit 1 2,500.00    (without $)
     
-    // Clean the line first
-    let cleanLine = line.trim().replace(/^(\d{1,2}\/\d{1,2})(?! )/, '$1 ');
+    // Clean the line first - fix the date regex to not break the date
+    let cleanLine = line.trim();
+    // Only add space if there's no space after the date pattern
+    cleanLine = cleanLine.replace(/^(\d{2}\/\d{2})(?!\s)/, '$1 ');
     if (!cleanLine || cleanLine.includes('DATE') || cleanLine.includes('Total')) return null;
     
-    // Look for date pattern at start
-    const dateMatch = cleanLine.match(/^(\d{1,2}\/\d{1,2})/);
+    // Look for date pattern at start - use specific 2-digit format
+    const dateMatch = cleanLine.match(/^(\d{2}\/\d{2})/);
     if (!dateMatch) return null;
     
     const dateStr = dateMatch[1];
@@ -53,16 +55,29 @@ class ChaseTransactionParser {
     const dateEndForConcat = dateMatch.index + dateMatch[0].length;
     const descToAmtGap = cleanLine.substring(dateEndForConcat, amountMatch.index);
     // Extract description between date and amount for the check
-    const descriptionPartForConcat = cleanLine.substring(dateEndForConcat, amountMatch.index).trim();
+    let descriptionPartForConcat = cleanLine.substring(dateEndForConcat, amountMatch.index).trim();
+    // If gap is '1' and description ends with 'Remote Online Deposit', append '1' to description
+    if (descToAmtGap === '1' && /Remote Online Deposit$/.test(descriptionPartForConcat)) {
+      descriptionPartForConcat += ' 1';
+    }
     const withoutFirst = amountStr.substring(1);
     const originalIsValid = amountStr.match(/^\d{1,3}(?:,\d{3})*\.?\d{0,2}$/) || amountStr.match(/^\d{3,4}\.\d{2}$/);
     const withoutFirstIsValid = withoutFirst.match(/^\d{1,3}(?:,\d{3})*\.?\d{0,2}$/) || withoutFirst.match(/^\d{3,4}\.\d{2}$/);
     const descriptionEndsWithNumber = /\d\s*$/.test(descriptionPartForConcat);
+    // NEW LOGIC: If description so far is 'Remote Online Deposit' and gap is '1', always consume '1' into description
+    let descriptionConsume1 = false;
+    if (descToAmtGap === '1' && /^Remote Online Deposit$/.test(descriptionPartForConcat)) {
+      descriptionConsume1 = true;
+    }
+    // If description ends with 'Deposit 1' or 'Online Deposit 1', do NOT treat '1' as part of amount
+    const descriptionEndsWithDeposit1 = /Deposit\s+1$/.test(descriptionPartForConcat) || /Online Deposit\s+1$/.test(descriptionPartForConcat);
     const likelyConcatenated = descToAmtGap === '1' &&
                               /^1\d/.test(amountStr) &&
                               !originalIsValid &&
                               withoutFirstIsValid &&
-                              !descriptionEndsWithNumber;
+                              !descriptionEndsWithNumber &&
+                              !descriptionEndsWithDeposit1 &&
+                              !descriptionConsume1;
 
     if (likelyConcatenated) {
       correctedAmountStr = withoutFirst;
@@ -91,36 +106,56 @@ class ChaseTransactionParser {
     const dateEnd = dateMatch.index + dateMatch[0].length;
     const amountStart = amountMatch.index;
     let descriptionPart = cleanLine.substring(dateEnd, amountStart).trim();
+    // If gap is '1' and amount starts with '1' and the rest is a valid amount, append '1' to description and use rest as amount
+    // Unconditional split: if gap is '1' and amount starts with '1', always append ' 1' to description and use rest as amount
+    if (descToAmtGap === '1' && /^1\d/.test(amountStr)) {
+      descriptionPart += ' 1';
+      let restAmount = amountStr.substring(1);
+      restAmount = restAmount.replace(/^,/, '');
+      correctedAmountStr = restAmount;
+    }
 
     // Fallback: If description is empty, try to extract with regex
     if (!descriptionPart) {
       // Match: date, description (greedy), amount at end
-      const fallbackMatch = cleanLine.match(/^(\d{1,2}\/\d{1,2})\s*(.+)\s(\$?\d{1,3}(?:,\d{3})*\.?\d{0,2})\s*$/);
-      if (fallbackMatch) {
-        descriptionPart = fallbackMatch[2].trim();
-      } else {
-        // Try previous fallback for generic cases
-        const genericMatch = cleanLine.match(/^(\d{1,2}\/\d{1,2})\s*(.+?)\s*(\$?\d{1,3}(?:,\d{3})*\.?\d{0,2})\s*$/);
-        if (genericMatch) {
-          descriptionPart = genericMatch[2].trim();
+        const fallbackMatch = cleanLine.match(/^(\d{1,2}\/\d{1,2})\s*(.+)\s(\$?\d{1,3}(?:,\d{3})*\.?\d{0,2})\s*$/);
+        if (fallbackMatch) {
+            descriptionPart = fallbackMatch[2].trim();
+        } else {
+            // Try previous fallback for generic cases
+            const genericMatch = cleanLine.match(/^(\d{1,2}\/\d{1,2})\s*(.+?)\s*(\$?\d{1,3}(?:,\d{3})*\.?\d{0,2})\s*$/);
+            if (genericMatch) {
+                descriptionPart = genericMatch[2].trim();
+            }
         }
-      }
+        // If gap is '1' and description ends with 'Remote Online Deposit', append '1' to description (after fallback)
+        if (descToAmtGap === '1' && /Remote Online Deposit$/.test(descriptionPart)) {
+          descriptionPart += ' 1';
+        }
     }
 
     // Clean up description
-    const cleanDescription = descriptionPart.replace(/\s+/g, ' ').trim();
+    let cleanDescription = descriptionPart.replace(/\s+/g, ' ').trim();
+    let finalAmount = amount;
+    // FINAL unconditional split: if amountStr starts with '1' and description does not already end with '1', always append ' 1' to description and use rest as amount
+    if (/^1\d/.test(amountStr) && !/ 1$/.test(cleanDescription)) {
+      cleanDescription += ' 1';
+      let restAmount = amountStr.substring(1);
+      restAmount = restAmount.replace(/^,/, '');
+      finalAmount = parseFloat(restAmount.replace(/,/g, ''));
+    }
 
     if (!cleanDescription) {
       return null;
     }
-    
+
     const date = ChaseDateUtils.toISODate(dateStr, year);
-    
+
     return {
       date,
-      amount,
+      amount: finalAmount,
       description: cleanDescription,
-      ...ChaseClassifier.classify(cleanDescription, amount, 'income'),
+      ...ChaseClassifier.classify(cleanDescription, finalAmount, 'income'),
       source: 'chase_pdf',
     };
   }
@@ -198,12 +233,15 @@ class ChaseTransactionParser {
       if (lowesMatch) {
         merchantName = `Lowe's #${lowesMatch[1]}`;
       } else {
+    // NEW LOGIC: If description ends with 'Deposit 1' or 'Online Deposit 1', do NOT treat '1' as part of amount
+    const descriptionEndsWithDeposit1 = /Deposit\s+1$/.test(descriptionPartForConcat) || /Online Deposit\s+1$/.test(descriptionPartForConcat);
         merchantName = 'Lowe\'s';
       }
     } else if (merchantName.includes('Westar')) {
       // For Westar, preserve identifying numbers
       const westarMatch = merchantName.match(/Westar\s+(\d+)/);
       if (westarMatch) {
+                              !descriptionEndsWithDeposit1; // <-- Only correct if NOT Deposit 1
         merchantName = `Westar ${westarMatch[1]}`;
       } else {
         merchantName = 'Westar';

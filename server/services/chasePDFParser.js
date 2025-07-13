@@ -286,13 +286,14 @@ class ChasePDFParser {
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i].trim();
       if (!line) continue;
-      // Deposits: 01/08Remote Online Deposit 1$3,640.00
-      const depositMatch = line.match(/^(\d{2}\/\d{2})Remote Online Deposit \d+\$?([\d,]+\.?\d{2})$/);
+      // Deposits: 01/08Remote Online Deposit 1$3,640.00 or 01/08Remote Online Deposit 1100.00
+      // Transaction ID is only matched if separated by a space
+      const depositMatch = line.match(/^([0-9]{2}\/[0-9]{2})Remote Online Deposit(?:\s(\d+))?\s*\$?([\d,]+\.?\d{2})$/);
       if (depositMatch) {
         const transaction = await createTransaction(
           depositMatch[1],
           'Remote Online Deposit',
-          depositMatch[2],
+          depositMatch[3],
           'income',
           year,
           userId,
@@ -543,9 +544,16 @@ class ChasePDFParser {
   async extractDeposits(text, year, userId, companyId = '', companyName = '') {
     const sectionText = ChaseSectionExtractor.extractDepositsSection(text);
     const deposits = [];
+    let depositLines = [];
     if (sectionText) {
-      const lines = sectionText.split('\n');
-      for (const line of lines) {
+      depositLines = sectionText.split('\n').map(l => l.trim()).filter(Boolean);
+      console.log('--- Deposits Section Lines ---');
+      depositLines.forEach((line, idx) => {
+        console.log(`  [${idx + 1}]: '${line}'`);
+      });
+      for (let idx = 0; idx < depositLines.length; idx++) {
+        const line = depositLines[idx];
+        console.log(`➡️ Sending to parseDepositLine [${idx + 1}]: '${line}'`);
         if (line.includes('DATE') || line.includes('DESCRIPTION') || line.includes('Total')) continue;
         const txRaw = ChaseTransactionParser.parseDepositLine(line, year);
         if (txRaw) {
