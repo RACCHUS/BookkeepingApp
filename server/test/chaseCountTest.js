@@ -24,7 +24,6 @@ class ChaseDateUtils {
 
 class ChaseTransactionParser {
   static parseDepositLine(line, year) {
-    console.log('🔍 Processing deposit line:', line);
     const cleanLine = line.trim();
     if (!cleanLine || cleanLine.includes('DATE') || cleanLine.includes('Total')) return null;
 
@@ -36,7 +35,6 @@ class ChaseTransactionParser {
       cleanLine.match(/\s+\$?(\d{1,3}(?:,\d{3})*\.\d{2})\s*$/);
 
     if (!amountMatch) {
-      console.warn('⚠️  Skipping deposit line, amount not matched:', cleanLine);
       return null;
     }
     let amountStr = amountMatch[1];
@@ -120,7 +118,7 @@ async function test() {
   let totalMatched = 0;
 
   // Import the regular parser
-  const parser = (await import('../services/chasePDFParserLogs.js')).default;
+  const parser = (await import('../services/chasePDFParser.js')).default;
 
   for (const { filename, deposits, checks, card, electronic } of expectedCounts) {
     const filePath = path.join(dataDir, filename);

@@ -547,13 +547,8 @@ class ChasePDFParser {
     let depositLines = [];
     if (sectionText) {
       depositLines = sectionText.split('\n').map(l => l.trim()).filter(Boolean);
-      console.log('--- Deposits Section Lines ---');
-      depositLines.forEach((line, idx) => {
-        console.log(`  [${idx + 1}]: '${line}'`);
-      });
       for (let idx = 0; idx < depositLines.length; idx++) {
         const line = depositLines[idx];
-        console.log(`➡️ Sending to parseDepositLine [${idx + 1}]: '${line}'`);
         if (line.includes('DATE') || line.includes('DESCRIPTION') || line.includes('Total')) continue;
         const txRaw = ChaseTransactionParser.parseDepositLine(line, year);
         if (txRaw) {
