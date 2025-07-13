@@ -139,20 +139,6 @@ async function test() {
       continue;
     }
 
-    // Log all lines in the deposits section if available
-    if (result.depositsSectionLines) {
-      console.log('--- Deposits Section Lines ---');
-      result.depositsSectionLines.forEach((line, idx) => {
-        console.log(`  [${idx + 1}]: '${line}'`);
-      });
-    }
-
-    // Log each deposit line being sent to parseDepositLine
-    if (result.depositsSectionLines) {
-      result.depositsSectionLines.forEach((line, idx) => {
-        console.log(`➡️ Sending to parseDepositLine [${idx + 1}]: '${line}'`);
-      });
-    }
 
     const transactions = result.transactions || [];
     // Count by type

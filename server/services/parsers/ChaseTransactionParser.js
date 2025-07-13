@@ -241,7 +241,6 @@ class ChaseTransactionParser {
       // For Westar, preserve identifying numbers
       const westarMatch = merchantName.match(/Westar\s+(\d+)/);
       if (westarMatch) {
-                              !descriptionEndsWithDeposit1; // <-- Only correct if NOT Deposit 1
         merchantName = `Westar ${westarMatch[1]}`;
       } else {
         merchantName = 'Westar';

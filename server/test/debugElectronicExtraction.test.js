@@ -6,13 +6,13 @@ import ChaseTransactionParser from '../services/parsers/ChaseTransactionParser.j
 import createTransaction from '../services/parsers/createTransaction.js';
 
 /**
- * Debugs deposit extraction for a single Chase PDF statement.
- * Shows raw extracted deposit section, cleaned lines, and final transaction objects.
+ * Debugs electronic extraction for a single Chase PDF statement.
+ * Shows raw extracted electronic section, cleaned lines, and final transaction objects.
  * Only uses logic from server/services.
  */
-async function debugDeposits() {
+async function debugElectronic() {
   const filePath = path.resolve(
-    'server', 'test', 'data', 'pdfs', 'chase', '20240131-statements-5697-.pdf.pdf'
+    'server', 'test', 'data', 'pdfs', 'chase', '20240830-statements-5697-.pdf.crdownload.pdf'
   );
   if (!fs.existsSync(filePath)) {
     console.error('PDF file not found:', filePath);
@@ -23,47 +23,46 @@ async function debugDeposits() {
   const pdfData = await pdfParse(dataBuffer);
   const text = pdfData.text;
 
-  // Extract deposits section using service logic
-  const depositsSection = ChaseSectionExtractor.extractDepositsSection(text);
-  if (!depositsSection) {
-    console.error('No deposits section found!');
+  // Extract electronic section using service logic
+  const electronicSection = ChaseSectionExtractor.extractElectronicSection(text);
+  if (!electronicSection) {
+    console.error('No electronic section found!');
     return;
   }
 
-  // Show raw extracted deposit section
-  console.log('--- RAW DEPOSITS SECTION ---');
-  console.log(depositsSection);
+  // Show raw extracted electronic section
+  console.log('--- RAW ELECTRONIC SECTION ---');
+  console.log(electronicSection);
 
   // Split into lines and show cleaned lines
-  const lines = depositsSection.split('\n').map(l => l.trim()).filter(Boolean);
-  console.log('--- CLEANED DEPOSIT LINES ---');
+  const lines = electronicSection.split('\n').map(l => l.trim()).filter(Boolean);
+  console.log('--- CLEANED ELECTRONIC LINES ---');
   lines.forEach((line, idx) => {
     console.log(`[${idx + 1}]: '${line}'`);
   });
 
   // Parse each line using the actual parser
-  const parsedDeposits = lines
-    .map(line => ChaseTransactionParser.parseDepositLine(line, 2024))
+  const parsedElectronic = lines
+    .map(line => ChaseTransactionParser.parseElectronicLine(line, 2024))
     .filter(tx => tx);
 
-  // Show parsed deposit objects (pre-transaction)
-  console.log('--- PARSED DEPOSIT OBJECTS ---');
-  parsedDeposits.forEach((obj, idx) => {
+  // Show parsed electronic objects (pre-transaction)
+  console.log('--- PARSED ELECTRONIC OBJECTS ---');
+  parsedElectronic.forEach((obj, idx) => {
     console.log(`[PARSED ${idx + 1}]:`, obj);
   });
 
   // Create final transaction objects using createTransaction (async)
-  const userId = 'debug-user'; // Use a test userId
+  const userId = 'debug-user';
   const companyId = '';
   const companyName = '';
   const finalTransactions = [];
-  for (const obj of parsedDeposits) {
-    // Only use actual service logic, no new parsing
+  for (const obj of parsedElectronic) {
     const tx = await createTransaction(
-      obj.date ? obj.date.slice(5, 10) : '', // MM/DD from ISO
+      obj.date ? obj.date.slice(5, 10) : '',
       obj.description,
       obj.amount.toString(),
-      obj.type || 'income',
+      obj.type || 'expense',
       2024,
       userId,
       companyId,
@@ -77,7 +76,7 @@ async function debugDeposits() {
   finalTransactions.forEach((tx, idx) => {
     console.log(`[TX ${idx + 1}]:`, tx);
   });
-  console.log(`Total final deposit transactions: ${finalTransactions.length}`);
+  console.log(`Total final electronic transactions: ${finalTransactions.length}`);
 }
 
-debugDeposits();
+debugElectronic();
