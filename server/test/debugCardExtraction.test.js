@@ -12,7 +12,7 @@ import createTransaction from '../services/parsers/createTransaction.js';
  */
 async function debugCard() {
   const filePath = path.resolve(
-    'server', 'test', 'data', 'pdfs', 'chase', '20240131-statements-5697-.pdf.pdf'
+    'server', 'test', 'data', 'pdfs', 'chase', '20240731-statements-5697-.pdf.crdownload.pdf'
   );
   if (!fs.existsSync(filePath)) {
     console.error('PDF file not found:', filePath);

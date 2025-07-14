@@ -180,92 +180,104 @@ class ChaseTransactionParser {
   }
 
   static parseCardLine(line, year) {
-    // Handle different card transaction formats:
-    // 01/02 Card Purchase 12/29 Chevron 0202648 Plantation FL Card 1819 $38.80
-    // 01/04 Card Purchase With Pin 01/04 Chevron/Sunshine 39 Plantation FL Card 1819 60.00
-    
-    // Match pattern: DATE Card Purchase [With Pin] [DATE] MERCHANT...STATE Card 1819 AMOUNT
-    // Updated regex to properly capture merchant info before state abbreviation
-    const match = line.match(/^(\d{2}\/\d{2})\s*Card Purchase(?:\s+With Pin)?\s*(?:\d{2}\/\d{2}\s+)?(.+?)\s+[A-Z]{2}\s+Card\s+1819\s*\$?([\d,]+\.\d{2})$/);
-    if (!match) return null;
-    
-    const dateStr = match[1];
-    const merchantPart = match[2];
-    const amountStr = match[3];
-    
-    const date = ChaseDateUtils.toISODate(dateStr, year);
-    const amount = parseFloat(amountStr.replace(/,/g, ''));
-    if (isNaN(amount) || amount <= 0 || amount > 50000) return null;
-    
-    // Clean up merchant name - remove transaction IDs and location details
-    let merchantName = merchantPart
-      .replace(/\s+\d{7,}\s+/g, ' ') // Remove long transaction IDs (7+ digits)
-      .replace(/\s+/g, ' ') // Normalize spaces
-      .trim();
-    
-    // Handle special cases to preserve main brand names and important identifiers
-    if (merchantName.includes('Chevron')) {
-      // For "Chevron/Sunshine 39" keep both brands
-      if (merchantName.includes('Chevron/Sunshine')) {
-        merchantName = 'Chevron/Sunshine';
+    // Try Card Purchase (with or without Pin)
+    const cardMatch = line.match(/^(\d{2}\/\d{2})\s*Card Purchase(?:\s+With Pin)?\s*(?:\d{2}\/\d{2}\s+)?(.+?)\s+[A-Z]{2}\s+Card\s+\d{4}\s*\$?([\d,]+\.\d{2})$/);
+    if (cardMatch) {
+      const dateStr = cardMatch[1];
+      const merchantPart = cardMatch[2];
+      const amountStr = cardMatch[3];
+      const date = ChaseDateUtils.toISODate(dateStr, year);
+      const amount = parseFloat(amountStr.replace(/,/g, ''));
+      if (isNaN(amount) || amount <= 0 || amount > 50000) return null;
+      let merchantName = merchantPart
+        .replace(/\s+\d{7,}\s+/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+      // Handle special cases to preserve main brand names and important identifiers
+      if (merchantName.includes('Chevron')) {
+        // For "Chevron/Sunshine 39" keep both brands
+        if (merchantName.includes('Chevron/Sunshine')) {
+          merchantName = 'Chevron/Sunshine';
+        } else {
+          // Remove location info but keep Chevron
+          merchantName = merchantName.replace(/\s+\d{4,}\s+\w+$/, '').replace(/Chevron.*/, 'Chevron').trim();
+        }
+      } else if (merchantName.includes('Exxon') && merchantName.includes('Sunshine')) {
+        // For "Exxon Sunshine 63" preserve both (before general location removal)
+        merchantName = 'Exxon Sunshine';
+      } else if (merchantName.includes('Exxon')) {
+        // For standalone Exxon
+        merchantName = merchantName.replace(/\s+\d{4,}\s+\w+$/, '').trim();
+        merchantName = 'Exxon';
+      } else if (merchantName.includes('Sunshine')) {
+        // For standalone Sunshine locations, preserve store numbers
+        const sunshineMatch = merchantName.match(/Sunshine\s*(?:#\s*)?(\d+)/);
+        if (sunshineMatch) {
+          merchantName = `Sunshine #${sunshineMatch[1]}`;
+        } else {
+          merchantName = 'Sunshine';
+        }
+      } else if (merchantName.includes("Lowe's")) {
+        // For Lowe's, preserve store number
+        const lowesMatch = merchantName.match(/Lowe's\s*#(\d+)/);
+        if (lowesMatch) {
+          merchantName = `Lowe's #${lowesMatch[1]}`;
+        } else {
+          merchantName = "Lowe's";
+        }
+      } else if (merchantName.includes('Westar')) {
+        // For Westar, preserve identifying numbers
+        const westarMatch = merchantName.match(/Westar\s+(\d+)/);
+        if (westarMatch) {
+          merchantName = `Westar ${westarMatch[1]}`;
+        } else {
+          merchantName = 'Westar';
+        }
+      } else if (merchantName.includes('2185 N')) {
+        merchantName = '2185 N University'; // Common truncated address
       } else {
-        // Remove location info but keep Chevron
-        merchantName = merchantName.replace(/\s+\d{4,}\s+\w+$/, '').replace(/Chevron.*/, 'Chevron').trim();
+        // For other merchants, remove location info at the end
+        merchantName = merchantName.replace(/\s+\d{4,6}\s+\w+$/, ''); // Remove ID + location at end
+        merchantName = merchantName.replace(/\s+\w+$/, ''); // Remove single word at end (likely city)
       }
-    } else if (merchantName.includes('Exxon') && merchantName.includes('Sunshine')) {
-      // For "Exxon Sunshine 63" preserve both (before general location removal)
-      merchantName = 'Exxon Sunshine';
-    } else if (merchantName.includes('Exxon')) {
-      // For standalone Exxon
-      merchantName = merchantName.replace(/\s+\d{4,}\s+\w+$/, '').trim();
-      merchantName = 'Exxon';
-    } else if (merchantName.includes('Sunshine')) {
-      // For standalone Sunshine locations, preserve store numbers
-      const sunshineMatch = merchantName.match(/Sunshine\s*(?:#\s*)?(\d+)/);
-      if (sunshineMatch) {
-        merchantName = `Sunshine #${sunshineMatch[1]}`;
-      } else {
-        merchantName = 'Sunshine';
+      
+      // Final cleanup
+      merchantName = merchantName.trim();
+      if (!merchantName || merchantName.length < 2) {
+        merchantName = 'Card Purchase';
       }
-    } else if (merchantName.includes('Lowe\'s')) {
-      // For Lowe's, preserve store number
-      const lowesMatch = merchantName.match(/Lowe's\s*#(\d+)/);
-      if (lowesMatch) {
-        merchantName = `Lowe's #${lowesMatch[1]}`;
-      } else {
-    // NEW LOGIC: If description ends with 'Deposit 1' or 'Online Deposit 1', do NOT treat '1' as part of amount
-    const descriptionEndsWithDeposit1 = /Deposit\s+1$/.test(descriptionPartForConcat) || /Online Deposit\s+1$/.test(descriptionPartForConcat);
-        merchantName = 'Lowe\'s';
-      }
-    } else if (merchantName.includes('Westar')) {
-      // For Westar, preserve identifying numbers
-      const westarMatch = merchantName.match(/Westar\s+(\d+)/);
-      if (westarMatch) {
-        merchantName = `Westar ${westarMatch[1]}`;
-      } else {
-        merchantName = 'Westar';
-      }
-    } else if (merchantName.includes('2185 N')) {
-      merchantName = '2185 N University'; // Common truncated address
-    } else {
-      // For other merchants, remove location info at the end
-      merchantName = merchantName.replace(/\s+\d{4,6}\s+\w+$/, ''); // Remove ID + location at end
-      merchantName = merchantName.replace(/\s+\w+$/, ''); // Remove single word at end (likely city)
+      
+      return {
+        date,
+        amount,
+        description: merchantName,
+        ...ChaseClassifier.classify(merchantName, amount, 'expense'),
+        source: 'chase_pdf',
+      };
     }
-    
-    // Final cleanup
-    merchantName = merchantName.trim();
-    if (!merchantName || merchantName.length < 2) {
-      merchantName = 'Card Purchase';
+    // Try Non-Chase ATM Withdraw
+    const atmMatch = line.match(/^(\d{2}\/\d{2})\s*Non-Chase ATM Withdraw\s*(?:\d{2}\/\d{2}\s+)?(.+?)\s+[A-Z]{2}\s+Card\s+\d{4}\s*\$?([\d,]+\.\d{2})$/);
+    if (atmMatch) {
+      const dateStr = atmMatch[1];
+      const merchantPart = atmMatch[2];
+      const amountStr = atmMatch[3];
+      const date = ChaseDateUtils.toISODate(dateStr, year);
+      const amount = parseFloat(amountStr.replace(/,/g, ''));
+      if (isNaN(amount) || amount <= 0 || amount > 50000) return null;
+      let merchantName = merchantPart.replace(/\s+/g, ' ').trim();
+      if (!merchantName || merchantName.length < 2) {
+        merchantName = 'Non-Chase ATM Withdraw';
+      }
+      return {
+        date,
+        amount,
+        description: merchantName,
+        type: 'atm_withdrawal',
+        category: 'ATM Withdrawal',
+        source: 'chase_pdf',
+      };
     }
-    
-    return {
-      date,
-      amount,
-      description: merchantName,
-      ...ChaseClassifier.classify(merchantName, amount, 'expense'),
-      source: 'chase_pdf',
-    };
+    return null;
   }
 
   static parseElectronicLine(line, year) {
