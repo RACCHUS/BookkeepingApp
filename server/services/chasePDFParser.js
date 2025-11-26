@@ -182,11 +182,20 @@ class ChasePDFParser {
    */
   async parsePDF(filePath, userId, companyId = '', companyName = '') {
     try {
+      console.log(`[ChasePDFParser] Reading file: ${filePath}`);
       const dataBuffer = await fs.readFile(filePath);
+      console.log(`[ChasePDFParser] Buffer size: ${dataBuffer.length}, First 16 bytes:`, dataBuffer.slice(0, 16));
       const pdfData = await pdfParse(dataBuffer);
+      console.log(`[ChasePDFParser] PDF text length: ${pdfData.text.length}`);
       const text = pdfData.text;
       const accountInfo = this.extractAccountInfo(text);
+      console.log(`[ChasePDFParser] Extracted accountInfo:`, accountInfo);
       const transactions = await this.extractTransactions(text, accountInfo, userId, companyId, companyName);
+      console.log(`[ChasePDFParser] Extracted transactions:`, {
+        type: typeof transactions,
+        length: Array.isArray(transactions) ? transactions.length : 'N/A',
+        sample: Array.isArray(transactions) ? transactions.slice(0, 2) : transactions
+      });
       return {
         success: true,
         accountInfo,
@@ -194,6 +203,7 @@ class ChasePDFParser {
         summary: this.generateSummary(transactions)
       };
     } catch (error) {
+      console.error(`[ChasePDFParser] Error parsing PDF:`, error);
       return {
         success: false,
         error: error.message,

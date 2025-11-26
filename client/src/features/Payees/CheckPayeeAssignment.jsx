@@ -332,7 +332,9 @@ const CheckPayeeAssignment = ({ onAssignmentComplete }) => {
                   />
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                  {formatDate(transaction.date)}
+                  {transaction.date && !isNaN(new Date(transaction.date))
+                    ? new Date(transaction.date).toLocaleDateString()
+                    : ''}
                 </td>
                 <td className="px-6 py-4 text-sm text-gray-900 dark:text-white">
                   <div className="max-w-xs truncate" title={transaction.description}>

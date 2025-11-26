@@ -1,4 +1,27 @@
 import { validationResult } from 'express-validator';
+
+/**
+ * Helper: Map transaction object to ensure date is always ISO string
+ * @param {object} tx
+ * @returns {object}
+ */
+function mapTransactionForClient(tx) {
+  if (!tx) return tx;
+  let date = tx.date;
+  // Firestore Timestamp: has toDate()
+  if (date && typeof date === 'object' && typeof date.toDate === 'function') {
+    date = date.toDate();
+  }
+  // JS Date object
+  if (date instanceof Date) {
+    date = date.toISOString();
+  }
+  // If still not a string, fallback
+  if (typeof date !== 'string') {
+    date = '';
+  }
+  return { ...tx, date };
+}
 import firebaseService from '../services/cleanFirebaseService.js';
 import transactionClassifierService from '../services/transactionClassifierService.js';
 import { TransactionSchema } from '../../shared/schemas/transactionSchema.js';
@@ -119,18 +142,20 @@ export const getTransactions = asyncHandler(async (req, res) => {
       );
     }
 
+    // Map all transactions to ensure date is ISO string
+    const mappedTransactions = filteredTransactions.map(mapTransactionForClient);
     res.json({
       success: true,
       data: {
-        transactions: filteredTransactions,
-        total: filteredTransactions.length,
-        hasMore: filteredTransactions.length === parseInt(limit),
+        transactions: mappedTransactions,
+        total: mappedTransactions.length,
+        hasMore: mappedTransactions.length === parseInt(limit),
         usingMockData, // Indicate if we're using fallback data
         pagination: {
           limit: parseInt(limit),
           offset: parseInt(offset),
-          total: filteredTransactions.length,
-          hasMore: filteredTransactions.length === parseInt(limit)
+          total: mappedTransactions.length,
+          hasMore: mappedTransactions.length === parseInt(limit)
         }
       }
     });
@@ -154,7 +179,7 @@ export const getTransactionById = async (req, res) => {
 
     res.json({
       success: true,
-      transaction
+      transaction: mapTransactionForClient(transaction)
     });
 
   } catch (error) {
@@ -237,13 +262,34 @@ export const updateTransaction = async (req, res) => {
     const updateData = req.body;
 
     // Get the original transaction for learning purposes
-    const originalTransaction = await firebaseService.getTransactionById(id, userId);
+    const originalTransaction = await firebaseService.getTransactionById(userId, id);
 
-    // Convert date string to Date object if provided
-    if (updateData.date) {
-      updateData.date = new Date(updateData.date);
-      updateData.taxYear = updateData.date.getFullYear();
-      updateData.quarterlyPeriod = getQuarterFromDate(updateData.date);
+    // --- Date Handling: Always save as JS Date object ---
+    if (updateData.date !== undefined) {
+      let parsedDate = updateData.date;
+      if (typeof parsedDate === 'string' || typeof parsedDate === 'number') {
+        const tempDate = new Date(parsedDate);
+        parsedDate = !isNaN(tempDate.getTime()) ? tempDate : originalTransaction.date;
+      }
+      if (!(parsedDate instanceof Date) || isNaN(parsedDate.getTime())) {
+        parsedDate = originalTransaction.date;
+      }
+      updateData.date = parsedDate;
+      updateData.taxYear = parsedDate.getFullYear();
+      updateData.quarterlyPeriod = getQuarterFromDate(parsedDate);
+    } else {
+      updateData.date = originalTransaction.date;
+      updateData.taxYear = originalTransaction.taxYear;
+      updateData.quarterlyPeriod = originalTransaction.quarterlyPeriod;
+    }
+
+    // --- Amount Handling: Save as provided, no sign enforcement ---
+    if (updateData.amount !== undefined) {
+      let newAmount = typeof updateData.amount === 'number' ? updateData.amount : parseFloat(updateData.amount);
+      if (isNaN(newAmount)) newAmount = originalTransaction.amount;
+      updateData.amount = newAmount;
+    } else {
+      updateData.amount = originalTransaction.amount;
     }
 
     // Handle category changes for learning
@@ -272,7 +318,7 @@ export const updateTransaction = async (req, res) => {
     updateData.lastModifiedBy = userId;
     updateData.lastModified = new Date();
 
-    await firebaseService.updateTransaction(id, userId, updateData);
+    await firebaseService.updateTransaction(userId, id, updateData);
 
     res.json({
       success: true,
@@ -527,7 +573,7 @@ export const bulkUpdateCategories = async (req, res) => {
         const originalTransaction = await firebaseService.getTransactionById(transactionId, userId);
         
         // Update the transaction
-        await firebaseService.updateTransaction(transactionId, userId, {
+        await firebaseService.updateTransaction(userId, transactionId, {
           category,
           manuallySet: true,
           lastModifiedBy: userId,

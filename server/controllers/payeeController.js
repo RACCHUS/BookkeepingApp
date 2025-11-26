@@ -265,6 +265,50 @@ export const getVendors = async (req, res) => {
   }
 };
 
+/**
+ * Bulk assign payee to transactions
+ */
+export const bulkAssignPayee = async (req, res) => {
+  try {
+    console.log('📋 Bulk assign payee request body:', JSON.stringify(req.body, null, 2));
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      console.log('❌ Validation errors:', errors.array());
+      return res.status(400).json({
+        error: 'Validation failed',
+        details: errors.array()
+      });
+    }
+    const { uid: userId } = req.user;
+    const { transactionIds, payeeId, payeeName } = req.body;
+    console.log('🔍 bulkAssignPayee userId:', userId);
+    console.log('🔍 bulkAssignPayee transactionIds:', transactionIds);
+    console.log('🔍 bulkAssignPayee payeeId:', payeeId);
+    console.log('🔍 bulkAssignPayee payeeName:', payeeName);
+    if (!Array.isArray(transactionIds) || transactionIds.length === 0) {
+      console.log('❌ bulkAssignPayee: transactionIds missing or empty');
+      return res.status(400).json({ error: 'transactionIds is required and must be a non-empty array' });
+    }
+    if (!payeeId || typeof payeeId !== 'string') {
+      console.log('❌ bulkAssignPayee: payeeId missing or invalid');
+      return res.status(400).json({ error: 'payeeId is required and must be a string' });
+    }
+    // Call service
+    const result = await payeeService.bulkAssignPayeeToTransactions(userId, transactionIds, payeeId, payeeName);
+    console.log('✅ bulkAssignPayee result:', JSON.stringify(result, null, 2));
+    res.json({
+      success: true,
+      ...result
+    });
+  } catch (error) {
+    console.error('❌ bulkAssignPayee error:', error);
+    res.status(500).json({
+      error: 'Failed to bulk assign payee',
+      message: error.message
+    });
+  }
+};
+
 // Validation rules
 export const createPayeeValidation = [
   body('name').trim().notEmpty().withMessage('Name is required'),
@@ -295,3 +339,10 @@ export const getPayeesValidation = [
   query('isActive').optional().isBoolean().withMessage('isActive must be boolean'),
   query('search').optional().isString().withMessage('Search must be a string')
 ];
+
+export const bulkAssignPayeeValidation = [
+  body('transactionIds').isArray({ min: 1 }).withMessage('transactionIds must be a non-empty array'),
+  body('payeeId').isString().notEmpty().withMessage('payeeId is required and must be a string'),
+  body('payeeName').optional().isString().withMessage('payeeName must be a string')
+];
+

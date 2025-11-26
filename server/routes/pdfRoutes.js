@@ -20,6 +20,7 @@ import {
   handleValidationErrors
 } from '../middlewares/index.js';
 
+import { authMiddleware } from '../middlewares/index.js';
 const router = express.Router();
 
 // Configure multer for file uploads with enhanced validation
@@ -76,23 +77,27 @@ router.get('/status/:processId',
   validateObjectId('processId'),
   getPDFStatus
 );
-router.get('/uploads', getUserUploads);
+router.get('/uploads', authMiddleware, getUserUploads);
 router.get('/uploads/:uploadId', 
+  authMiddleware,
   param('uploadId').notEmpty().withMessage('Upload ID is required'),
   getUploadDetails
 );
 router.put('/uploads/:uploadId/rename', 
+  authMiddleware,
   param('uploadId').notEmpty().withMessage('Upload ID is required'),
   body('name').isLength({ min: 1, max: 255 }).withMessage('Name must be between 1 and 255 characters'),
   renameUpload
 );
 router.put('/uploads/:uploadId/company', 
+  authMiddleware,
   param('uploadId').notEmpty().withMessage('Upload ID is required'),
   body('companyId').optional().isString(),
   body('companyName').optional().isString(),
   updateUploadCompany
 );
 router.delete('/uploads/:uploadId', 
+  authMiddleware,
   param('uploadId').notEmpty().withMessage('Upload ID is required'),
   deleteUpload
 );

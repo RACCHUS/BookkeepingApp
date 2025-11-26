@@ -52,62 +52,42 @@ export const formatDateForDisplay = (dateString) => {
  * @param {string|Date|Object} date - Date string, Date object, or Firestore Timestamp
  * @returns {string} Formatted date string
  */
+/**
+ * Robustly format a date for display
+ * Accepts ISO strings, JS Date objects, Firestore Timestamps, or numbers
+ * Returns formatted date string or empty string if invalid
+ * @param {string|Date|Object|number} date
+ * @returns {string}
+ */
 export const formatDate = (date) => {
   if (!date) return '';
-  
-  try {
-    // Handle Firestore Timestamp objects
-    if (date && typeof date === 'object' && date.seconds) {
-      const jsDate = new Date(date.seconds * 1000);
-      return jsDate.toLocaleDateString();
+  let parsedDate = null;
+  // Firestore Timestamp
+  if (typeof date === 'object' && date !== null) {
+    if (typeof date.toDate === 'function') {
+      parsedDate = date.toDate();
+    } else if (date.seconds) {
+      parsedDate = new Date(date.seconds * 1000);
+    } else if (date instanceof Date) {
+      parsedDate = date;
     }
-    
-    // Handle different date formats
-    if (typeof date === 'string') {
-      // If it's an ISO string with time (e.g., "2024-01-29T12:00:00")
-      if (date.includes('T')) {
-        const parsedDate = new Date(date);
-        if (!isNaN(parsedDate.getTime())) {
-          return parsedDate.toLocaleDateString();
-        }
-      }
-      
-      // If it's already in YYYY-MM-DD format
-      if (date.includes('-') && !date.includes('T')) {
-        return formatDateForDisplay(date);
-      }
-      
-      // If it's in MM/DD format (common in PDF parsing)
-      if (date.includes('/') && date.length <= 5) {
-        const currentYear = new Date().getFullYear();
-        const [month, day] = date.split('/');
-        const fullDate = `${currentYear}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-        return formatDateForDisplay(fullDate);
-      }
-      
-      // Try to parse as date string
-      const parsedDate = new Date(date);
-      if (!isNaN(parsedDate.getTime())) {
-        return parsedDate.toLocaleDateString();
-      }
-    }
-    
-    // If it's a Date object
-    if (date instanceof Date) {
-      return date.toLocaleDateString();
-    }
-    
-    // Try to parse as date
-    const parsedDate = new Date(date);
-    if (!isNaN(parsedDate.getTime())) {
-      return parsedDate.toLocaleDateString();
-    }
-    
-  } catch (error) {
-    console.warn('Error formatting date:', date, error);
   }
-  
-  return String(date);
+  // ISO string or string
+  if (!parsedDate && typeof date === 'string') {
+    parsedDate = new Date(date);
+  }
+  // Number (timestamp)
+  if (!parsedDate && typeof date === 'number') {
+    parsedDate = new Date(date);
+  }
+  // Fallback: try to parse
+  if (!parsedDate) {
+    parsedDate = new Date(date);
+  }
+  if (parsedDate && !isNaN(parsedDate.getTime())) {
+    return parsedDate.toLocaleDateString();
+  }
+  return '';
 };
 
 /**

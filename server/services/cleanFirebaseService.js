@@ -242,10 +242,30 @@ class FirebaseService {
       }
 
       // Always ensure category is a string (never undefined/null)
+      let safeDate = transactionData.date;
+      // Normalize to midnight UTC to avoid timezone issues
+      if (safeDate instanceof Date) {
+        safeDate = new Date(Date.UTC(safeDate.getUTCFullYear(), safeDate.getUTCMonth(), safeDate.getUTCDate()));
+        safeDate = admin.firestore.Timestamp.fromDate(safeDate);
+      } else if (typeof safeDate === 'string' || typeof safeDate === 'number') {
+        const tempDate = new Date(safeDate);
+        if (!isNaN(tempDate.getTime())) {
+          const utcDate = new Date(Date.UTC(tempDate.getUTCFullYear(), tempDate.getUTCMonth(), tempDate.getUTCDate()));
+          safeDate = admin.firestore.Timestamp.fromDate(utcDate);
+        } else {
+          safeDate = null;
+        }
+      }
+      // Always save amount as positive
+      let safeAmount = typeof transactionData.amount === 'number' ? transactionData.amount : parseFloat(transactionData.amount);
+      if (isNaN(safeAmount)) safeAmount = 0;
+      safeAmount = Math.abs(safeAmount);
       const safeTransactionData = {
         ...transactionData,
         category: typeof transactionData.category === 'string' ? transactionData.category : '',
         userId,
+        date: safeDate,
+        amount: safeAmount,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       };
@@ -314,12 +334,13 @@ class FirebaseService {
         let transactions = [];
         snapshot.forEach(doc => {
           const data = doc.data();
-          transactions.push({ 
-            id: doc.id, 
+          transactions.push({
+            id: doc.id,
             ...data,
-            // Convert Firestore timestamps to Date objects
-            createdAt: data.createdAt?.toDate?.() || data.createdAt,
-            updatedAt: data.updatedAt?.toDate?.() || data.updatedAt
+            // Always convert Firestore Timestamp to ISO string for date
+            date: data.date?.toDate?.()?.toISOString()?.split('T')[0] || data.date,
+            createdAt: data.createdAt?.toDate?.()?.toISOString() || data.createdAt,
+            updatedAt: data.updatedAt?.toDate?.()?.toISOString() || data.updatedAt
           });
         });
 
@@ -449,11 +470,12 @@ class FirebaseService {
         }
 
         console.log(`🔥 Firebase: Retrieved transaction ${transactionId}`);
-        return { 
-          id: doc.id, 
+        return {
+          id: doc.id,
           ...data,
-          createdAt: data.createdAt?.toDate?.() || data.createdAt,
-          updatedAt: data.updatedAt?.toDate?.() || data.updatedAt
+          date: data.date?.toDate?.()?.toISOString()?.split('T')[0] || data.date,
+          createdAt: data.createdAt?.toDate?.()?.toISOString() || data.createdAt,
+          updatedAt: data.updatedAt?.toDate?.()?.toISOString() || data.updatedAt
         };
       } catch (error) {
         console.error('Firebase getTransactionById error:', error);
@@ -489,13 +511,53 @@ class FirebaseService {
           throw new Error('Transaction not found');
         }
 
-        await docRef.update({
+        // Logging input and existing date
+        logger.debug(`[updateTransaction] transactionId=${transactionId}, userId=${userId}`);
+        logger.debug(`[updateTransaction] Incoming updateData.date:`, updateData.date);
+        logger.debug(`[updateTransaction] Existing data.date:`, data.date);
+
+        // Ensure date is always a Firestore Timestamp
+        let safeDate = updateData.date;
+        // Normalize to midnight UTC to avoid timezone issues
+        if (safeDate instanceof Date) {
+          logger.debug(`[updateTransaction] safeDate is Date instance:`, safeDate);
+          safeDate = new Date(Date.UTC(safeDate.getUTCFullYear(), safeDate.getUTCMonth(), safeDate.getUTCDate()));
+          safeDate = admin.firestore.Timestamp.fromDate(safeDate);
+        } else if (typeof safeDate === 'string' || typeof safeDate === 'number') {
+          const tempDate = new Date(safeDate);
+          logger.debug(`[updateTransaction] safeDate string/number, parsed:`, tempDate);
+          if (!isNaN(tempDate.getTime())) {
+            const utcDate = new Date(Date.UTC(tempDate.getUTCFullYear(), tempDate.getUTCMonth(), tempDate.getUTCDate()));
+            safeDate = admin.firestore.Timestamp.fromDate(utcDate);
+          } else {
+            safeDate = data.date;
+          }
+        } else if (!safeDate) {
+          logger.debug(`[updateTransaction] No safeDate provided, using existing:`, data.date);
+          safeDate = data.date;
+        }
+
+        // Always save amount as positive
+        let safeAmount = updateData.amount !== undefined ? updateData.amount : data.amount;
+        logger.debug(`[updateTransaction] Incoming updateData.amount:`, updateData.amount);
+        safeAmount = typeof safeAmount === 'number' ? safeAmount : parseFloat(safeAmount);
+        if (isNaN(safeAmount)) safeAmount = data.amount;
+        safeAmount = Math.abs(safeAmount);
+        logger.debug(`[updateTransaction] Final safeAmount:`, safeAmount);
+
+        const safeUpdateData = {
           ...updateData,
+          date: safeDate,
+          amount: safeAmount,
           updatedAt: admin.firestore.FieldValue.serverTimestamp()
-        });
+        };
+        logger.debug(`[updateTransaction] Final safeUpdateData:`, safeUpdateData);
+
+        await docRef.update(safeUpdateData);
 
         const updatedDoc = await docRef.get();
         const updatedData = updatedDoc.data();
+        logger.debug(`[updateTransaction] Updated Firestore data:`, updatedData);
         console.log(`🔥 Firebase: Updated transaction ${transactionId}`);
         return { 
           id: updatedDoc.id, 
@@ -504,7 +566,7 @@ class FirebaseService {
           updatedAt: updatedData.updatedAt?.toDate?.() || updatedData.updatedAt
         };
       } catch (error) {
-        console.error('Firebase updateTransaction error:', error);
+        logger.error('[updateTransaction] Firebase updateTransaction error:', error);
         throw error;
       }
     } else {
@@ -517,12 +579,14 @@ class FirebaseService {
         throw new Error('Transaction not found');
       }
 
+      logger.debug(`[updateTransaction][Mock] Incoming updateData:`, updateData);
       this.mockData.transactions[index] = {
         ...this.mockData.transactions[index],
         ...updateData,
         updatedAt: new Date()
       };
 
+      logger.debug(`[updateTransaction][Mock] Updated transaction:`, this.mockData.transactions[index]);
       console.log(`🎭 Mock: Updated transaction ${transactionId}`);
       return this.mockData.transactions[index];
     }
@@ -703,20 +767,20 @@ class FirebaseService {
 
     try {
       let query = this.db.collection('uploads').where('userId', '==', userId);
-      
-      // Apply company filter
-      if (filters.companyId) {
+
+      // Only apply company filter if present and non-empty
+      if (filters.companyId && typeof filters.companyId === 'string' && filters.companyId.trim() !== '') {
         query = query.where('companyId', '==', filters.companyId);
       }
-      
+
       // Apply sorting
       const sortBy = filters.sortBy || 'uploadedAt';
       const sortOrder = filters.sortOrder || 'desc';
       query = query.orderBy(sortBy, sortOrder);
-      
+
       const snapshot = await query.get();
       const uploads = [];
-      
+
       for (const doc of snapshot.docs) {
         const data = doc.data();
         // Convert Firestore timestamps to ISO strings
@@ -729,7 +793,7 @@ class FirebaseService {
         };
         uploads.push(upload);
       }
-      
+
       return uploads;
     } catch (error) {
       console.error('Error getting uploads:', error);

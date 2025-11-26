@@ -298,9 +298,23 @@ class PayeeService {
         const data = doc.data();
         // Include transactions that have no payee or empty payee
         if (!data.payee || data.payee.trim() === '' || data.payee === 'Unknown Payee') {
+          let date = data.date;
+          // Firestore Timestamp: has toDate()
+          if (date && typeof date === 'object' && typeof date.toDate === 'function') {
+            date = date.toDate();
+          }
+          // JS Date object
+          if (date instanceof Date) {
+            date = date.toISOString();
+          }
+          // If still not a string, fallback
+          if (typeof date !== 'string') {
+            date = '';
+          }
           transactions.push({
             id: doc.id,
-            ...data
+            ...data,
+            date
           });
         }
       });

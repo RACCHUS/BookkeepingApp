@@ -161,8 +161,9 @@ router.patch('/:id/assign-payee',
  * @access Private
  */
 router.patch('/bulk-assign-payee', 
-  bulkOperationValidation,
-  body('payeeId').isLength({ min: 1 }).withMessage('Payee ID is required'),
+  body('transactionIds').isArray({ min: 1 }).withMessage('transactionIds must be a non-empty array'),
+  body('payeeId').isString().notEmpty().withMessage('payeeId is required and must be a string'),
+  body('payeeName').optional({ checkFalsy: true }).isString().withMessage('payeeName must be a string'),
   handleValidationErrors,
   bulkAssignPayeeToTransactions
 );

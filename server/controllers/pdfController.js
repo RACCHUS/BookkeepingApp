@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import fs from 'fs/promises';
 import path from 'path';
+import { uploadFileToSupabase, deleteFileFromSupabase } from '../services/supabaseService.js';
 import { fileURLToPath } from 'url';
 import firebaseService from '../services/cleanFirebaseService.js';
 import chasePDFParser from '../services/chasePDFParser.js';
@@ -69,42 +70,46 @@ export const uploadPDF = asyncHandler(async (req, res) => {
     });
   }
 
-  // Generate unique filename
+
+  // Helper: sanitize filename for Supabase compatibility
+  function sanitizeFilename(name) {
+    // Remove brackets, spaces, and other problematic characters
+    return name.replace(/[\[\]{}()*?<>|"'`\\]/g, '')
+               .replace(/\s+/g, '_');
+  }
+
   const uploadId = crypto.randomUUID();
-  const fileName = `${uploadId}-${file.originalname}`;
-  const uploadsDir = path.join(__dirname, '../../uploads');
+  // Store file in per-user folder for RLS policy compatibility
+  const sanitizedOriginalName = sanitizeFilename(file.originalname);
+  const fileName = `${userId}/${uploadId}-${sanitizedOriginalName}`;
 
-    try {
-      await fs.mkdir(uploadsDir, { recursive: true });
-    } catch (error) {
-      console.log('Uploads directory already exists or created');
-    }
+  // Upload file to Supabase Storage
+  let supabaseUrl;
+  try {
+    supabaseUrl = await uploadFileToSupabase(file.buffer, fileName);
+    console.log(`📄 PDF uploaded to Supabase: ${fileName} (${file.size} bytes)`);
+  } catch (err) {
+    logger.error('Supabase upload failed', { error: err.message });
+    return res.status(500).json({ error: 'Failed to upload PDF to Supabase', message: err.message });
+  }
 
-    const filePath = path.join(uploadsDir, fileName);
-
-    // Save file to disk
-    await fs.writeFile(filePath, file.buffer);
-
-    console.log(`📄 PDF uploaded: ${fileName} (${file.size} bytes)`);
-
-    // Create upload record and persist it to both disk and Firestore
-    const uploadRecord = {
-      id: uploadId,
-      fileId: uploadId, // for legacy compatibility
-      name: userProvidedName && typeof userProvidedName === 'string' && userProvidedName.trim() ? userProvidedName.trim() : file.originalname,
-      originalName: file.originalname,
-      fileName: fileName,
-      filePath: filePath,
-      fileSize: file.size,
-      bankType: bankType,
-      uploadedBy: userId,
-      uploadedAt: new Date().toISOString(),
-      status: 'uploaded',
-      processed: false,
-      // Company information (sanitized)
-      companyId: sanitizedCompanyId,
-      companyName: sanitizedCompanyName
-    };
+  // Create upload record and persist it to Firestore
+  const uploadRecord = {
+    id: uploadId,
+    fileId: uploadId,
+    name: userProvidedName && typeof userProvidedName === 'string' && userProvidedName.trim() ? userProvidedName.trim() : sanitizedOriginalName,
+    originalName: sanitizedOriginalName,
+    fileName: fileName,
+    fileSize: file.size,
+    bankType: bankType,
+    uploadedBy: userId,
+    uploadedAt: new Date().toISOString(),
+    status: 'uploaded',
+    processed: false,
+    companyId: sanitizedCompanyId,
+    companyName: sanitizedCompanyName,
+    supabaseUrl // Store Supabase public URL
+  };
     
     // Save upload record to Firestore
     try {
@@ -114,29 +119,14 @@ export const uploadPDF = asyncHandler(async (req, res) => {
       console.error('Failed to save upload record to Firestore:', error);
       // Continue with file processing even if Firestore save fails
     }
+
     // Write metadata file before any processing (for robust statement listing)
-    const metaPath = filePath + '.meta.json';
-    try {
-      await fs.writeFile(metaPath, JSON.stringify({
-        id: uploadId,
-        fileId: uploadId,
-        name: uploadRecord.name,
-        originalName: uploadRecord.originalName,
-        fileName: uploadRecord.fileName,
-        uploadedAt: uploadRecord.uploadedAt,
-        bankType: uploadRecord.bankType,
-        uploadedBy: uploadRecord.uploadedBy,
-        companyId: uploadRecord.companyId,
-        companyName: uploadRecord.companyName
-      }, null, 2));
-    } catch (metaErr) {
-      console.error('Failed to write statement metadata file:', metaErr);
-    }
+    // (Optional: If you want to keep local metadata, you can use fileName as the key, or skip this step for Supabase-only storage)
 
     // If autoProcess is enabled, start processing immediately
     if (autoProcess) {
       // Start processing in background
-      processUploadedFile(uploadId, filePath, userId, bankType)
+      processUploadedFile(uploadId, fileName, userId, bankType)
         .catch(error => console.error('Background processing error:', error));
       
       return res.status(200).json({
@@ -198,19 +188,24 @@ export const processPDF = asyncHandler(async (req, res) => {
 
     console.log('📄 PDF processing by user:', userId);
 
-    // Find the uploaded file
-    const uploadsDir = path.join(__dirname, '../../uploads');
-    const files = await fs.readdir(uploadsDir);
-    const targetFile = files.find(f => f.startsWith(fileId));
-    
-    if (!targetFile) {
+    // Get upload record from Firestore to find Supabase file name
+    let uploadRecord;
+    try {
+      uploadRecord = await firebaseService.getUploadById(userId, fileId);
+      if (!uploadRecord || !uploadRecord.fileName) {
+        return res.status(404).json({
+          error: 'File not found',
+          message: 'The uploaded PDF file could not be found'
+        });
+      }
+    } catch (err) {
       return res.status(404).json({
         error: 'File not found',
         message: 'The uploaded PDF file could not be found'
       });
     }
 
-    const filePath = path.join(uploadsDir, targetFile);
+    const fileName = uploadRecord.fileName;
     const processId = crypto.randomUUID();
 
     // Start processing
@@ -222,7 +217,7 @@ export const processPDF = asyncHandler(async (req, res) => {
     });
 
     // Process in background and return immediately
-    processUploadedFile(fileId, filePath, userId, 'chase', processId, autoSave)
+    processUploadedFile(fileId, fileName, userId, 'chase', processId, autoSave)
       .catch(error => {
         console.error('Processing error:', error);
         processingStatus.set(processId, {
@@ -253,19 +248,23 @@ async function processUploadedFile(fileId, filePath, userId, bankType, processId
   try {
     // Read metadata to get company information
     let companyInfo = { companyId: null, companyName: null };
-    const metaPath = filePath + '.meta.json';
-    try {
-      const metaData = await fs.readFile(metaPath, 'utf-8');
-      const metadata = JSON.parse(metaData);
-      if (metadata.companyId) {
-        companyInfo.companyId = metadata.companyId;
-        companyInfo.companyName = metadata.companyName;
-      }
-    } catch (metaError) {
-      console.warn('Could not read metadata file for company info:', metaError.message);
-    }
+    // Optionally fetch metadata from Firestore if needed
 
-    console.log(`🏢 Processing PDF for company: ${companyInfo.companyName || companyInfo.companyId || 'No company specified'}`);
+    // Download file from Supabase Storage as a buffer
+    const { createClient } = await import('@supabase/supabase-js');
+    const supabaseUrl = process.env.SUPABASE_URL;
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+    const { data, error } = await supabase.storage.from('uploads').download(filePath);
+    if (error || !data) throw new Error('Failed to download PDF from Supabase: ' + (error?.message || 'No data'));
+    const pdfBuffer = Buffer.from(await data.arrayBuffer());
+    console.log('🔍 PDF buffer size:', pdfBuffer.length, 'Type:', typeof pdfBuffer, 'First 16 bytes:', pdfBuffer.slice(0, 16));
+
+    // Write buffer to a temp file for parsing
+    const tempDir = path.join(__dirname, '../../uploads/temp');
+    await fs.mkdir(tempDir, { recursive: true });
+    const tempFilePath = path.join(tempDir, `${fileId}-${Date.now()}.pdf`);
+    await fs.writeFile(tempFilePath, pdfBuffer);
 
     // Update progress
     processingStatus.set(actualProcessId, {
@@ -275,11 +274,30 @@ async function processUploadedFile(fileId, filePath, userId, bankType, processId
       startTime: processingStatus.get(actualProcessId)?.startTime || new Date().toISOString()
     });
 
-    // Parse the PDF using our Chase parser
-    const parseResult = await chasePDFParser.parsePDF(filePath, userId, companyInfo.companyId, companyInfo.companyName);
-
-    if (!parseResult.success) {
-      throw new Error(parseResult.error || 'PDF parsing failed');
+    // Parse the PDF using our Chase parser (pass file path)
+    let parseResult;
+    try {
+      console.log(`[PDFController] Starting parsePDF for file: ${tempFilePath}, userId: ${userId}`);
+      parseResult = await chasePDFParser.parsePDF(tempFilePath, userId);
+      console.log(`[PDFController] parsePDF result:`, {
+        success: parseResult?.success,
+        error: parseResult?.error,
+        transactionsType: typeof parseResult?.transactions,
+        transactionsLength: Array.isArray(parseResult?.transactions) ? parseResult.transactions.length : 'N/A',
+        transactionsSample: Array.isArray(parseResult?.transactions) ? parseResult.transactions.slice(0, 2) : [],
+        accountInfo: parseResult?.accountInfo,
+        summary: parseResult?.summary
+      });
+    } catch (err) {
+      console.error('[PDFController] ❌ PDF parsing error:', err);
+      throw err;
+    } finally {
+      // Clean up temp file
+      try {
+        await fs.unlink(tempFilePath);
+      } catch (cleanupErr) {
+        console.warn('[PDFController] Failed to clean up temp PDF file:', cleanupErr.message);
+      }
     }
 
     // Update progress
@@ -292,39 +310,48 @@ async function processUploadedFile(fileId, filePath, userId, bankType, processId
 
     // Auto-save transactions if requested
     let savedTransactionIds = [];
-    if (autoSave && parseResult.transactions.length > 0) {
-      const transactionsToSave = [];
-      for (const transaction of parseResult.transactions) {
-        // Transactions are already classified during parsing with user rules
-        // Ensure category is always a string
-        const category = typeof transaction.category === 'string' ? transaction.category : '';
-        console.log(`[PDF Controller] Transaction: "${transaction.description}" -> Category: "${category}"`);
-        const enhancedTransaction = {
-          ...transaction,
-          category,
-          source: 'chase_pdf_import',
-          sourceFile: path.basename(filePath),
-          sourceFileId: fileId,
-          statementId: fileId, // always link to the statement/PDF
-          isManuallyReviewed: false,
-          createdBy: userId,
-          companyId: companyInfo.companyId || null,
-          companyName: companyInfo.companyName || null
-        };
-        transactionsToSave.push(enhancedTransaction);
-      }
-      // Save transactions one by one to get IDs
-      for (const transaction of transactionsToSave) {
-        try {
-          // Defensive: ensure category is always a string
-          if (typeof transaction.category !== 'string') transaction.category = '';
-          const result = await firebaseService.createTransaction(userId, transaction);
-          savedTransactionIds.push(result.id);
-        } catch (error) {
-          console.error('Error saving transaction:', error);
-          // Continue with other transactions
+    if (autoSave) {
+      if (Array.isArray(parseResult.transactions)) {
+        console.log(`[PDFController] Attempting to save ${parseResult.transactions.length} transactions for upload ${fileId}`);
+        if (parseResult.transactions.length > 0) {
+          try {
+            for (const tx of parseResult.transactions) {
+              // Attach statementId/uploadId to each transaction
+              const txWithStatementId = { ...tx, statementId: fileId };
+              const result = await firebaseService.createTransaction(userId, txWithStatementId);
+              savedTransactionIds.push(result.id);
+            }
+            console.log(`[PDFController] ✅ Saved ${savedTransactionIds.length} transactions for upload ${fileId}`);
+          } catch (saveErr) {
+            console.error('[PDFController] ❌ Failed to save transactions:', saveErr);
+          }
+        } else {
+          console.warn(`[PDFController] No transactions to save for upload ${fileId}`);
         }
+      } else {
+        console.error(`[PDFController] parseResult.transactions is not an array:`, parseResult.transactions);
       }
+    }
+
+    // Update Firestore upload record to mark as processed
+    try {
+      await firebaseService.updateUpload(userId, fileId, {
+        processed: true,
+        status: 'processed',
+        updatedAt: new Date().toISOString(),
+        transactionCount: parseResult.transactions.length
+      });
+      console.log(`✅ Updated upload record as processed: ${fileId}`);
+    } catch (updateErr) {
+      console.error('❌ Failed to update upload record:', updateErr);
+    }
+
+    // Delete file from Supabase Storage after everything is saved
+    try {
+      await deleteFileFromSupabase(filePath);
+      console.log('🗑️ Deleted PDF from Supabase Storage:', filePath);
+    } catch (deleteErr) {
+      console.warn('Failed to delete PDF from Supabase Storage:', deleteErr.message);
     }
 
     // Update final status
@@ -881,20 +908,16 @@ export const deleteUpload = async (req, res) => {
       });
     }
 
-    // Find the upload file
-    const uploadsDir = path.join(__dirname, '../../uploads');
-    const files = await fs.readdir(uploadsDir);
-    const uploadFile = files.find(fileName => fileName.startsWith(uploadId));
-
-    if (!uploadFile) {
+    // Get upload record from Firestore to find Supabase file name
+    let uploadRecord;
+    try {
+      uploadRecord = await firebaseService.getUploadById(userId, uploadId);
+    } catch (err) {
       return res.status(404).json({
         error: 'Upload not found',
         message: 'The requested upload could not be found'
       });
     }
-
-    const filePath = path.join(uploadsDir, uploadFile);
-    const metaPath = filePath + '.meta.json';
 
     // Delete associated transactions from Firestore
     const deletedCount = await firebaseService.deleteTransactionsByUploadId(userId, uploadId);
@@ -902,14 +925,14 @@ export const deleteUpload = async (req, res) => {
     // Delete the upload record from Firestore
     await firebaseService.deleteUpload(userId, uploadId);
 
-    // Delete the PDF file
-    await fs.unlink(filePath);
-
-    // Delete metadata file if it exists
-    try {
-      await fs.unlink(metaPath);
-    } catch (e) {
-      // Metadata file doesn't exist, ignore
+    // Delete the PDF file from Supabase Storage
+    if (uploadRecord && uploadRecord.fileName) {
+      try {
+        await deleteFileFromSupabase(uploadRecord.fileName);
+        console.log('🗑️ Deleted PDF from Supabase Storage:', uploadRecord.fileName);
+      } catch (deleteErr) {
+        console.warn('Failed to delete PDF from Supabase Storage:', deleteErr.message);
+      }
     }
 
     res.json({
