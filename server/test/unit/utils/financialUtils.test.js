@@ -67,6 +67,13 @@ describe('Financial Utils', () => {
     it('should filter out invalid values', () => {
       expect(sumAmounts([100, null, 200, undefined, 300])).toBe(600);
     });
+
+    it('should throw error for non-array input', () => {
+      // This tests line 76: throw new Error('Amounts must be an array')
+      expect(() => sumAmounts('not an array')).toThrow('Amounts must be an array');
+      expect(() => sumAmounts(123)).toThrow('Amounts must be an array');
+      expect(() => sumAmounts(null)).toThrow('Amounts must be an array');
+    });
   });
 
   describe('calculatePercentage', () => {
@@ -182,6 +189,22 @@ describe('Financial Utils', () => {
       expect(result.income).toBe(0);
       expect(result.expenses).toBe(0);
       expect(result.total).toBe(0);
+    });
+
+    it('should categorize transfer transactions', () => {
+      // This tests lines 130-131: case 'transfer' and categories.transfers += amount
+      const transactions = [
+        { amount: 1000, type: 'income' },
+        { amount: 500, type: 'transfer' },
+        { amount: 300, type: 'transfer' },
+        { amount: 200, type: 'expense' }
+      ];
+
+      const result = categorizeAmounts(transactions);
+      expect(result.income).toBe(1000);
+      expect(result.expenses).toBe(200);
+      expect(result.transfers).toBe(800);
+      expect(result.total).toBe(2000);
     });
   });
 
