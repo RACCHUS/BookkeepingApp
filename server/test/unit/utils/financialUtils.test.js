@@ -96,54 +96,69 @@ describe('Financial Utils', () => {
     });
 
     it('should handle zero old value', () => {
-      expect(calculatePercentageChange(0, 100)).toBe(0);
+      expect(calculatePercentageChange(0, 100)).toBe(100);
+      expect(calculatePercentageChange(0, 0)).toBe(0);
     });
   });
 
   describe('calculateProfitLoss', () => {
     it('should calculate profit correctly', () => {
       const result = calculateProfitLoss(5000, 3000);
-      expect(result.profit).toBe(2000);
-      expect(result.margin).toBeCloseTo(40, 2);
+      expect(result.profitLoss).toBe(2000);
+      expect(result.profitMargin).toBeCloseTo(40, 2);
+      expect(result.isProfit).toBe(true);
     });
 
     it('should calculate loss correctly', () => {
       const result = calculateProfitLoss(3000, 5000);
-      expect(result.profit).toBe(-2000);
-      expect(result.margin).toBeLessThan(0);
+      expect(result.profitLoss).toBe(-2000);
+      expect(result.profitMargin).toBeLessThan(0);
+      expect(result.isProfit).toBe(false);
     });
 
     it('should handle zero income', () => {
       const result = calculateProfitLoss(0, 1000);
-      expect(result.profit).toBe(-1000);
+      expect(result.profitLoss).toBe(-1000);
+      expect(result.income).toBe(0);
+      expect(result.expenses).toBe(1000);
     });
   });
 
   describe('calculateTaxEstimate', () => {
     it('should calculate tax amount', () => {
-      const tax = calculateTaxEstimate(10000, 0.25);
-      expect(tax).toBeCloseTo(2500, 2);
+      const result = calculateTaxEstimate(10000, 25);
+      expect(result.taxAmount).toBeCloseTo(2500, 2);
+      expect(result.taxableIncome).toBe(10000);
+      expect(result.taxRate).toBe(25);
+      expect(result.afterTaxIncome).toBe(7500);
     });
 
     it('should handle zero income', () => {
-      const tax = calculateTaxEstimate(0, 0.25);
-      expect(tax).toBe(0);
+      const result = calculateTaxEstimate(0, 25);
+      expect(result.taxAmount).toBe(0);
+      expect(result.afterTaxIncome).toBe(0);
     });
 
     it('should handle different tax rates', () => {
-      expect(calculateTaxEstimate(10000, 0.15)).toBeCloseTo(1500, 2);
-      expect(calculateTaxEstimate(10000, 0.30)).toBeCloseTo(3000, 2);
+      const result1 = calculateTaxEstimate(10000, 15);
+      const result2 = calculateTaxEstimate(10000, 30);
+      expect(result1.taxAmount).toBeCloseTo(1500, 2);
+      expect(result2.taxAmount).toBeCloseTo(3000, 2);
     });
   });
 
   describe('calculateQuarterlyTax', () => {
     it('should calculate quarterly tax', () => {
-      const quarterly = calculateQuarterlyTax(40000, 0.25);
-      expect(quarterly).toBeCloseTo(2500, 2); // 40000 * 0.25 / 4
+      const result = calculateQuarterlyTax(40000, 25);
+      expect(result.quarterlyPayment).toBeCloseTo(2500, 2); // 40000 * 0.25 / 4
+      expect(result.taxAmount).toBe(10000);
+      expect(result.taxableIncome).toBe(40000);
     });
 
     it('should handle zero annual income', () => {
-      expect(calculateQuarterlyTax(0, 0.25)).toBe(0);
+      const result = calculateQuarterlyTax(0, 25);
+      expect(result.quarterlyPayment).toBe(0);
+      expect(result.taxAmount).toBe(0);
     });
   });
 
@@ -157,16 +172,16 @@ describe('Financial Utils', () => {
       ];
 
       const result = categorizeAmounts(transactions);
-      expect(result.totalIncome).toBe(3000);
-      expect(result.totalExpenses).toBe(800);
-      expect(result.netAmount).toBe(2200);
+      expect(result.income).toBe(3000);
+      expect(result.expenses).toBe(800);
+      expect(result.total).toBe(3800);
     });
 
     it('should handle empty transactions', () => {
       const result = categorizeAmounts([]);
-      expect(result.totalIncome).toBe(0);
-      expect(result.totalExpenses).toBe(0);
-      expect(result.netAmount).toBe(0);
+      expect(result.income).toBe(0);
+      expect(result.expenses).toBe(0);
+      expect(result.total).toBe(0);
     });
   });
 
@@ -174,39 +189,41 @@ describe('Financial Utils', () => {
     it('should calculate running balances', () => {
       const transactions = [
         { amount: 1000, type: 'income' },
-        { amount: 500, type: 'expense' },
+        { amount: -500, type: 'expense' },
         { amount: 300, type: 'income' }
       ];
 
       const result = calculateRunningBalance(transactions, 0);
       expect(result).toHaveLength(3);
-      expect(result[0].balance).toBe(1000);
-      expect(result[1].balance).toBe(500);
-      expect(result[2].balance).toBe(800);
+      expect(result[0].runningBalance).toBe(1000);
+      expect(result[1].runningBalance).toBe(500);
+      expect(result[2].runningBalance).toBe(800);
     });
 
     it('should handle starting balance', () => {
       const transactions = [
-        { amount: 100, type: 'expense' }
+        { amount: -100, type: 'expense' }
       ];
 
       const result = calculateRunningBalance(transactions, 1000);
-      expect(result[0].balance).toBe(900);
+      expect(result[0].runningBalance).toBe(900);
     });
   });
 
   describe('calculateExpenseRatios', () => {
     it('should calculate expense ratios by category', () => {
       const expenses = [
-        { amount: 500, category: 'Rent' },
-        { amount: 300, category: 'Utilities' },
-        { amount: 200, category: 'Rent' }
+        { amount: -500, category: 'Rent' },
+        { amount: -300, category: 'Utilities' },
+        { amount: -200, category: 'Rent' }
       ];
 
-      const ratios = calculateExpenseRatios(expenses, 5000);
-      expect(ratios).toHaveProperty('Rent');
-      expect(ratios).toHaveProperty('Utilities');
-      expect(ratios.Rent.percentage).toBeCloseTo(14, 0); // 700/5000 * 100
+      const result = calculateExpenseRatios(expenses, 5000);
+      expect(result.categoryRatios).toHaveProperty('Rent');
+      expect(result.categoryRatios).toHaveProperty('Utilities');
+      expect(result.categoryRatios.Rent.amount).toBe(700);
+      expect(result.categoryRatios.Rent.percentOfIncome).toBeCloseTo(14, 0);
+      expect(result.totalExpenses).toBe(1000);
     });
   });
 
@@ -238,13 +255,17 @@ describe('Financial Utils', () => {
 
   describe('calculateDepreciation', () => {
     it('should calculate straight-line depreciation', () => {
-      const depreciation = calculateDepreciation(10000, 1000, 5);
-      expect(depreciation).toBe(1800); // (10000 - 1000) / 5
+      const result = calculateDepreciation(10000, 1000, 5);
+      expect(result.annualDepreciation).toBe(1800); // (10000 - 1000) / 5
+      expect(result.monthlyDepreciation).toBe(150);
+      expect(result.cost).toBe(10000);
+      expect(result.salvageValue).toBe(1000);
     });
 
     it('should handle zero salvage value', () => {
-      const depreciation = calculateDepreciation(10000, 0, 5);
-      expect(depreciation).toBe(2000);
+      const result = calculateDepreciation(10000, 0, 5);
+      expect(result.annualDepreciation).toBe(2000);
+      expect(result.monthlyDepreciation).toBeCloseTo(166.67, 2);
     });
   });
 
