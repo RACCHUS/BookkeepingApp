@@ -435,6 +435,13 @@ Files identified for potential refactoring based on size and complexity:
   - utils/transactionHelpers.js (helper functions, 100 lines)
   ```
 - **Priority:** HIGH - Reduces complexity by 70%
+- **⚠️ RISK LEVEL:** VERY HIGH - Core user-facing component
+- **Prerequisites:** 
+  - [ ] Write comprehensive tests for current TransactionList
+  - [ ] Document all current features and edge cases
+  - [ ] Create backup/rollback plan
+  - [ ] Budget 4-5 weeks for safe refactoring
+- **DO NOT REFACTOR WITHOUT:** Tests + Backup + Time + Staging Environment
 
 **2. `server/services/cleanFirebaseService.js` - 41.69KB, 1,133 lines**
 - **Issues:**
@@ -453,6 +460,13 @@ Files identified for potential refactoring based on size and complexity:
   - FirebaseBaseService.js (shared utilities, 100 lines)
   ```
 - **Priority:** HIGH - Improves maintainability and testability
+- **⚠️ RISK LEVEL:** CRITICAL - Touches all data operations
+- **Prerequisites:**
+  - [ ] Comprehensive integration tests for all Firebase operations
+  - [ ] Database backup before refactoring
+  - [ ] Feature flags to gradually migrate to new services
+  - [ ] Budget 6-8 weeks for safe migration
+- **DO NOT REFACTOR WITHOUT:** 90%+ test coverage + Database backups + Staging testing
 
 #### 🟡 MEDIUM - Should Refactor Soon (30-40KB)
 
@@ -470,6 +484,13 @@ Files identified for potential refactoring based on size and complexity:
   - services/PDFProcessingQueue.js (background jobs, 200 lines)
   ```
 - **Priority:** MEDIUM - Improves separation of concerns
+- **⚠️ RISK LEVEL:** HIGH - Critical PDF upload/processing flow
+- **Prerequisites:**
+  - [ ] Tests for upload flow with various PDF formats
+  - [ ] Test with real Chase PDF files
+  - [ ] Backup plan for file storage
+  - [ ] Budget 3-4 weeks
+- **SAFER ALTERNATIVE:** Add new endpoints alongside old ones, migrate gradually
 
 **4. `server/services/chasePDFParser.js` - 31.35KB, 779 lines**
 - **Issues:**
@@ -485,6 +506,12 @@ Files identified for potential refactoring based on size and complexity:
   - Keep parsers/ subdirectory (already exists)
   ```
 - **Priority:** MEDIUM - Enables multi-bank support
+- **⚠️ RISK LEVEL:** MEDIUM - Bank parsing is critical but isolated
+- **Prerequisites:**
+  - [ ] Tests with real Chase PDFs (multiple formats)
+  - [ ] Regression tests for current parsing accuracy
+  - [ ] Budget 2-3 weeks
+- **SAFER APPROACH:** Strategy pattern allows keeping old parser as fallback
 
 **5. `shared/constants/categories.js` - 30.06KB, 1,126 lines**
 - **Issues:**
@@ -547,6 +574,189 @@ Files identified for potential refactoring based on size and complexity:
 ```bash
 rm client/src/features/Transactions/TransactionListFixed.jsx
 ```
+
+---
+
+## ⚠️ REFACTORING SAFETY GUIDELINES
+
+**CRITICAL: Refactoring can easily break production functionality!**
+
+### Pre-Refactoring Checklist (MANDATORY)
+
+Before refactoring ANY file:
+
+1. **Create Feature Branch**
+   ```bash
+   git checkout -b refactor/component-name
+   ```
+
+2. **Write/Run Tests FIRST**
+   ```bash
+   # Ensure existing tests pass
+   npm run test
+   
+   # Add tests if missing for the code you're refactoring
+   # Test coverage should be >80% before refactoring
+   ```
+
+3. **Document Current Behavior**
+   - Take screenshots of UI components
+   - Document API response formats
+   - Note any side effects or edge cases
+   - Record current test results
+
+4. **Small, Incremental Changes**
+   - ✅ ONE refactoring at a time
+   - ✅ Commit after each successful change
+   - ❌ Never refactor multiple files simultaneously
+   - ❌ Never combine refactoring with feature changes
+
+5. **Continuous Verification**
+   ```bash
+   # After EACH change:
+   npm run lint              # Check for errors
+   npm run build            # Ensure build succeeds
+   npm run test             # Verify tests pass
+   # Manual testing in browser
+   ```
+
+6. **Backup Plan**
+   ```bash
+   # Easy rollback strategy
+   git tag before-refactor-component-name
+   
+   # If things break:
+   git reset --hard before-refactor-component-name
+   ```
+
+### Refactoring Best Practices
+
+**DO:**
+- ✅ Extract one function/component at a time
+- ✅ Keep the same external API/props interface
+- ✅ Test after each extraction
+- ✅ Use TypeScript/JSDoc for better safety
+- ✅ Add PropTypes validation
+- ✅ Keep original file until new structure is proven
+- ✅ Use feature flags for gradual rollout
+
+**DON'T:**
+- ❌ Change behavior while refactoring
+- ❌ Refactor without tests
+- ❌ Rush through multiple files
+- ❌ Deploy refactoring without thorough testing
+- ❌ Refactor complex files in one sitting
+- ❌ Delete original code immediately
+
+### Recommended Refactoring Order (Safest to Riskiest)
+
+1. **Utilities & Helpers** (Lowest Risk)
+   - Pure functions
+   - No side effects
+   - Easy to test
+   - Example: `transactionHelpers.js`
+
+2. **Hooks** (Low Risk)
+   - Isolated logic
+   - Testable independently
+   - Example: `useTransactionFilters.js`
+
+3. **UI Components** (Medium Risk)
+   - Visual components
+   - Can verify visually
+   - Example: `TransactionFilters.jsx`
+
+4. **Controllers** (Medium-High Risk)
+   - Business logic
+   - API contracts must remain stable
+   - Example: `transactionController.js`
+
+5. **Services** (High Risk)
+   - Critical data layer
+   - Multiple dependencies
+   - Example: `cleanFirebaseService.js`
+
+### Refactoring Strategy: Strangler Fig Pattern
+
+**For large files like TransactionList.jsx (1,078 lines):**
+
+1. **Phase 1: Extract Utilities (Week 1)**
+   - Create new files alongside existing
+   - Move pure functions
+   - Import back into original
+   - Test thoroughly
+
+2. **Phase 2: Extract Custom Hooks (Week 2)**
+   - Create hooks directory
+   - Move useState/useEffect logic
+   - Original component uses new hooks
+   - Verify functionality unchanged
+
+3. **Phase 3: Extract Sub-Components (Week 3)**
+   - Create component files
+   - Move JSX sections
+   - Keep same props interface
+   - Test each component
+
+4. **Phase 4: Slim Down Main Component (Week 4)**
+   - Main file now just orchestrates
+   - All logic delegated
+   - Verify complete functionality
+
+5. **Phase 5: Deploy & Monitor (Week 5)**
+   - Deploy to staging
+   - Monitor for issues
+   - Gradual production rollout
+   - Delete old code only after 2 weeks stable
+
+### Testing Requirements Before Refactoring
+
+**Minimum Test Coverage:**
+- Unit Tests: 80%+ coverage
+- Integration Tests: Key workflows covered
+- E2E Tests: Critical user paths working
+
+**For Each File Listed Below:**
+1. Check if tests exist
+2. If NO tests → Write tests FIRST
+3. If tests exist → Ensure they pass
+4. Only then proceed with refactoring
+
+### Emergency Rollback Procedure
+
+If refactoring breaks production:
+
+```bash
+# 1. Immediate rollback
+git revert HEAD  # or specific commit
+
+# 2. Deploy rollback immediately
+npm run build
+# Deploy to production
+
+# 3. Post-mortem
+# - What broke?
+# - Why didn't tests catch it?
+# - What additional tests needed?
+
+# 4. Fix and retry
+# - Add missing tests
+# - Fix the refactoring
+# - More thorough testing
+```
+
+---
+
+### 📋 REFACTORING TODO (Start Here)
+
+**Before starting ANY refactoring below:**
+
+- [ ] Read all safety guidelines above
+- [ ] Ensure test infrastructure is working
+- [ ] Create dedicated refactoring branch
+- [ ] Set up proper testing environment
+- [ ] Schedule time for thorough testing
+- [ ] Have rollback plan ready
 
 ---
 
