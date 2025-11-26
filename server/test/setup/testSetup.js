@@ -15,33 +15,8 @@ const __dirname = path.dirname(__filename);
 global.__TEST_ENV__ = true;
 global.__dirname = __dirname;
 
-// Mock Firebase Admin SDK for testing
-jest.mock('firebase-admin', () => ({
-  initializeApp: jest.fn(),
-  firestore: jest.fn(() => ({
-    collection: jest.fn(() => ({
-      doc: jest.fn(() => ({
-        get: jest.fn(),
-        set: jest.fn(),
-        update: jest.fn(),
-        delete: jest.fn()
-      })),
-      add: jest.fn(),
-      where: jest.fn(() => ({
-        get: jest.fn()
-      })),
-      orderBy: jest.fn(() => ({
-        get: jest.fn()
-      })),
-      limit: jest.fn(() => ({
-        get: jest.fn()
-      }))
-    }))
-  })),
-  auth: jest.fn(() => ({
-    verifyIdToken: jest.fn()
-  }))
-}));
+// Note: Firebase Admin SDK is mocked via __mocks__/firebase-admin.js
+// Jest will automatically use the manual mock when firebase-admin is imported
 
 // Mock console methods for cleaner test output
 const originalConsole = {
