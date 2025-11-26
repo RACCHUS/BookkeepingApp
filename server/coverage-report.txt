@@ -1,0 +1,579 @@
+﻿
+> bookkeeping-server@1.0.0 test:coverage
+> node --experimental-vm-modules node_modules/jest/bin/jest.js --coverage
+
+node.exe : (node:55460) ExperimentalWarning: VM Modules is an experimental feature and might change at any time
+At C:\Program Files\nodejs\npm.ps1:29 char:3
++   & $NODE_EXE $NPM_CLI_JS $args
++   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ((node:55460) Ex...nge at any time:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:49916) ExperimentalWarning: VM Modules is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+PASS test/unit/utils/errorHandler.test.js
+  Error Handler Utils
+    isFirestoreIndexError
+      ΓêÜ should return true for error with code 9 (FAILED_PRECONDITION) (14 ms)
+      ΓêÜ should return true for error message containing "index" (2 ms)
+      ΓêÜ should return true for error message containing "composite index" (1 ms)
+      ΓêÜ should return true for error message containing "query requires an index" (1 ms)
+      ΓêÜ should return false for non-index errors
+      ΓêÜ should return falsy for null error (1 ms)
+      ΓêÜ should return falsy for undefined error (1 ms)
+      ΓêÜ should return falsy for error without message (1 ms)
+      ΓêÜ should handle error with both code and message (1 ms)
+    getIndexErrorMessage
+      ΓêÜ should return user-friendly message for index errors (1 ms)
+      ΓêÜ should return original error message for non-index errors
+      ΓêÜ should return generic message for errors without message (1 ms)
+      ΓêÜ should throw for null error (16 ms)
+      ΓêÜ should throw for undefined error (2 ms)
+    extractIndexCreationUrl
+      ΓêÜ should extract Firebase console URL from error message (1 ms)
+      ΓêÜ should handle URL with query parameters (1 ms)
+      ΓêÜ should return null if no URL found
+      ΓêÜ should return null for error without message (1 ms)
+      ΓêÜ should return null for null error
+      ΓêÜ should return null for undefined error
+      ΓêÜ should extract first URL if multiple URLs present (1 ms)
+    logIndexError
+      ΓêÜ should log warning for index errors (3 ms)
+      ΓêÜ should include index URL in warning if available (1 ms)
+      ΓêÜ should include recommendation in warning (1 ms)
+      ΓêÜ should use default operation description if not provided
+      ΓêÜ should log error for non-index errors
+      ΓêÜ should not log warning for non-index errors (4 ms)
+      ΓêÜ should handle null error gracefully (1 ms)
+    withIndexFallback
+      ΓêÜ should return result from primary function if successful (1 ms)
+      ΓêÜ should call fallback function if primary throws index error (2 ms)
+      ΓêÜ should log index error before falling back (1 ms)
+      ΓêÜ should throw error if primary fails with non-index error (1 ms)
+      ΓêÜ should use default operation description if not provided (1 ms)
+      ΓêÜ should handle async primary function (19 ms)
+      ΓêÜ should handle async fallback function (16 ms)
+      ΓêÜ should propagate errors from fallback function (1 ms)
+
+(node:44540) ExperimentalWarning: VM Modules is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+PASS test/unit/utils/validation.test.js
+  Validation Utils
+    validateUUID
+      ΓêÜ should validate correct UUID v4 (13 ms)
+      ΓêÜ should reject invalid UUIDs (1 ms)
+      ΓêÜ should handle non-string inputs (8 ms)
+      ΓêÜ should handle UUIDs with whitespace (3 ms)
+      ΓêÜ should be case-insensitive (1 ms)
+    validateRequired
+      ΓêÜ should validate object with all non-empty values (1 ms)
+      ΓêÜ should reject object with empty values (1 ms)
+      ΓêÜ should validate specific required fields (1 ms)
+      ΓêÜ should handle empty required fields array (1 ms)
+      ΓêÜ should reject non-object inputs (2 ms)
+    validateAmount
+      ΓêÜ should validate positive numbers (2 ms)
+      ΓêÜ should validate negative numbers (1 ms)
+      ΓêÜ should round to 2 decimal places (4 ms)
+      ΓêÜ should reject null and undefined (1 ms)
+      ΓêÜ should reject non-numeric values (1 ms)
+      ΓêÜ should reject infinite values
+      ΓêÜ should parse string numbers
+      ΓêÜ should handle zero
+    validateDate
+      ΓêÜ should validate valid ISO date strings (4 ms)
+      ΓêÜ should reject empty dates
+      ΓêÜ should reject invalid date formats
+      ΓêÜ should reject dates too far in the past (1 ms)
+      ΓêÜ should reject dates too far in the future
+      ΓêÜ should accept current date (1 ms)
+      ΓêÜ should accept dates from year 1901 (1 ms)
+    validateEIN
+      ΓêÜ should validate correctly formatted EIN (1 ms)
+      ΓêÜ should format unformatted EIN
+      ΓêÜ should reject empty EIN (1 ms)
+      ΓêÜ should reject EIN with wrong number of digits (1 ms)
+      ΓêÜ should handle EIN with spaces
+      ΓêÜ should strip non-numeric characters (1 ms)
+    validateEmail
+      ΓêÜ should validate correct email addresses (1 ms)
+      ΓêÜ should reject invalid email formats (1 ms)
+      ΓêÜ should reject empty email
+      ΓêÜ should normalize email to lowercase
+      ΓêÜ should normalize email to lowercase (1 ms)
+    validatePhone
+      ΓêÜ should validate and format US phone numbers (1 ms)
+      ΓêÜ should handle phone with formatting (1 ms)
+      ΓêÜ should reject empty phone
+      ΓêÜ should reject phone with too few digits (3 ms)
+      ΓêÜ should reject phone with too many digits
+      ΓêÜ should handle international numbers
+      ΓêÜ should strip non-digit characters and include all digits
+    validateCategory
+      ΓêÜ should validate normal category names (1 ms)
+      ΓêÜ should reject empty category
+      ΓêÜ should reject null or undefined
+      ΓêÜ should reject non-string values
+      ΓêÜ should trim whitespace
+      ΓêÜ should reject categories over 100 characters (1 ms)
+      ΓêÜ should accept categories up to 100 characters
+    validateDescription
+      ΓêÜ should validate normal descriptions (1 ms)
+      ΓêÜ should reject empty description (1 ms)
+      ΓêÜ should reject null or undefined (1 ms)
+      ΓêÜ should trim whitespace
+      ΓêÜ should reject descriptions over 500 characters (1 ms)
+      ΓêÜ should accept descriptions up to 500 characters
+    validatePagination
+      ΓêÜ should validate default pagination (1 ms)
+      ΓêÜ should validate custom limit and offset (1 ms)
+      ΓêÜ should reject limit below 1 (2 ms)
+      ΓêÜ should reject limit above 1000 (1 ms)
+      ΓêÜ should reject negative offset
+      ΓêÜ should parse string values
+      ΓêÜ should accept limit of 1 (1 ms)
+      ΓêÜ should accept limit of 1000
+    validateDateRange
+      ΓêÜ should validate valid date range (1 ms)
+      ΓêÜ should reject invalid start date
+      ΓêÜ should reject invalid end date
+      ΓêÜ should reject end date before start date (3 ms)
+      ΓêÜ should reject date range over 10 years
+      ΓêÜ should accept same day range (1 ms)
+      ΓêÜ should calculate days difference (1 ms)
+    sanitizeString
+      ΓêÜ should trim whitespace by default (1 ms)
+      ΓêÜ should remove HTML tags by default (1 ms)
+      ΓêÜ should handle empty string
+      ΓêÜ should return empty for non-string input (1 ms)
+      ΓêÜ should not trim when option is false (1 ms)
+      ΓêÜ should not remove HTML when option is false
+      ΓêÜ should remove special characters when option is true (1 ms)
+      ΓêÜ should limit length when maxLength is set
+      ΓêÜ should combine multiple options (1 ms)
+    validateObjectId
+      ΓêÜ should validate normal object IDs
+      ΓêÜ should reject empty ID
+      ΓêÜ should reject null or undefined
+      ΓêÜ should reject non-string values (1 ms)
+      ΓêÜ should reject IDs over 1500 characters
+      ΓêÜ should accept IDs up to 1500 characters (1 ms)
+      ΓêÜ should reject IDs with forward slashes (1 ms)
+      ΓêÜ should reject IDs with control characters (1 ms)
+      ΓêÜ should trim whitespace
+      ΓêÜ should accept alphanumeric IDs (6 ms)
+
+  console.debug
+    [2025-11-26T23:21:07.747Z] [DEBUG] Test debug message
+
+      at Object.debug (utils/logger.js:15:31)
+
+  console.log
+    Γ£à Firebase Admin SDK initialized successfully
+
+      at initializeFirebaseAdmin (config/firebaseAdmin.js:84:13)
+
+  console.log
+       Project: bookkeeping-app-12583
+
+      at initializeFirebaseAdmin (config/firebaseAdmin.js:85:13)
+
+  console.log
+       Storage Bucket: bookkeeping-app-12583.firebasestorage.app
+
+      at initializeFirebaseAdmin (config/firebaseAdmin.js:86:13)
+
+(node:56488) ExperimentalWarning: VM Modules is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:54416) ExperimentalWarning: VM Modules is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+PASS test/unit/utils/utils.test.js
+  Validation Utils
+    validateRequired
+      ΓêÜ should return true for valid object with all required fields (32 ms)
+      ΓêÜ should return false for object missing required fields
+      ΓêÜ should return true when no required fields specified (1 ms)
+      ΓêÜ should handle null and undefined values (1 ms)
+      ΓêÜ should handle empty string values as invalid (1 ms)
+    validateEmail
+      ΓêÜ should return true for valid email addresses (3 ms)
+      ΓêÜ should return false for invalid email addresses (4 ms)
+      ΓêÜ should handle null and undefined (1 ms)
+    validateUUID
+      ΓêÜ should return true for valid UUIDs (5 ms)
+      ΓêÜ should return false for invalid UUIDs (1 ms)
+  Response Helpers
+    sendSuccess
+      ΓêÜ should send success response with data (7 ms)
+      ΓêÜ should send success response without data (1 ms)
+      ΓêÜ should allow custom status code (6 ms)
+    sendError
+      ΓêÜ should send error response with message (1 ms)
+      ΓêÜ should allow custom status code
+      ΓêÜ should include error details (1 ms)
+  Financial Utils
+    formatCurrency
+      ΓêÜ should format positive amounts correctly (46 ms)
+      ΓêÜ should format negative amounts correctly (1 ms)
+      ΓêÜ should handle zero correctly (1 ms)
+  Date Utils
+    formatDate
+      ΓêÜ should format dates (11 ms)
+  Logger
+    ΓêÜ should have all log levels available (1 ms)
+    ΓêÜ should log messages without throwing errors (70 ms)
+
+(node:48900) ExperimentalWarning: VM Modules is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+PASS test/unit/utils/financialUtils.test.js
+  Financial Utils
+    formatCurrency
+      ΓêÜ should format positive amounts correctly (44 ms)
+      ΓêÜ should format negative amounts correctly (1 ms)
+      ΓêÜ should handle zero correctly (1 ms)
+      ΓêÜ should handle very large numbers (1 ms)
+      ΓêÜ should handle null and undefined (1 ms)
+    sumAmounts
+      ΓêÜ should sum an array of numbers (1 ms)
+      ΓêÜ should handle empty array (1 ms)
+      ΓêÜ should handle negative numbers
+      ΓêÜ should filter out invalid values (1 ms)
+    calculatePercentage
+      ΓêÜ should calculate percentage correctly (1 ms)
+      ΓêÜ should handle zero total
+      ΓêÜ should handle 100 percent (1 ms)
+    calculatePercentageChange
+      ΓêÜ should calculate positive change
+      ΓêÜ should calculate negative change (1 ms)
+      ΓêÜ should handle zero old value
+    calculateProfitLoss
+      ΓêÜ should calculate profit correctly (1 ms)
+      ΓêÜ should calculate loss correctly (1 ms)
+      ΓêÜ should handle zero income (1 ms)
+    calculateTaxEstimate
+      ΓêÜ should calculate tax amount (3 ms)
+      ΓêÜ should handle zero income (1 ms)
+      ΓêÜ should handle different tax rates
+    calculateQuarterlyTax
+      ΓêÜ should calculate quarterly tax (1 ms)
+      ΓêÜ should handle zero annual income (1 ms)
+    categorizeAmounts
+      ΓêÜ should categorize income and expenses (1 ms)
+      ΓêÜ should handle empty transactions
+    calculateRunningBalance
+      ΓêÜ should calculate running balances (3 ms)
+      ΓêÜ should handle starting balance (1 ms)
+    calculateExpenseRatios
+      ΓêÜ should calculate expense ratios by category (2 ms)
+    calculateAverageAmount
+      ΓêÜ should calculate average of all transactions
+      ΓêÜ should filter by type (1 ms)
+      ΓêÜ should handle empty array
+    calculateDepreciation
+      ΓêÜ should calculate straight-line depreciation (1 ms)
+      ΓêÜ should handle zero salvage value
+    validateFinancialAmount
+      ΓêÜ should validate positive numbers (1 ms)
+      ΓêÜ should validate negative numbers when allowed (default)
+      ΓêÜ should reject negative numbers when not allowed (1 ms)
+      ΓêÜ should reject non-numeric values
+      ΓêÜ should check minimum value (1 ms)
+      ΓêÜ should check maximum value (1 ms)
+      ΓêÜ should return formatted value (1 ms)
+
+(node:55672) ExperimentalWarning: VM Modules is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+PASS test/unit/utils/dateUtils.test.js
+  Date Utils
+    formatDate
+      ΓêÜ should format date in short format (54 ms)
+      ΓêÜ should format date in long format (2 ms)
+      ΓêÜ should format date in ISO format (1 ms)
+      ΓêÜ should format date in US format (2 ms)
+      ΓêÜ should throw error for invalid date (25 ms)
+      ΓêÜ should throw error for unsupported format (1 ms)
+      ΓêÜ should handle string date input (1 ms)
+    getDayBounds
+      ΓêÜ should return start and end of day (2 ms)
+      ΓêÜ should handle string date input (1 ms)
+      ΓêÜ should have end of day at 23:59:59.999 (1 ms)
+    getMonthBounds
+      ΓêÜ should return start and end of month (1 ms)
+      ΓêÜ should handle month with 31 days
+      ΓêÜ should handle February in leap year
+      ΓêÜ should handle February in non-leap year
+    getYearBounds
+      ΓêÜ should return start and end of year (1 ms)
+      ΓêÜ should handle leap year (1 ms)
+    getFiscalYearBounds
+      ΓêÜ should calculate fiscal year with default 12/31 end (1 ms)
+      ΓêÜ should calculate fiscal year with custom end date
+      ΓêÜ should handle date before fiscal year end
+      ΓêÜ should handle date after fiscal year end (1 ms)
+    getQuarterBounds
+      ΓêÜ should calculate Q1 (Jan-Mar) (4 ms)
+      ΓêÜ should calculate Q2 (Apr-Jun) (1 ms)
+      ΓêÜ should calculate Q3 (Jul-Sep)
+      ΓêÜ should calculate Q4 (Oct-Dec) (1 ms)
+    daysBetween
+      ΓêÜ should calculate days between dates
+      ΓêÜ should handle negative difference (1 ms)
+      ΓêÜ should return 0 for same day
+      ΓêÜ should handle dates across months (1 ms)
+      ΓêÜ should handle dates across years
+    addDays
+      ΓêÜ should add days to date (1 ms)
+      ΓêÜ should subtract days with negative value
+      ΓêÜ should handle month boundary
+      ΓêÜ should handle year boundary
+      ΓêÜ should return ISO string
+    addMonths
+      ΓêÜ should add months to date (1 ms)
+      ΓêÜ should subtract months with negative value (1 ms)
+      ΓêÜ should handle year boundary
+      ΓêÜ should handle date overflow (e.g., Jan 31 + 1 month)
+      ΓêÜ should return ISO string (1 ms)
+    isInPast
+      ΓêÜ should return true for past dates
+      ΓêÜ should return false for future dates
+      ΓêÜ should handle string dates
+    isToday
+      ΓêÜ should return true for today (1 ms)
+      ΓêÜ should return false for yesterday
+      ΓêÜ should return false for tomorrow
+      ΓêÜ should ignore time when comparing
+    getRelativeDate
+      ΓêÜ should return "today" for current date
+      ΓêÜ should return "yesterday" for previous day
+      ΓêÜ should return "tomorrow" for next day (1 ms)
+      ΓêÜ should return "X days ago" for past dates
+      ΓêÜ should return "in X days" for future dates
+    parseDate
+      ΓêÜ should parse ISO format date (1 ms)
+      ΓêÜ should parse US format MM/DD/YYYY
+      ΓêÜ should parse MM-DD-YYYY format (1 ms)
+      ΓêÜ should return null for invalid date
+      ΓêÜ should return null for empty string
+      ΓêÜ should return null for null input (1 ms)
+    getBusinessDays
+      ΓêÜ should count business days excluding weekends (1 ms)
+      ΓêÜ should exclude Saturday and Sunday
+      ΓêÜ should return 2 for weekend range (Sat-Sun) (1 ms)
+      ΓêÜ should count single day correctly
+      ΓêÜ should handle multi-week ranges (1 ms)
+    generateDateRange
+      ΓêÜ should generate daily date range (1 ms)
+      ΓêÜ should generate weekly date range
+      ΓêÜ should generate monthly date range
+      ΓêÜ should default to daily interval (1 ms)
+      ΓêÜ should handle single day range
+      ΓêÜ should return dates in ISO format (1 ms)
+
+(node:46024) ExperimentalWarning: VM Modules is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+PASS test/unit/utils/pathUtils.test.js
+  Path Utils
+    getCurrentDir
+      ΓêÜ should return directory path from import.meta.url (13 ms)
+      ΓêÜ should handle different file URLs
+      ΓêÜ should return absolute path
+    getCurrentFile
+      ΓêÜ should return file path from import.meta.url
+      ΓêÜ should return absolute file path
+      ΓêÜ should include file extension (1 ms)
+    getProjectRoot
+      ΓêÜ should return project root directory
+      ΓêÜ should be parent of server directory (1 ms)
+    getServerRoot
+      ΓêÜ should return server root directory (1 ms)
+      ΓêÜ should end with server directory
+      ΓêÜ should throw error if server directory not found (13 ms)
+    resolveServerPath
+      ΓêÜ should resolve path relative to server root
+      ΓêÜ should handle nested paths (1 ms)
+      ΓêÜ should normalize path separators (1 ms)
+    resolveProjectPath
+      ΓêÜ should resolve path relative to project root (1 ms)
+      ΓêÜ should handle different relative paths (1 ms)
+    getCommonPaths
+      ΓêÜ should return object with common paths (1 ms)
+      ΓêÜ should include server root path (1 ms)
+      ΓêÜ should include project root path
+      ΓêÜ should include uploads path (1 ms)
+      ΓêÜ should include reports path (1 ms)
+      ΓêÜ should include all server subdirectories (3 ms)
+    ensureDirectoryExists
+      ΓêÜ should create directory if it does not exist (2 ms)
+      ΓêÜ should return true if directory already exists (2 ms)
+      ΓêÜ should create nested directories with recursive option (4 ms)
+      ΓêÜ should handle directory creation errors gracefully (1 ms)
+    getFileExtension
+      ΓêÜ should return file extension with dot (1 ms)
+      ΓêÜ should handle file paths with directories
+      ΓêÜ should handle files with multiple dots (1 ms)
+      ΓêÜ should return empty string for files without extension
+      ΓêÜ should handle hidden files (1 ms)
+    getFileNameWithoutExtension
+      ΓêÜ should return filename without extension (1 ms)
+      ΓêÜ should handle paths with directories
+      ΓêÜ should handle files with multiple dots (1 ms)
+      ΓêÜ should handle files without extension correctly
+      ΓêÜ should handle hidden files (1 ms)
+    hasFileExtension
+      ΓêÜ should return true for matching extension with dot
+      ΓêÜ should return true for matching extension without dot
+      ΓêÜ should return false for non-matching extension (1 ms)
+      ΓêÜ should handle array of extensions
+      ΓêÜ should be case-insensitive (1 ms)
+      ΓêÜ should handle paths with directories
+    generateUniqueFilePath
+      ΓêÜ should return original path if file does not exist (1 ms)
+      ΓêÜ should append _1 if file exists (2 ms)
+      ΓêÜ should increment counter for multiple existing files (3 ms)
+      ΓêÜ should preserve file extension (1 ms)
+      ΓêÜ should handle paths without extension (1 ms)
+
+  console.log
+    [2025-11-26T23:21:08.178Z] [INFO] ≡ƒöÑ FirebaseService: Initialized with Firestore and Auth
+
+      at Object.log [as info] (utils/logger.js:12:30)
+
+  console.debug
+    [2025-11-26T23:21:08.208Z] [DEBUG] Firebase configuration loaded successfully
+
+      at Object.debug (utils/logger.js:15:31)
+
+(node:57332) ExperimentalWarning: VM Modules is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+FAIL test/integration/pdf/chasePDFValidation.test.js
+  Chase PDF Parsing Validation
+    PDF File Availability
+      ΓêÜ should have Chase PDF test files available (7 ms)
+      ├ù should have expected count data for all PDFs (2 ms)
+    Transaction Count Validation
+      Individual PDF Validation
+        Γùï skipped should have PDF files to test
+      Transaction Type Validation
+        Γùï skipped should correctly categorize transaction types
+    PDF Structure Analysis
+      ΓêÜ should identify correct number of account sections (244 ms)
+      ΓêÜ should extract valid transaction dates (105 ms)
+      ΓêÜ should extract valid transaction amounts (75 ms)
+    Error Handling
+      ├ù should handle corrupted or invalid PDF files gracefully (3 ms)
+      ΓêÜ should provide meaningful error messages for parsing failures
+    Performance Validation
+      ΓêÜ should process PDFs within reasonable time limits (64 ms)
+
+  ΓùÅ Chase PDF Parsing Validation ΓÇ║ PDF File Availability ΓÇ║ should have expected count data for all PDFs
+
+    expect(received).toBeDefined()
+
+    Received: undefined
+
+    [0m [90m 53 |[39m       (availablePDFs [33m||[39m [])[33m.[39mforEach(pdfFile [33m=>[39m {
+     [90m 54 |[39m         [36mconst[39m expectedData [33m=[39m expectedCounts[33m.[39mfind(data [33m=>[39m data[33m.[39mfilename [33m===[39m pdfFile)[33m;[39m
+    [31m[1m>[22m[39m[90m 55 |[39m         expect(expectedData)[33m.[39mtoBeDefined()[33m;[39m
+     [90m    |[39m                              [31m[1m^[22m[39m
+     [90m 56 |[39m       })[33m;[39m
+     [90m 57 |[39m     })[33m;[39m
+     [90m 58 |[39m   })[33m;[39m[0m
+
+      at test/integration/pdf/chasePDFValidation.test.js:55:30
+          at Array.forEach (<anonymous>)
+      at Object.<anonymous> (test/integration/pdf/chasePDFValidation.test.js:53:29)
+
+  ΓùÅ Chase PDF Parsing Validation ΓÇ║ Error Handling ΓÇ║ should handle corrupted or invalid PDF files gracefully
+
+    expect(received).rejects.toThrow()
+
+    Received promise resolved instead of rejected
+    Resolved to value: {"error": "ENOENT: no such file or directory, open 'C:\\Users\\richa\\Documents\\Code\\BookkeepingApp\\server\\test\\data\\pdfs\\chase\\non-existent.pdf'", 
+"success": false, "transactions": []}
+
+    [0m [90m 158 |[39m       [36mconst[39m invalidPath [33m=[39m path[33m.[39mjoin([33mCHASE_PDF_DIR[39m[33m,[39m [32m'non-existent.pdf'[39m)[33m;[39m
+     [90m 159 |[39m       
+    [31m[1m>[22m[39m[90m 160 |[39m       [36mawait[39m expect(chasePDFParser[33m.[39mparsePDF(invalidPath))[33m.[39mrejects[33m.[39mtoThrow()[33m;[39m
+     [90m     |[39m             [31m[1m^[22m[39m
+     [90m 161 |[39m     })[33m;[39m
+     [90m 162 |[39m
+     [90m 163 |[39m     it([32m'should provide meaningful error messages for parsing failures'[39m[33m,[39m [36masync[39m () [33m=>[39m {[0m
+
+      at expect (node_modules/expect/build/index.js:113:15)
+      at Object.<anonymous> (test/integration/pdf/chasePDFValidation.test.js:160:13)
+
+----------------------------------|---------|----------|---------|---------|-----------------------------------------------------------------------------------------
+File                              | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s                                                                       
+----------------------------------|---------|----------|---------|---------|-----------------------------------------------------------------------------------------
+All files                         |    16.7 |     19.3 |   19.41 |   16.57 |                                                                                         
+ controllers                      |       0 |        0 |       0 |       0 |                                                                                         
+  classificationController.js     |       0 |        0 |       0 |       0 | 5-317                                                                                   
+  companyController.js            |       0 |        0 |       0 |       0 | 7-267                                                                                   
+  index.js                        |       0 |      100 |     100 |       0 | 89-158                                                                                  
+  mockTransactionController.js    |       0 |        0 |       0 |       0 | 4-329                                                                                   
+  payeeController.js              |       0 |        0 |       0 |       0 | 7-343                                                                                   
+  pdfController.js                |       0 |        0 |       0 |       0 | 12-1033                                                                                 
+  reportController.js             |       0 |        0 |       0 |       0 | 10-704                                                                                  
+  transactionController.js        |       0 |        0 |       0 |       0 | 9-810                                                                                   
+ middlewares                      |       0 |        0 |       0 |       0 |                                                                                         
+  authMiddleware.js               |       0 |        0 |       0 |       0 | 8-83                                                                                    
+  errorMiddleware.js              |       0 |        0 |       0 |       0 | 12-250                                                                                  
+  index.js                        |       0 |      100 |     100 |       0 | 59-98                                                                                   
+  loggingMiddleware.js            |       0 |        0 |       0 |       0 | 8-190                                                                                   
+  optionalAuthMiddleware.js       |       0 |        0 |       0 |       0 | 8-109                                                                                   
+  securityMiddleware.js           |       0 |        0 |       0 |       0 | 9-302                                                                                   
+  validationMiddleware.js         |       0 |        0 |       0 |       0 | 8-277                                                                                   
+ services                         |   12.34 |    10.13 |   10.82 |    12.1 |                                                                                         
+  chasePDFParser.js               |   54.94 |    36.28 |   60.71 |   54.72 | 225,280-284,294-482,533-542,687,695,742-789,811-814                                     
+  cleanFirebaseService.js         |    2.88 |     0.61 |    3.33 |    3.02 | 25,32,47-110,140-1227                                                                   
+  companyService.js               |       0 |        0 |       0 |       0 | 19-556                                                                                  
+  index.js                        |       0 |      100 |     100 |       0 | 30-41                                                                                   
+  payeeService.js                 |       0 |        0 |       0 |       0 | 18-385                                                                                  
+  reportGenerator.js              |       0 |        0 |       0 |       0 | 5-361                                                                                   
+  reportService.js                |       0 |        0 |       0 |       0 | 9-149                                                                                   
+  supabaseService.js              |       0 |        0 |       0 |       0 | 4-30                                                                                    
+  transactionClassifier.js        |       0 |        0 |       0 |       0 | 7-364                                                                                   
+  transactionClassifierService.js |    62.5 |       35 |     100 |   63.63 | 43-50,73-80                                                                             
+ services/parsers                 |   40.75 |    41.07 |      50 |   42.85 |                                                                                         
+  ChaseClassifier.js              |   84.61 |       90 |     100 |   84.61 | 14-15                                                                                   
+  ChaseDateUtils.js               |      80 |    66.66 |     100 |     100 | 10-12                                                                                   
+  ChaseSectionExtractor.js        |   69.23 |       40 |     100 |   69.23 | 16-21                                                                                   
+  ChaseSectionExtractorLogs.js    |       0 |        0 |       0 |       0 |                                                                                         
+  ChaseSectionExtractorNoLog.js   |       0 |        0 |       0 |       0 | 10-37                                                                                   
+  ChaseSummary.js                 |       0 |        0 |       0 |       0 | 6-25                                                                                    
+  ChaseTransactionParser.js       |   63.15 |    57.77 |      75 |   65.73 | 39,43,50,61,70,83,90,97,102,112-115,121-133,149,210-211,218,226,234,247,261-271,285-296 
+  ChaseTransactionParserNoLog.js  |       0 |        0 |       0 |       0 | 15-229                                                                                  
+  createTransaction.js            |   66.66 |    73.52 |     100 |      70 | 26-27,31-36,57,72-73                                                                    
+  extractCompanyInfo.js           |    87.5 |    83.33 |     100 |    90.9 | 48-49                                                                                   
+  index.js                        |       0 |        0 |       0 |       0 |                                                                                         
+  parseTransactionLine.js         |       0 |        0 |       0 |       0 | 12-43                                                                                   
+ services/reports                 |       0 |        0 |       0 |       0 |                                                                                         
+  BaseReportGenerator.js          |       0 |        0 |       0 |       0 | 7-166                                                                                   
+  CategoryBreakdownReport.js      |       0 |        0 |       0 |       0 | 14-164                                                                                  
+  ChecksPaidReport.js             |       0 |        0 |       0 |       0 | 9-257                                                                                   
+  TaxSummaryReport.js             |       0 |        0 |       0 |       0 | 13-182                                                                                  
+  TransactionSummaryReport.js     |       0 |        0 |       0 |       0 | 15-169                                                                                  
+  index.js                        |       0 |      100 |     100 |       0 | 16-26                                                                                   
+ utils                            |    69.7 |       70 |   66.94 |   69.45 |                                                                                         
+  dateUtils.js                    |   98.07 |    94.44 |     100 |   97.93 | 229,314                                                                                 
+  errorHandler.js                 |     100 |      100 |     100 |     100 |                                                                                         
+  financialUtils.js               |   96.42 |    82.19 |     100 |    96.2 | 76,130-131                                                                              
+  index.js                        |     100 |      100 |     100 |     100 |                                                                                         
+  logger.js                       |     100 |      100 |     100 |     100 |                                                                                         
+  pathUtils.js                    |     100 |      100 |     100 |     100 |                                                                                         
+  processPDFfromStorage.js        |       0 |        0 |       0 |       0 | 15-31                                                                                   
+  responseHelpers.js              |    12.5 |    19.14 |    12.5 |    12.5 | 62-269                                                                                  
+  sectionFiltering.js             |       0 |        0 |       0 |       0 | 13-72                                                                                   
+  transactionCounter.js           |       0 |        0 |       0 |       0 | 14-214                                                                                  
+  validation.js                   |     100 |      100 |     100 |     100 |                                                                                         
+----------------------------------|---------|----------|---------|---------|-----------------------------------------------------------------------------------------
+Jest: "global" coverage threshold for statements (70%) not met: 16.7%
+Jest: "global" coverage threshold for branches (70%) not met: 19.3%
+Jest: "global" coverage threshold for lines (70%) not met: 16.57%
+Jest: "global" coverage threshold for functions (70%) not met: 19.41%
+Test Suites: 1 failed, 2 skipped, 6 passed, 7 of 9 total
+Tests:       2 failed, 4 skipped, 309 passed, 315 total
+Snapshots:   0 total
+Time:        5.889 s
+Ran all test suites.
