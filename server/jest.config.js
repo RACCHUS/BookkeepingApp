@@ -8,13 +8,13 @@ export default {
   // Test environment
   testEnvironment: 'node',
   
-  // Setup files - use absolute path from server root
-  setupFilesAfterEnv: ['<rootDir>/../../test/setup/testSetup.js'],
+  // Setup files
+  setupFilesAfterEnv: ['<rootDir>/test/setup/testSetup.js'],
   
-  // Test file patterns - use absolute path from server root
+  // Test file patterns
   testMatch: [
-    '<rootDir>/../../test/**/*.test.js',
-    '<rootDir>/../../test/**/*.spec.js'
+    '<rootDir>/test/**/*.test.js',
+    '<rootDir>/test/**/*.spec.js'
   ],
   
   // Module file extensions
@@ -24,13 +24,13 @@ export default {
   transform: {},
   
   // Coverage configuration
-  collectCoverage: true,
-  coverageDirectory: '<rootDir>/../../coverage',
+  collectCoverage: false, // Enable with --coverage flag
+  coverageDirectory: '<rootDir>/coverage',
   collectCoverageFrom: [
-    '<rootDir>/../../controllers/**/*.js',
-    '<rootDir>/../../services/**/*.js',
-    '<rootDir>/../../utils/**/*.js',
-    '<rootDir>/../../middlewares/**/*.js',
+    'controllers/**/*.js',
+    'services/**/*.js',
+    'utils/**/*.js',
+    'middlewares/**/*.js',
     '!**/*.test.js',
     '!**/*.spec.js',
     '!**/node_modules/**',
@@ -51,8 +51,8 @@ export default {
   
   // Module path mapping
   moduleNameMapper: {
-    '^@/(.*)$': '<rootDir>/../../$1',
-    '^@test/(.*)$': '<rootDir>/../../test/$1'
+    '^@/(.*)$': '<rootDir>/$1',
+    '^@test/(.*)$': '<rootDir>/test/$1'
   },
   
   // Verbose output
