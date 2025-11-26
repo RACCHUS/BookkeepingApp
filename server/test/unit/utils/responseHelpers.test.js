@@ -19,7 +19,11 @@ import {
   sendNoContentResponse,
   sendPaginatedSuccess,
   sendRateLimitError,
-  sendHealthResponse
+  sendHealthResponse,
+  sendFileResponse,
+  sendStreamResponse,
+  setCacheHeaders,
+  setNoCacheHeaders
 } from '../../../utils/responseHelpers.js';
 
 describe('Response Helpers', () => {
@@ -458,6 +462,92 @@ describe('Response Helpers', () => {
           checks: { database: 'error' }
         })
       );
+    });
+  });
+
+  describe('sendFileResponse', () => {
+    it('should send file download response', () => {
+      res.setHeader = jest.fn();
+      res.sendFile = jest.fn().mockReturnThis();
+
+      sendFileResponse(res, '/path/to/file.pdf', 'report.pdf', 'application/pdf');
+
+      expect(res.setHeader).toHaveBeenCalledWith('Content-Type', 'application/pdf');
+      expect(res.setHeader).toHaveBeenCalledWith('Content-Disposition', 'attachment; filename="report.pdf"');
+      expect(res.sendFile).toHaveBeenCalledWith('/path/to/file.pdf');
+    });
+
+    it('should use default content type', () => {
+      res.setHeader = jest.fn();
+      res.sendFile = jest.fn().mockReturnThis();
+
+      sendFileResponse(res, '/path/to/file.bin', 'data.bin');
+
+      expect(res.setHeader).toHaveBeenCalledWith('Content-Type', 'application/octet-stream');
+    });
+  });
+
+  describe('sendStreamResponse', () => {
+    it('should send streaming response', () => {
+      const mockStream = {
+        pipe: jest.fn()
+      };
+      res.setHeader = jest.fn();
+
+      sendStreamResponse(res, mockStream, 'text/csv');
+
+      expect(res.setHeader).toHaveBeenCalledWith('Content-Type', 'text/csv');
+      expect(res.setHeader).toHaveBeenCalledWith('Transfer-Encoding', 'chunked');
+      expect(mockStream.pipe).toHaveBeenCalledWith(res);
+    });
+
+    it('should use default content type', () => {
+      const mockStream = { pipe: jest.fn() };
+      res.setHeader = jest.fn();
+
+      sendStreamResponse(res, mockStream);
+
+      expect(res.setHeader).toHaveBeenCalledWith('Content-Type', 'application/json');
+    });
+  });
+
+  describe('setCacheHeaders', () => {
+    it('should set cache headers with default max age', () => {
+      const originalNow = Date.now;
+      Date.now = jest.fn(() => 1234567890);
+      res.setHeader = jest.fn();
+
+      setCacheHeaders(res);
+
+      expect(res.setHeader).toHaveBeenCalledWith('Cache-Control', 'public, max-age=3600');
+      expect(res.setHeader).toHaveBeenCalledWith('ETag', '"1234567890"');
+      
+      Date.now = originalNow;
+    });
+
+    it('should set cache headers with custom max age', () => {
+      const originalNow = Date.now;
+      Date.now = jest.fn(() => 1234567890);
+      res.setHeader = jest.fn();
+
+      setCacheHeaders(res, 7200);
+
+      expect(res.setHeader).toHaveBeenCalledWith('Cache-Control', 'public, max-age=7200');
+      
+      Date.now = originalNow;
+    });
+  });
+
+  describe('setNoCacheHeaders', () => {
+    it('should set no-cache headers', () => {
+      res.setHeader = jest.fn();
+
+      setNoCacheHeaders(res);
+
+      expect(res.setHeader).toHaveBeenCalledWith('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+      expect(res.setHeader).toHaveBeenCalledWith('Pragma', 'no-cache');
+      expect(res.setHeader).toHaveBeenCalledWith('Expires', '0');
+      expect(res.setHeader).toHaveBeenCalledWith('Surrogate-Control', 'no-store');
     });
   });
 });
