@@ -409,7 +409,146 @@ npm audit fix
 
 ---
 
-## 🎯 PHASE 2: CODE REFACTORING (Future)
+## 🎯 PHASE 2: CODE REFACTORING
+
+### 📏 Large Files Analysis (>10KB)
+
+Files identified for potential refactoring based on size and complexity:
+
+#### 🔴 CRITICAL - Needs Immediate Refactoring (>40KB)
+
+**1. `client/src/features/Transactions/TransactionList.jsx` - 49.72KB, 1,078 lines**
+- **Issues:**
+  - Massive single component with all logic inline
+  - Multiple responsibilities: filtering, sorting, editing, deleting, bulk operations
+  - Complex state management (14+ useState hooks)
+  - Mixed concerns: UI, API calls, business logic
+- **Refactoring Plan:**
+  ```
+  Split into:
+  - TransactionList.jsx (main component, 200 lines)
+  - TransactionFilters.jsx (filter controls, 150 lines)
+  - TransactionTable.jsx (table display, 200 lines)
+  - TransactionRow.jsx (individual row, 100 lines)
+  - hooks/useTransactionFilters.js (filter logic, 150 lines)
+  - hooks/useTransactionOperations.js (CRUD operations, 100 lines)
+  - utils/transactionHelpers.js (helper functions, 100 lines)
+  ```
+- **Priority:** HIGH - Reduces complexity by 70%
+
+**2. `server/services/cleanFirebaseService.js` - 41.69KB, 1,133 lines**
+- **Issues:**
+  - God object anti-pattern (handles everything)
+  - 50+ methods in single class
+  - Mixed concerns: transactions, companies, payees, uploads, reports
+  - Hard to test individual features
+- **Refactoring Plan:**
+  ```
+  Split into specialized services:
+  - FirebaseTransactionService.js (transaction CRUD, 300 lines)
+  - FirebaseCompanyService.js (company operations, 150 lines)
+  - FirebasePayeeService.js (payee operations, 150 lines)
+  - FirebaseUploadService.js (upload metadata, 150 lines)
+  - FirebaseReportService.js (report operations, 100 lines)
+  - FirebaseBaseService.js (shared utilities, 100 lines)
+  ```
+- **Priority:** HIGH - Improves maintainability and testability
+
+#### 🟡 MEDIUM - Should Refactor Soon (30-40KB)
+
+**3. `server/controllers/pdfController.js` - 34.77KB, 953 lines**
+- **Issues:**
+  - Multiple complex functions (uploadPDF, processPDF, deletePDF)
+  - Mixed responsibilities: upload, processing, status tracking
+  - In-memory status tracking (should use database/Redis)
+- **Refactoring Plan:**
+  ```
+  Split into:
+  - pdfUploadController.js (upload handling, 200 lines)
+  - pdfProcessingController.js (PDF processing, 300 lines)
+  - pdfStatusController.js (status tracking, 150 lines)
+  - services/PDFProcessingQueue.js (background jobs, 200 lines)
+  ```
+- **Priority:** MEDIUM - Improves separation of concerns
+
+**4. `server/services/chasePDFParser.js` - 31.35KB, 779 lines**
+- **Issues:**
+  - Bank-specific logic mixed with generic parsing
+  - Large class with many private methods
+  - Hard to extend for other bank formats
+- **Refactoring Plan:**
+  ```
+  Refactor to strategy pattern:
+  - parsers/BaseBankParser.js (abstract base, 100 lines)
+  - parsers/ChaseBankParser.js (Chase-specific, 300 lines)
+  - parsers/ParserFactory.js (parser selection, 50 lines)
+  - Keep parsers/ subdirectory (already exists)
+  ```
+- **Priority:** MEDIUM - Enables multi-bank support
+
+**5. `shared/constants/categories.js` - 30.06KB, 1,126 lines**
+- **Issues:**
+  - Massive data file (IRS categories)
+  - Mix of data and utility functions
+  - Hard to navigate
+- **Refactoring Plan:**
+  ```
+  Split into logical modules:
+  - categories/irsCategories.js (category definitions, 500 lines)
+  - categories/categoryGroups.js (groupings, 200 lines)
+  - categories/categoryHelpers.js (utility functions, 200 lines)
+  - categories/index.js (exports, 50 lines)
+  ```
+- **Priority:** LOW - Mostly data, but better organization needed
+
+#### 🟢 LOW PRIORITY - Monitor (20-30KB)
+
+**6. `server/controllers/transactionController.js` - 23.77KB, 714 lines**
+- **Status:** Manageable but trending large
+- **Action:** Extract bulk operations to separate controller
+- **Priority:** LOW
+
+**7. `client/src/features/PDFUpload/PDFUpload.jsx` - 23KB, 552 lines**
+- **Status:** Complex upload flow with progress tracking
+- **Action:** Extract upload progress to separate component
+- **Priority:** LOW
+
+**8. `client/src/components/forms/TransactionModal.jsx` - 22.52KB, 502 lines**
+- **Status:** Large form with validation
+- **Action:** Extract form sections into sub-components
+- **Priority:** LOW
+
+**9. `client/src/features/Transactions/TransactionListFixed.jsx` - 21.05KB, 471 lines**
+- **Status:** ⚠️ **UNUSED DUPLICATE** - App uses TransactionList.jsx instead
+- **Evidence:**
+  - App.jsx imports: `import TransactionList from './features/Transactions/TransactionList'`
+  - TransactionListFixed is NOT imported anywhere
+  - Created 3+ commits ago, likely an abandoned refactoring attempt
+- **Action:** DELETE THIS FILE
+- **Priority:** HIGH - Remove unused code (471 lines)
+
+**10. `server/controllers/reportController.js` - 20.77KB, 626 lines**
+- **Status:** Multiple report generation endpoints
+- **Action:** Already well-organized, keep monitoring
+- **Priority:** LOW
+
+---
+
+### 🔍 Investigation Needed
+
+**Confirmed Duplicate Files:**
+- ✅ `TransactionListFixed.jsx` (21.05KB) - **SAFE TO DELETE**
+  - [x] Checked: App.jsx imports TransactionList.jsx, NOT TransactionListFixed
+  - [x] Git history: Created 3 commits ago as failed refactoring attempt
+  - [x] No imports found in codebase
+  - **Action:** Delete immediately (saves 471 lines)
+
+**Command to delete:**
+```bash
+rm client/src/features/Transactions/TransactionListFixed.jsx
+```
+
+---
 
 After file cleanup, the following code improvements should be considered:
 
