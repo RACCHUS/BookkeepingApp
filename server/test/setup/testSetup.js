@@ -15,8 +15,19 @@ const __dirname = path.dirname(__filename);
 global.__TEST_ENV__ = true;
 global.__dirname = __dirname;
 
-// Note: Firebase Admin SDK is mocked via __mocks__/firebase-admin.js
-// Jest will automatically use the manual mock when firebase-admin is imported
+// Firebase Emulator Setup
+// When USE_EMULATOR=true, tests will connect to local Firebase emulators
+// Otherwise, Firebase Admin SDK is mocked via __mocks__/firebase-admin.js
+const USE_EMULATOR = process.env.USE_EMULATOR === 'true';
+
+if (USE_EMULATOR) {
+  console.log('🔥 Using Firebase Emulators for tests');
+  // Emulator setup is done per-test-suite to allow proper isolation
+  // Import emulatorSetup in integration tests that need real Firebase
+} else {
+  // Note: Firebase Admin SDK is mocked via __mocks__/firebase-admin.js
+  // Jest will automatically use the manual mock when firebase-admin is imported
+}
 
 // Mock console methods for cleaner test output
 const originalConsole = {
