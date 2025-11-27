@@ -292,6 +292,45 @@ describe('Response Helpers', () => {
         })
       );
     });
+
+    it('should include error stack in development mode', () => {
+      const originalEnv = process.env.NODE_ENV;
+      process.env.NODE_ENV = 'development';
+      
+      const error = new Error('Test error');
+      sendServerError(res, 'Server error', error);
+
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          error: expect.objectContaining({
+            details: expect.objectContaining({
+              stack: expect.any(String),
+              name: 'Error'
+            })
+          })
+        })
+      );
+
+      process.env.NODE_ENV = originalEnv;
+    });
+
+    it('should not include error stack in production mode', () => {
+      const originalEnv = process.env.NODE_ENV;
+      process.env.NODE_ENV = 'production';
+      
+      const error = new Error('Test error');
+      sendServerError(res, 'Server error', error);
+
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          error: expect.objectContaining({
+            details: null
+          })
+        })
+      );
+
+      process.env.NODE_ENV = originalEnv;
+    });
   });
 
   describe('sendCreatedResponse', () => {
