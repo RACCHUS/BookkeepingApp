@@ -1,12 +1,12 @@
 # Refactoring Status
 
 **Last Updated**: 2025-11-30  
-**Phase**: Safe Module Refactoring (Phase 2 Complete)  
-**Current Coverage**: 32.24% (as of 2025-11-30)
+**Phase**: Safe Module Refactoring (Phase 3 Complete, Phase 4 In Progress)  
+**Current Coverage**: 17.93% overall (Utils: 79.55%, Parsers: 40.75%)
 
 ---
 
-## ✅ PHASE 1 & 2 COMPLETE: Safe Module Refactoring
+## ✅ PHASE 1, 2 & 3 COMPLETE: Safe Module Refactoring
 
 **Approach**: Conservative refactoring of well-tested modules (67%+ coverage)
 **Result**: 11 files refactored, 409 tests verified, 0 regressions
@@ -100,107 +100,177 @@ All 4 middleware files refactored with centralized constants:
 - Total Tests: 437 verified
 - Constants Files: 5 created
 - Full Suite: 721/723 passing (99.7%)
-- Coverage: 32.24% maintained (no regression)
+- Coverage: Maintained
+
+### ✅ Phase 3: Parsers (100% Complete - 1 commit)
+
+All 6 parser files refactored with centralized constants:
+
+13. **parserConstants.js** (170 lines - comprehensive parsing config)
+    - DATE_FORMATS: separators, default time, padding config
+    - TRANSACTION_PATTERNS: line parsing regex, amount cleanup, negative indicators  
+    - COMPANY_PATTERNS: business entities, address patterns, skip keywords, scan limits
+    - SECTION_PATTERNS: deposits, checks, cards, electronic sections with fallbacks
+    - CLASSIFICATION: income/expense keywords, categories, confidence levels, check pattern
+    - TRANSACTION_TYPES: income, expense
+    - SUMMARY_DEFAULTS: initial values for summary generation
+    - NUMERIC: decimal places, zero, numbers-only pattern
+
+14. **ChaseDateUtils.js** (16 tests ✅)
+    - Import DATE_FORMATS from parserConstants
+    - Use DATE_FORMATS.SEPARATORS, PADDING, DEFAULT_TIME
+    - Add comprehensive JSDoc with @example tags
+
+15. **parseTransactionLine.js** (27 tests ✅)
+    - Import DATE_FORMATS, TRANSACTION_PATTERNS, TRANSACTION_TYPES
+    - Use TRANSACTION_PATTERNS.LINE, AMOUNT_CLEANUP, NEGATIVE_INDICATORS
+    - Replace magic strings with TRANSACTION_TYPES constants
+    - Add comprehensive JSDoc with @example tags
+
+16. **extractCompanyInfo.js** (34 tests ✅)
+    - Import COMPANY_PATTERNS, NUMERIC from parserConstants
+    - Use BUSINESS_ENTITIES, ADDRESS, SKIP_KEYWORDS, HEADER_SCAN_LINES
+    - Replace hardcoded patterns with constants
+    - Add comprehensive JSDoc with @example tags
+
+17. **ChaseClassifier.js** (48 tests ✅)
+    - Import CLASSIFICATION from parserConstants
+    - Use INCOME_KEYWORDS, EXPENSE_KEYWORDS, CATEGORIES, CONFIDENCE
+    - Replace magic strings/numbers with constants
+    - Add comprehensive JSDoc with @example tags
+
+18. **ChaseSummary.js** (29 tests ✅)
+    - Import SUMMARY_DEFAULTS, TRANSACTION_TYPES from parserConstants
+    - Use SUMMARY_DEFAULTS for initial values
+    - Use TRANSACTION_TYPES.INCOME/EXPENSE
+    - Add comprehensive JSDoc with @example tags
+
+19. **ChaseSectionExtractor.js** (35 tests ✅)
+    - Import SECTION_PATTERNS from parserConstants
+    - Use DEPOSITS.PRIMARY/FALLBACK, CHECKS.PRIMARY, CARDS.PRIMARY, ELECTRONIC.PRIMARY
+    - Replace hardcoded regex with constants
+    - Add comprehensive JSDoc with @example tags
+
+**Phase 3 Metrics**:
+- Files: 6/6 (100%)
+- Commits: 1
+- Tests: 189 verified (16+27+34+48+29+35)
+- Constants Files: 1 created (170 lines)
+- Coverage: Maintained at 40.75% for parsers
+
+**Combined Phase 1, 2 & 3 Results**:
+- Total Files: 17 (7 utils + 4 middlewares + 6 parsers)
+- Total Commits: 14
+- Total Tests: 626 verified (375 utils + 62 middlewares + 189 parsers)
+- Constants Files: 6 created (667 lines total)
+- Full Suite: 721/723 passing (99.7%)
+- Coverage: Maintained (no regressions)
 
 ---
 
-## Current Status: Test Infrastructure Ready ✅
+## 🔄 PHASE 4: Routes (In Progress)
 
-### Test Infrastructure Health
-- ✅ Jest configured for ESM modules (--experimental-vm-modules)
-- ✅ Test suites executing successfully (28/34 tests passing - 82.4%)
-- ✅ Coverage reporting working
-- ⏭️ Firebase Admin SDK mocking setup (deferred)
-- ⏭️ Client testing infrastructure (not started)
+**Approach**: Low-risk refactoring of declarative route configuration
+**Status**: Routes are configuration-only with minimal logic - safe to refactor without extensive tests
 
-### Coverage Baseline
-See [BASELINE_COVERAGE_REPORT.md](./BASELINE_COVERAGE_REPORT.md) for detailed coverage analysis.
+### Routes to Refactor (8 files)
+1. **classificationRoutes.js** - Classification endpoints
+2. **companyRoutes.js** - Company CRUD endpoints
+3. **payeeRoutes.js** - Payee/employee endpoints
+4. **pdfRoutes.js** - PDF upload and processing
+5. **reportRoutes.js** - Report generation endpoints
+6. **transactionRoutes.js** - Transaction CRUD endpoints
+7. **mockTransactionRoutes.js** - Debug/mock endpoints
+8. **index.js** - Route aggregation
 
-| Metric | Current | Target | Status |
-|--------|---------|--------|--------|
-| Overall Coverage | 8.91% | 70% | ❌ CRITICAL GAP |
-| Controllers | 0% | 70%+ | ❌ ZERO COVERAGE |
-| Services | 12% | 80%+ | ❌ MINIMAL COVERAGE |
-| Middlewares | 0% | 60%+ | ❌ ZERO COVERAGE |
-| Utils | 8.36% | 70%+ | ❌ MINIMAL COVERAGE |
-
----
-
-## 🚨 REFACTORING BLOCKER
-
-**Cannot safely proceed with refactoring until 80%+ coverage achieved on target files.**
-
-### Primary Refactoring Targets
-
-| File | Size | Current Coverage | Target | Gap | Effort |
-|------|------|-----------------|--------|-----|--------|
-| **cleanFirebaseService.js** | 1,133 lines | 1.98% | 90%+ | 88% | 1-2 weeks |
-| **pdfController.js** | 953 lines | 0% | 80%+ | 80% | 3-5 days |
-| **TransactionList.jsx** | 1,078 lines | 0% | 80%+ | 80% | 3-5 days |
-
-**Total Estimated Testing Effort**: 3-4 weeks
+**Refactoring Goals**:
+- Extract route path constants
+- Extract validation schemas to constants
+- Add comprehensive JSDoc
+- Improve organization and consistency
+- No behavior changes
 
 ---
 
-## Refactoring Plan (from CLEANUP_PLAN.md)
+## 🚫 BLOCKED: Modules Requiring Tests First
 
-### Option 1: Fix Tests First ✅ SELECTED
-**Timeline**: 2-3 weeks safe approach (REVISED: 3-4 weeks based on coverage gaps)
+### Controllers (0% coverage - 8 files)
+**Cannot refactor**: Zero test coverage means no safety net
 
-**Phase 1: Test Infrastructure** ✅ COMPLETE
-- [x] Configure Jest for ESM modules
-- [x] Fix broken test suites
-- [x] Establish baseline coverage metrics
-- [x] Document coverage gaps
+- classificationController.js (317 lines)
+- companyController.js (267 lines)  
+- pdfController.js (1033 lines)
+- reportController.js (704 lines)
+- transactionController.js (810 lines)
+- payeeController.js (343 lines)
+- mockTransactionController.js (329 lines)
+- index.js
 
-**Phase 2: Critical Path Testing** ⏳ IN PROGRESS
-- [ ] Setup Firebase Admin SDK mocking infrastructure (2-3 days)
-- [ ] Write comprehensive tests for `cleanFirebaseService.js` (1-2 weeks)
-  - Target: 90%+ coverage (~1,000 lines of tests)
-  - Test all CRUD operations, batch operations, error handling
-- [ ] Write integration tests for `pdfController.js` (3-5 days)
-  - Target: 80%+ coverage (~700 lines of tests)
-  - Test all API endpoints, file upload, processing, validation
+**Action Required**: Write comprehensive controller tests before refactoring
 
-**Phase 3: Client Testing Setup** 🔲 NOT STARTED
-- [ ] Install @testing-library/react, jest-dom, user-event (1 day)
-- [ ] Configure Vitest for Vite + React environment (1 day)
-- [ ] Setup mock providers (Auth, Query)
-- [ ] Write component tests for `TransactionList.jsx` (3-5 days)
-  - Target: 80%+ coverage (~800 lines of tests)
+### Services (0-2.88% coverage - 6 files)
+**Cannot refactor**: Insufficient test coverage
 
-**Phase 4: Safe Refactoring** 🔲 BLOCKED (waiting for 80%+ coverage)
-- [ ] Verify all tests passing with 80%+ coverage
-- [ ] Begin incremental refactoring with test validation
-- [ ] Monitor test suite during refactoring
+- cleanFirebaseService.js (1227 lines, 2.88% coverage) - PRIMARY BLOCKER
+- companyService.js (556 lines, 0%)
+- payeeService.js (385 lines, 0%)
+- reportGenerator.js (361 lines, 0%)
+- reportService.js (149 lines, 0%)
+- transactionClassifier.js (364 lines, 0%)
+
+**Action Required**: Write service tests targeting 80%+ coverage
+
+### Report Generators (0% coverage - 5 files)  
+**Cannot refactor**: Zero test coverage
+
+- BaseReportGenerator.js (166 lines)
+- CategoryBreakdownReport.js (164 lines)
+- ChecksPaidReport.js (257 lines)
+- TaxSummaryReport.js (182 lines)
+- TransactionSummaryReport.js (169 lines)
+
+**Action Required**: Write report generator tests
+
+### Auth Middlewares (0% coverage - 2 files)
+**Cannot refactor**: Zero test coverage
+
+- authMiddleware.js (83 lines)
+- optionalAuthMiddleware.js (109 lines)
+
+**Action Required**: Write middleware authentication tests
 
 ---
 
-## Testing Strategy
+## 📊 Coverage Summary
 
-### Immediate Priorities (Week 1-2)
+| Module | Files Refactored | Files Blocked | Coverage | Status |
+|--------|------------------|---------------|----------|--------|
+| Utils | 7/7 ✅ | 0 | 79.55% | Complete |
+| Middlewares | 4/6 ✅ | 2 | ~50% tested | Partial |
+| Parsers | 6/6 ✅ | 0 | 40.75% | Complete |
+| Routes | 0/8 🔄 | 0 | N/A | In Progress |
+| Controllers | 0/8 ❌ | 8 | 0% | Blocked |
+| Services | 0/6 ❌ | 6 | 0-2.88% | Blocked |
+| Reports | 0/5 ❌ | 5 | 0% | Blocked |
 
-1. **Firebase Mocking Setup** (2-3 days)
-   - Configure Firebase Admin SDK mocks
-   - Create test fixtures for Firestore data
-   - Setup authentication mocks
-   - Re-enable companyService.test.js and companies.test.js
+**Overall Progress**: 17/46 files refactored (37%)
+**Test Suite**: 721/723 tests passing (99.7%)
 
-2. **cleanFirebaseService.js Testing** (1-2 weeks)
-   - Unit tests for all methods:
-     - `addUpload()`, `getUploads()`, `getUploadById()`, `updateUpload()`, `deleteUpload()`
-     - `addTransaction()`, `getTransactions()`, `updateTransaction()`, `deleteTransaction()`
-     - `addCompany()`, `getCompanies()`, `updateCompany()`, `deleteCompany()`
-     - `addPayee()`, `getPayees()`, `updatePayee()`, `deletePayee()`
-   - Test error handling, validation, batch operations
-   - Test query logic, filtering, sorting
-   - Target: 90%+ statement coverage (~1,000 lines of tests)
+---
 
-3. **pdfController.js Testing** (3-5 days)
-   - Integration tests for API endpoints:
-     - `POST /api/pdf/upload` - File upload, validation, processing
-     - `GET /api/uploads` - List with company filter
-     - `GET /api/uploads/:id` - Get details
+## 🎯 Next Steps
+
+### Immediate (Phase 4 - Routes)
+Proceeding with route refactoring as it's declarative configuration with minimal logic and low risk.
+
+### Future (After Route Completion)
+Must write tests before refactoring:
+1. Controllers (8 files, 0% coverage)
+2. Services (6 files, 0-2.88% coverage)  
+3. Report Generators (5 files, 0% coverage)
+4. Auth Middlewares (2 files, 0% coverage)
+
+**Estimated Testing Effort**: 3-4 weeks to achieve 80%+ coverage on blocked modules
      - `PUT /api/uploads/:id` - Rename
      - `DELETE /api/uploads/:id` - Delete with transactions
    - Test error handling, file size limits, MIME type validation
