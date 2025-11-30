@@ -1,7 +1,22 @@
 /**
+ * Data Validation Utilities
+ * 
+ * Centralized validation functions for common data types and business logic.
+ * These utilities complement express-validator with application-specific
+ * validation rules and data formatting.
+ * 
+ * @module utils/validation
+ * @author BookkeepingApp Team
+ * @version 2.0.0
+ */
+
+/**
  * Validate a UUID (v4)
  * @param {string} uuid - UUID string to validate
  * @returns {boolean} True if valid UUID v4
+ * @example
+ * validateUUID('550e8400-e29b-41d4-a716-446655440000') // true
+ * validateUUID('invalid-uuid') // false
  */
 export function validateUUID(uuid) {
   if (typeof uuid !== 'string') return false;
@@ -9,11 +24,16 @@ export function validateUUID(uuid) {
   const uuidV4Regex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
   return uuidV4Regex.test(uuid.trim());
 }
+
 /**
  * Validate required fields in an object
  * @param {object} obj - Object to check
  * @param {string[]} requiredFields - Array of required field names (optional)
  * @returns {boolean} True if all required fields are present and non-empty
+ * @example
+ * validateRequired({ name: 'John', age: 30 }) // true (all fields present)
+ * validateRequired({ name: 'John', age: '' }) // false (empty field)
+ * validateRequired({ name: 'John' }, ['name', 'email']) // false (missing email)
  */
 export function validateRequired(obj, requiredFields = []) {
   if (!obj || typeof obj !== 'object') return false;
@@ -24,21 +44,16 @@ export function validateRequired(obj, requiredFields = []) {
   // Check only required fields
   return requiredFields.every(f => obj[f] !== undefined && obj[f] !== null && obj[f] !== '');
 }
-/**
- * Data Validation Utilities
- * 
- * Centralized validation functions for common data types and business logic.
- * These utilities complement express-validator with application-specific
- * validation rules and data formatting.
- * 
- * @author BookkeepingApp Team
- * @version 1.0.0
- */
 
 /**
  * Validate and format monetary amounts
  * @param {any} amount - Amount to validate
- * @returns {object} Validation result with isValid, value, and error
+ * @returns {object} Validation result with isValid, value, error, and formatted
+ * @example
+ * validateAmount(123.456) 
+ * // { isValid: true, value: 123.46, formatted: '123.46' }
+ * validateAmount('invalid')
+ * // { isValid: false, error: 'Amount must be a valid number' }
  */
 export function validateAmount(amount) {
   if (amount === null || amount === undefined) {
@@ -69,6 +84,13 @@ export function validateAmount(amount) {
  * Validate ISO date strings
  * @param {string} dateString - Date string to validate
  * @returns {object} Validation result
+ * @example
+ * validateDate('2024-01-15')
+ * // { isValid: true, value: Date, isoString: '2024-01-15T00:00:00.000Z' }
+ * validateDate('invalid')
+ * // { isValid: false, error: 'Invalid date format' }
+ * validateDate('1800-01-01')
+ * // { isValid: false, error: 'Date must be between 1900 and 2034' }
  */
 export function validateDate(dateString) {
   if (!dateString) {
@@ -104,6 +126,13 @@ export function validateDate(dateString) {
  * Validate EIN (Employer Identification Number)
  * @param {string} ein - EIN to validate
  * @returns {object} Validation result
+ * @example
+ * validateEIN('12-3456789')
+ * // { isValid: true, value: '12-3456789', digits: '123456789' }
+ * validateEIN('123456789')
+ * // { isValid: true, value: '12-3456789', digits: '123456789' }
+ * validateEIN('123')
+ * // { isValid: false, error: 'EIN must be 9 digits' }
  */
 export function validateEIN(ein) {
   if (!ein) {
@@ -131,6 +160,13 @@ export function validateEIN(ein) {
  * Validate email addresses
  * @param {string} email - Email to validate
  * @returns {object} Validation result
+ * @example
+ * validateEmail('user@example.com')
+ * // { isValid: true, value: 'user@example.com' }
+ * validateEmail('  USER@EXAMPLE.COM  ')
+ * // { isValid: true, value: 'user@example.com' }
+ * validateEmail('invalid-email')
+ * // { isValid: false, error: 'Invalid email format' }
  */
 export function validateEmail(email) {
   if (!email) {
@@ -153,6 +189,13 @@ export function validateEmail(email) {
  * Validate phone numbers
  * @param {string} phone - Phone number to validate
  * @returns {object} Validation result
+ * @example
+ * validatePhone('(555) 123-4567')
+ * // { isValid: true, value: '(555) 123-4567', digits: '5551234567' }
+ * validatePhone('5551234567')
+ * // { isValid: true, value: '(555) 123-4567', digits: '5551234567' }
+ * validatePhone('+15551234567')
+ * // { isValid: true, value: '+15551234567', digits: '15551234567' }
  */
 export function validatePhone(phone) {
   if (!phone) {
@@ -192,6 +235,13 @@ export function validatePhone(phone) {
  * Validate transaction categories
  * @param {string} category - Category to validate
  * @returns {object} Validation result
+ * @example
+ * validateCategory('Office Supplies')
+ * // { isValid: true, value: 'Office Supplies' }
+ * validateCategory('  Rent  ')
+ * // { isValid: true, value: 'Rent' }
+ * validateCategory('')
+ * // { isValid: false, error: 'Category cannot be empty' }
  */
 export function validateCategory(category) {
   if (!category || typeof category !== 'string') {
@@ -218,6 +268,11 @@ export function validateCategory(category) {
  * Validate transaction descriptions
  * @param {string} description - Description to validate
  * @returns {object} Validation result
+ * @example
+ * validateDescription('Payment for services')
+ * // { isValid: true, value: 'Payment for services' }
+ * validateDescription('')
+ * // { isValid: false, error: 'Description cannot be empty' }
  */
 export function validateDescription(description) {
   if (!description || typeof description !== 'string') {
@@ -244,6 +299,11 @@ export function validateDescription(description) {
  * Validate pagination parameters
  * @param {object} params - Pagination parameters {limit, offset}
  * @returns {object} Validation result
+ * @example
+ * validatePagination({ limit: 100, offset: 0 })
+ * // { isValid: true, value: { limit: 100, offset: 0 } }
+ * validatePagination({ limit: 2000 })
+ * // { isValid: false, error: 'Limit must be between 1 and 1000' }
  */
 export function validatePagination(params = {}) {
   const { limit = 50, offset = 0 } = params;
@@ -270,6 +330,11 @@ export function validatePagination(params = {}) {
  * @param {string} startDate - Start date
  * @param {string} endDate - End date
  * @returns {object} Validation result
+ * @example
+ * validateDateRange('2024-01-01', '2024-12-31')
+ * // { isValid: true, value: { startDate: Date, endDate: Date, daysDifference: 365 } }
+ * validateDateRange('2024-12-31', '2024-01-01')
+ * // { isValid: false, error: 'Start date must be before end date' }
  */
 export function validateDateRange(startDate, endDate) {
   const startValidation = validateDate(startDate);
@@ -307,6 +372,13 @@ export function validateDateRange(startDate, endDate) {
  * @param {string} input - Input string to sanitize
  * @param {object} options - Sanitization options
  * @returns {string} Sanitized string
+ * @example
+ * sanitizeString('  Hello World  ')
+ * // 'Hello World'
+ * sanitizeString('<script>alert("XSS")</script>')
+ * // 'alert("XSS")'
+ * sanitizeString('Test', { maxLength: 2 })
+ * // 'Te'
  */
 export function sanitizeString(input, options = {}) {
   if (typeof input !== 'string') {
@@ -345,6 +417,11 @@ export function sanitizeString(input, options = {}) {
  * Validate object ID (Firestore document ID)
  * @param {string} id - ID to validate
  * @returns {object} Validation result
+ * @example
+ * validateObjectId('abc123xyz')
+ * // { isValid: true, value: 'abc123xyz' }
+ * validateObjectId('path/with/slashes')
+ * // { isValid: false, error: 'ID contains invalid characters' }
  */
 export function validateObjectId(id) {
   if (!id || typeof id !== 'string') {
