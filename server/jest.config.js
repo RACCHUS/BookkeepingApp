@@ -17,6 +17,11 @@ export default {
     '<rootDir>/test/**/*.spec.js'
   ],
   
+  // Ignore emulator tests unless USE_EMULATOR is set
+  testPathIgnorePatterns: process.env.USE_EMULATOR === 'true' 
+    ? ['/node_modules/']
+    : ['/node_modules/', '.*\\.emulator\\.test\\.js$'],
+  
   // Module file extensions
   moduleFileExtensions: ['js', 'json'],
   
