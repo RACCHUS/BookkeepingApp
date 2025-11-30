@@ -58,7 +58,7 @@ describe('Date Utils', () => {
     });
 
     it('should throw error for unsupported format', () => {
-      expect(() => formatDate(testDate, 'unknown')).toThrow('Unsupported format');
+      expect(() => formatDate(testDate, 'unknown')).toThrow('Unsupported date format');
     });
 
     it('should handle string date input', () => {
