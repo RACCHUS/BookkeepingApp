@@ -104,14 +104,16 @@ describe('Error Handler Utils', () => {
       expect(result).toBe('An unexpected error occurred');
     });
 
-    it('should throw for null error', () => {
-      // Function doesn't guard against null, accessing .message throws
-      expect(() => getIndexErrorMessage(null)).toThrow();
+    it('should return generic message for null error', () => {
+      // Function now guards against null gracefully
+      const result = getIndexErrorMessage(null);
+      expect(result).toBe('An unexpected error occurred');
     });
 
-    it('should throw for undefined error', () => {
-      // Function doesn't guard against undefined, accessing .message throws
-      expect(() => getIndexErrorMessage(undefined)).toThrow();
+    it('should return generic message for undefined error', () => {
+      // Function now guards against undefined gracefully
+      const result = getIndexErrorMessage(undefined);
+      expect(result).toBe('An unexpected error occurred');
     });
   });
 
