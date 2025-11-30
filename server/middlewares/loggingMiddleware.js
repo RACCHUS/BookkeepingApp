@@ -1,9 +1,43 @@
+/**
+ * Logging Middleware Module
+ * 
+ * Provides comprehensive request/response logging, API-specific logging,
+ * and performance monitoring capabilities.
+ * 
+ * @module middlewares/loggingMiddleware
+ * @author BookkeepingApp Team
+ * @version 2.0.0
+ */
+
 import { logger } from '../config/index.js';
 import { v4 as uuidv4 } from 'uuid';
+import { HTTP_STATUS, FILE_LIMITS } from './middlewareConstants.js';
+
+// Logging thresholds
+const PERFORMANCE_THRESHOLDS = {
+  SLOW_REQUEST_MS: 1000,
+  MEMORY_WARNING_BYTES: 50 * FILE_LIMITS.BYTES_PER_MB, // 50MB
+  CONVERSION_MS: 1000000, // nanoseconds to milliseconds
+  CONVERSION_MB: 1024 * 1024 // bytes to megabytes
+};
+
+const SENSITIVE_FIELDS = [
+  'password',
+  'token',
+  'secret',
+  'key',
+  'authorization',
+  'firebase_token',
+  'auth_token'
+];
 
 /**
- * Request logging middleware
- * Logs all incoming requests with timing and response status
+ * Request logging middleware with timing and response status
+ * @param {object} req - Express request
+ * @param {object} res - Express response
+ * @param {Function} next - Express next function
+ * @example
+ * app.use(requestLogger); // Log all requests
  */
 export const requestLogger = (req, res, next) => {
   // Generate unique request ID
@@ -54,12 +88,12 @@ export const requestLogger = (req, res, next) => {
     };
 
     // Different log levels based on status code
-    if (res.statusCode >= 500) {
+    if (res.statusCode >= HTTP_STATUS.INTERNAL_SERVER_ERROR) {
       logger.error('Request completed with server error', {
         ...responseInfo,
         responseData: process.env.NODE_ENV === 'development' ? res.responseData : undefined
       });
-    } else if (res.statusCode >= 400) {
+    } else if (res.statusCode >= HTTP_STATUS.BAD_REQUEST) {
       logger.warn('Request completed with client error', {
         ...responseInfo,
         responseData: process.env.NODE_ENV === 'development' ? res.responseData : undefined
@@ -86,6 +120,11 @@ export const requestLogger = (req, res, next) => {
 
 /**
  * API-specific logging middleware with additional details
+ * @param {object} req - Express request
+ * @param {object} res - Express response
+ * @param {Function} next - Express next function
+ * @example
+ * app.use(apiLogger); // Log detailed API request info
  */
 export const apiLogger = (req, res, next) => {
   // Only log API routes in detail
@@ -115,25 +154,20 @@ export const apiLogger = (req, res, next) => {
 
 /**
  * Sanitize request body for logging (remove sensitive data)
+ * @param {object} body - Request body to sanitize
+ * @returns {object} Sanitized body with sensitive fields redacted
+ * @example
+ * const safe = sanitizeBody({ password: '123', name: 'John' });
+ * // Returns: { password: '[REDACTED]', name: 'John' }
  */
 const sanitizeBody = (body) => {
   if (!body || typeof body !== 'object') {
     return body;
   }
 
-  const sensitiveFields = [
-    'password', 
-    'token', 
-    'secret', 
-    'key', 
-    'authorization',
-    'firebase_token',
-    'auth_token'
-  ];
-
   const sanitized = { ...body };
 
-  sensitiveFields.forEach(field => {
+  SENSITIVE_FIELDS.forEach(field => {
     if (sanitized[field]) {
       sanitized[field] = '[REDACTED]';
     }
@@ -143,8 +177,12 @@ const sanitizeBody = (body) => {
 };
 
 /**
- * Performance monitoring middleware
- * Logs slow requests and memory usage
+ * Performance monitoring middleware to detect slow and memory-intensive requests
+ * @param {object} req - Express request
+ * @param {object} res - Express response
+ * @param {Function} next - Express next function
+ * @example
+ * app.use(performanceMonitor); // Monitor all requests
  */
 export const performanceMonitor = (req, res, next) => {
   const startTime = process.hrtime();
@@ -154,7 +192,7 @@ export const performanceMonitor = (req, res, next) => {
     const endTime = process.hrtime(startTime);
     const endMemory = process.memoryUsage();
     
-    const duration = (endTime[0] * 1000) + (endTime[1] / 1000000); // Convert to milliseconds
+    const duration = (endTime[0] * 1000) + (endTime[1] / PERFORMANCE_THRESHOLDS.CONVERSION_MS);
     const memoryDelta = {
       rss: endMemory.rss - startMemory.rss,
       heapUsed: endMemory.heapUsed - startMemory.heapUsed,
@@ -162,7 +200,7 @@ export const performanceMonitor = (req, res, next) => {
     };
 
     // Log slow requests (over 1 second)
-    if (duration > 1000) {
+    if (duration > PERFORMANCE_THRESHOLDS.SLOW_REQUEST_MS) {
       logger.warn('Slow request detected', {
         requestId: req.id,
         method: req.method,
@@ -173,15 +211,15 @@ export const performanceMonitor = (req, res, next) => {
       });
     }
 
-    // Log memory-intensive requests
-    if (Math.abs(memoryDelta.heapUsed) > 50 * 1024 * 1024) { // 50MB
+    // Log memory-intensive requests (over 50MB)
+    if (Math.abs(memoryDelta.heapUsed) > PERFORMANCE_THRESHOLDS.MEMORY_WARNING_BYTES) {
       logger.warn('Memory-intensive request', {
         requestId: req.id,
         method: req.method,
         path: req.path,
         memoryDelta: {
-          heapUsed: `${(memoryDelta.heapUsed / 1024 / 1024).toFixed(2)}MB`,
-          heapTotal: `${(memoryDelta.heapTotal / 1024 / 1024).toFixed(2)}MB`
+          heapUsed: `${(memoryDelta.heapUsed / PERFORMANCE_THRESHOLDS.CONVERSION_MB).toFixed(2)}MB`,
+          heapTotal: `${(memoryDelta.heapTotal / PERFORMANCE_THRESHOLDS.CONVERSION_MB).toFixed(2)}MB`
         }
       });
     }

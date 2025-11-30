@@ -1,9 +1,29 @@
+/**
+ * Validation Middleware Module
+ * 
+ * Provides express-validator based validation rules for all API endpoints
+ * including transactions, companies, reports, and query parameters.
+ * 
+ * @module middlewares/validationMiddleware
+ * @author BookkeepingApp Team
+ * @version 2.0.0
+ */
+
 import { validationResult, body, param, query } from 'express-validator';
 import { logger } from '../config/index.js';
+import { HTTP_STATUS, VALIDATION, ERROR_MESSAGES } from './middlewareConstants.js';
 
 /**
  * Validation result handler middleware
- * Checks for validation errors and returns formatted response
+ * @param {object} req - Express request
+ * @param {object} res - Express response
+ * @param {Function} next - Express next function
+ * @returns {object|void} Error response or calls next()
+ * @example
+ * const validateUser = [
+ *   body('email').isEmail(),
+ *   handleValidationErrors
+ * ];
  */
 export const handleValidationErrors = (req, res, next) => {
   const errors = validationResult(req);
@@ -24,9 +44,9 @@ export const handleValidationErrors = (req, res, next) => {
       user: req.user ? req.user.email : null
     });
 
-    return res.status(400).json({
+    return res.status(HTTP_STATUS.BAD_REQUEST).json({
       error: 'Validation Error',
-      message: 'The request contains invalid data',
+      message: ERROR_MESSAGES.VALIDATION.INVALID_DATA,
       details: formattedErrors
     });
   }
@@ -35,12 +55,14 @@ export const handleValidationErrors = (req, res, next) => {
 };
 
 /**
- * Common validation rules for transactions
+ * Common validation rules for transaction creation
+ * @example
+ * app.post('/api/transactions', validateTransaction, createTransaction);
  */
 export const validateTransaction = [
   body('amount')
-    .isFloat({ min: -999999.99, max: 999999.99 })
-    .withMessage('Amount must be a valid number between -999,999.99 and 999,999.99'),
+    .isFloat({ min: VALIDATION.TRANSACTION.MIN_AMOUNT, max: VALIDATION.TRANSACTION.MAX_AMOUNT })
+    .withMessage(`Amount must be a valid number between ${VALIDATION.TRANSACTION.MIN_AMOUNT} and ${VALIDATION.TRANSACTION.MAX_AMOUNT}`),
   
   body('date')
     .isISO8601()
@@ -48,22 +70,22 @@ export const validateTransaction = [
   
   body('description')
     .trim()
-    .isLength({ min: 1, max: 500 })
-    .withMessage('Description must be between 1 and 500 characters'),
+    .isLength({ min: VALIDATION.TRANSACTION.MIN_DESCRIPTION_LENGTH, max: VALIDATION.TRANSACTION.MAX_DESCRIPTION_LENGTH })
+    .withMessage(`Description must be between ${VALIDATION.TRANSACTION.MIN_DESCRIPTION_LENGTH} and ${VALIDATION.TRANSACTION.MAX_DESCRIPTION_LENGTH} characters`),
   
   body('category')
     .optional()
     .isString()
     .trim()
-    .isLength({ max: 100 })
-    .withMessage('Category must be a string with maximum 100 characters'),
+    .isLength({ max: VALIDATION.TRANSACTION.MAX_CATEGORY_LENGTH })
+    .withMessage(`Category must be a string with maximum ${VALIDATION.TRANSACTION.MAX_CATEGORY_LENGTH} characters`),
   
   body('companyId')
     .optional()
     .isString()
     .trim()
-    .isLength({ min: 1, max: 50 })
-    .withMessage('Company ID must be a non-empty string with maximum 50 characters'),
+    .isLength({ min: VALIDATION.TRANSACTION.MIN_COMPANY_ID_LENGTH, max: VALIDATION.TRANSACTION.MAX_COMPANY_ID_LENGTH })
+    .withMessage(`Company ID must be a non-empty string with maximum ${VALIDATION.TRANSACTION.MAX_COMPANY_ID_LENGTH} characters`),
 
   body('statementId')
     .optional()
@@ -75,7 +97,9 @@ export const validateTransaction = [
 ];
 
 /**
- * Validation rules for updating transactions
+ * Validation rules for transaction updates
+ * @example
+ * app.put('/api/transactions/:id', validateTransactionUpdate, updateTransaction);
  */
 export const validateTransactionUpdate = [
   param('id')
@@ -85,8 +109,8 @@ export const validateTransactionUpdate = [
 
   body('amount')
     .optional()
-    .isFloat({ min: -999999.99, max: 999999.99 })
-    .withMessage('Amount must be a valid number between -999,999.99 and 999,999.99'),
+    .isFloat({ min: VALIDATION.TRANSACTION.MIN_AMOUNT, max: VALIDATION.TRANSACTION.MAX_AMOUNT })
+    .withMessage(`Amount must be a valid number between ${VALIDATION.TRANSACTION.MIN_AMOUNT} and ${VALIDATION.TRANSACTION.MAX_AMOUNT}`),
   
   body('date')
     .optional()
@@ -96,53 +120,59 @@ export const validateTransactionUpdate = [
   body('description')
     .optional()
     .trim()
-    .isLength({ min: 1, max: 500 })
-    .withMessage('Description must be between 1 and 500 characters'),
+    .isLength({ min: VALIDATION.TRANSACTION.MIN_DESCRIPTION_LENGTH, max: VALIDATION.TRANSACTION.MAX_DESCRIPTION_LENGTH })
+    .withMessage(`Description must be between ${VALIDATION.TRANSACTION.MIN_DESCRIPTION_LENGTH} and ${VALIDATION.TRANSACTION.MAX_DESCRIPTION_LENGTH} characters`),
   
   body('category')
     .optional()
     .isString()
     .trim()
-    .isLength({ max: 100 })
-    .withMessage('Category must be a string with maximum 100 characters'),
+    .isLength({ max: VALIDATION.TRANSACTION.MAX_CATEGORY_LENGTH })
+    .withMessage(`Category must be a string with maximum ${VALIDATION.TRANSACTION.MAX_CATEGORY_LENGTH} characters`),
 
   handleValidationErrors
 ];
 
 /**
  * Validation rules for company operations
+ * @example
+ * app.post('/api/companies', validateCompany, createCompany);
  */
 export const validateCompany = [
   body('name')
     .trim()
-    .isLength({ min: 1, max: 100 })
-    .withMessage('Company name must be between 1 and 100 characters'),
+    .isLength({ min: VALIDATION.TRANSACTION.MIN_DESCRIPTION_LENGTH, max: VALIDATION.TRANSACTION.MAX_CATEGORY_LENGTH })
+    .withMessage(`Company name must be between ${VALIDATION.TRANSACTION.MIN_DESCRIPTION_LENGTH} and ${VALIDATION.TRANSACTION.MAX_CATEGORY_LENGTH} characters`),
   
   body('description')
     .optional()
     .trim()
-    .isLength({ max: 500 })
-    .withMessage('Description must be maximum 500 characters'),
+    .isLength({ max: VALIDATION.TRANSACTION.MAX_DESCRIPTION_LENGTH })
+    .withMessage(`Description must be maximum ${VALIDATION.TRANSACTION.MAX_DESCRIPTION_LENGTH} characters`),
 
   handleValidationErrors
 ];
 
 /**
  * Validation rules for PDF upload
+ * @example
+ * app.post('/api/pdf/upload', validatePdfUpload, uploadHandler);
  */
 export const validatePdfUpload = [
   body('companyId')
     .optional()
     .isString()
     .trim()
-    .isLength({ min: 1, max: 50 })
-    .withMessage('Company ID must be a non-empty string with maximum 50 characters'),
+    .isLength({ min: VALIDATION.TRANSACTION.MIN_COMPANY_ID_LENGTH, max: VALIDATION.TRANSACTION.MAX_COMPANY_ID_LENGTH })
+    .withMessage(`Company ID must be a non-empty string with maximum ${VALIDATION.TRANSACTION.MAX_COMPANY_ID_LENGTH} characters`),
 
   handleValidationErrors
 ];
 
 /**
  * Validation rules for date range queries
+ * @example
+ * app.get('/api/reports', validateDateRange, generateReport);
  */
 export const validateDateRange = [
   query('startDate')
@@ -165,24 +195,28 @@ export const validateDateRange = [
 ];
 
 /**
- * Validation rules for pagination
+ * Validation rules for pagination parameters
+ * @example
+ * app.get('/api/transactions', validatePagination, getTransactions);
  */
 export const validatePagination = [
   query('page')
     .optional()
-    .isInt({ min: 1 })
+    .isInt({ min: VALIDATION.PAGINATION.MIN_LIMIT })
     .withMessage('Page must be a positive integer'),
   
   query('limit')
     .optional()
-    .isInt({ min: 1, max: 100 })
-    .withMessage('Limit must be between 1 and 100'),
+    .isInt({ min: VALIDATION.PAGINATION.MIN_LIMIT, max: VALIDATION.PAGINATION.MAX_LIMIT })
+    .withMessage(`Limit must be between ${VALIDATION.PAGINATION.MIN_LIMIT} and ${VALIDATION.PAGINATION.MAX_LIMIT}`),
 
   handleValidationErrors
 ];
 
 /**
  * Validation rules for transaction filtering
+ * @example
+ * app.get('/api/transactions', validateTransactionFilters, getTransactions);
  */
 export const validateTransactionFilters = [
   query('category')
@@ -207,14 +241,18 @@ export const validateTransactionFilters = [
     .optional()
     .isString()
     .trim()
-    .isLength({ max: 100 })
-    .withMessage('Search term must be maximum 100 characters'),
+    .isLength({ max: VALIDATION.TRANSACTION.MAX_CATEGORY_LENGTH })
+    .withMessage(`Search term must be maximum ${VALIDATION.TRANSACTION.MAX_CATEGORY_LENGTH} characters`),
 
   handleValidationErrors
 ];
 
 /**
- * Validation for MongoDB ObjectId parameters
+ * Validation for ID parameters (Firestore document IDs)
+ * @param {string} paramName - Name of the parameter to validate
+ * @returns {Array} Validation chain
+ * @example
+ * app.get('/api/transactions/:id', validateObjectId('id'), getTransaction);
  */
 export const validateObjectId = (paramName = 'id') => [
   param(paramName)
@@ -226,13 +264,15 @@ export const validateObjectId = (paramName = 'id') => [
 ];
 
 /**
- * Validation for report parameters
+ * Validation for report parameters (year, quarter, month)
+ * @example
+ * app.get('/api/reports/annual', validateReportParams, generateAnnualReport);
  */
 export const validateReportParams = [
   query('year')
     .optional()
-    .isInt({ min: 2000, max: 2100 })
-    .withMessage('Year must be between 2000 and 2100'),
+    .isInt({ min: VALIDATION.DATE.MIN_YEAR, max: VALIDATION.DATE.MAX_YEAR })
+    .withMessage(`Year must be between ${VALIDATION.DATE.MIN_YEAR} and ${VALIDATION.DATE.MAX_YEAR}`),
   
   query('quarter')
     .optional()
@@ -248,7 +288,12 @@ export const validateReportParams = [
 ];
 
 /**
- * Sanitization middleware to clean input data
+ * Sanitization middleware to clean input data and prevent XSS
+ * @param {object} req - Express request
+ * @param {object} res - Express response
+ * @param {Function} next - Express next function
+ * @example
+ * app.use(sanitizeInput); // Sanitize all requests
  */
 export const sanitizeInput = (req, res, next) => {
   // Recursively sanitize object properties
