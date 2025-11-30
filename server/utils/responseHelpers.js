@@ -5,19 +5,28 @@
  * Provides consistent response structure, error handling,
  * and success formatting across all controllers.
  * 
+ * @module utils/responseHelpers
+ * @requires utils/httpStatusCodes
  * @author BookkeepingApp Team
- * @version 1.0.0
+ * @version 2.0.0
  */
+
+import { 
+  HTTP_STATUS, 
+  ERROR_TYPES, 
+  ERROR_MESSAGES, 
+  SUCCESS_MESSAGES 
+} from './httpStatusCodes.js';
 
 /**
  * Standard success response
  * @param {object} res - Express response object
  * @param {any} data - Response data
  * @param {string} message - Success message
- * @param {number} statusCode - HTTP status code (default: 200)
+ * @param {number} statusCode - HTTP status code (default: 200 OK)
  * @returns {object} Response object
  */
-export function sendSuccess(res, data = null, message = 'Success', statusCode = 200) {
+export function sendSuccess(res, data = null, message = SUCCESS_MESSAGES.DEFAULT, statusCode = HTTP_STATUS.OK) {
   const response = {
     success: true,
     message,
@@ -33,11 +42,11 @@ export function sendSuccess(res, data = null, message = 'Success', statusCode = 
  * Standard error response
  * @param {object} res - Express response object
  * @param {string} message - Error message
- * @param {number} statusCode - HTTP status code (default: 400)
+ * @param {number} statusCode - HTTP status code (default: 400 Bad Request)
  * @param {any} details - Additional error details
  * @returns {object} Response object
  */
-export function sendError(res, message = 'An error occurred', statusCode = 400, details = null) {
+export function sendError(res, message = ERROR_MESSAGES.BAD_REQUEST, statusCode = HTTP_STATUS.BAD_REQUEST, details = null) {
   const response = {
     success: false,
     message,
@@ -61,17 +70,17 @@ export function sendError(res, message = 'An error occurred', statusCode = 400, 
 export function sendValidationError(res, errors) {
   const response = {
     success: false,
-    message: 'Validation failed',
+    message: ERROR_MESSAGES.VALIDATION_FAILED,
     error: {
-      code: 422,
-      type: 'VALIDATION_ERROR',
+      code: HTTP_STATUS.UNPROCESSABLE_ENTITY,
+      type: ERROR_TYPES.VALIDATION_ERROR,
       details: errors
     },
     timestamp: new Date().toISOString(),
     requestId: res.locals.requestId || null
   };
   
-  return res.status(422).json(response);
+  return res.status(HTTP_STATUS.UNPROCESSABLE_ENTITY).json(response);
 }
 
 /**
@@ -80,9 +89,9 @@ export function sendValidationError(res, errors) {
  * @param {string} message - Error message
  * @returns {object} Response object
  */
-export function sendAuthError(res, message = 'Authentication required') {
-  return sendError(res, message, 401, {
-    type: 'AUTHENTICATION_ERROR'
+export function sendAuthError(res, message = ERROR_MESSAGES.AUTH_REQUIRED) {
+  return sendError(res, message, HTTP_STATUS.UNAUTHORIZED, {
+    type: ERROR_TYPES.AUTHENTICATION_ERROR
   });
 }
 
@@ -92,9 +101,9 @@ export function sendAuthError(res, message = 'Authentication required') {
  * @param {string} message - Error message
  * @returns {object} Response object
  */
-export function sendForbiddenError(res, message = 'Access forbidden') {
-  return sendError(res, message, 403, {
-    type: 'AUTHORIZATION_ERROR'
+export function sendForbiddenError(res, message = ERROR_MESSAGES.ACCESS_FORBIDDEN) {
+  return sendError(res, message, HTTP_STATUS.FORBIDDEN, {
+    type: ERROR_TYPES.AUTHORIZATION_ERROR
   });
 }
 
@@ -105,8 +114,8 @@ export function sendForbiddenError(res, message = 'Access forbidden') {
  * @returns {object} Response object
  */
 export function sendNotFoundError(res, resource = 'Resource') {
-  return sendError(res, `${resource} not found`, 404, {
-    type: 'NOT_FOUND_ERROR'
+  return sendError(res, `${resource} not found`, HTTP_STATUS.NOT_FOUND, {
+    type: ERROR_TYPES.NOT_FOUND_ERROR
   });
 }
 
@@ -117,13 +126,13 @@ export function sendNotFoundError(res, resource = 'Resource') {
  * @param {Error} error - Original error object
  * @returns {object} Response object
  */
-export function sendServerError(res, message = 'Internal server error', error = null) {
+export function sendServerError(res, message = ERROR_MESSAGES.INTERNAL_ERROR, error = null) {
   const response = {
     success: false,
     message,
     error: {
-      code: 500,
-      type: 'SERVER_ERROR',
+      code: HTTP_STATUS.INTERNAL_SERVER_ERROR,
+      type: ERROR_TYPES.SERVER_ERROR,
       details: process.env.NODE_ENV === 'development' && error ? {
         stack: error.stack,
         name: error.name
@@ -133,7 +142,7 @@ export function sendServerError(res, message = 'Internal server error', error = 
     requestId: res.locals.requestId || null
   };
   
-  return res.status(500).json(response);
+  return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(response);
 }
 
 /**
@@ -142,9 +151,9 @@ export function sendServerError(res, message = 'Internal server error', error = 
  * @param {string} message - Error message
  * @returns {object} Response object
  */
-export function sendRateLimitError(res, message = 'Too many requests') {
-  return sendError(res, message, 429, {
-    type: 'RATE_LIMIT_ERROR'
+export function sendRateLimitError(res, message = ERROR_MESSAGES.RATE_LIMIT_EXCEEDED) {
+  return sendError(res, message, HTTP_STATUS.TOO_MANY_REQUESTS, {
+    type: ERROR_TYPES.RATE_LIMIT_ERROR
   });
 }
 
@@ -156,7 +165,7 @@ export function sendRateLimitError(res, message = 'Too many requests') {
  * @param {string} message - Success message
  * @returns {object} Response object
  */
-export function sendPaginatedSuccess(res, data, pagination, message = 'Success') {
+export function sendPaginatedSuccess(res, data, pagination, message = SUCCESS_MESSAGES.DEFAULT) {
   const response = {
     success: true,
     message,
@@ -173,7 +182,7 @@ export function sendPaginatedSuccess(res, data, pagination, message = 'Success')
     requestId: res.locals.requestId || null
   };
   
-  return res.status(200).json(response);
+  return res.status(HTTP_STATUS.OK).json(response);
 }
 
 /**
@@ -183,8 +192,8 @@ export function sendPaginatedSuccess(res, data, pagination, message = 'Success')
  * @param {string} message - Success message
  * @returns {object} Response object
  */
-export function sendCreatedResponse(res, data, message = 'Resource created successfully') {
-  return sendSuccess(res, data, message, 201);
+export function sendCreatedResponse(res, data, message = SUCCESS_MESSAGES.CREATED) {
+  return sendSuccess(res, data, message, HTTP_STATUS.CREATED);
 }
 
 /**
@@ -193,7 +202,7 @@ export function sendCreatedResponse(res, data, message = 'Resource created succe
  * @returns {object} Response object
  */
 export function sendNoContentResponse(res) {
-  return res.status(204).send();
+  return res.status(HTTP_STATUS.NO_CONTENT).send();
 }
 
 /**
@@ -254,7 +263,7 @@ export function setNoCacheHeaders(res) {
  */
 export function sendHealthResponse(res, healthData) {
   const isHealthy = healthData.status === 'healthy';
-  const statusCode = isHealthy ? 200 : 503;
+  const statusCode = isHealthy ? HTTP_STATUS.OK : HTTP_STATUS.SERVICE_UNAVAILABLE;
   
   const response = {
     status: healthData.status,

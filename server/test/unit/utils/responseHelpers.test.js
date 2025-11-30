@@ -110,7 +110,7 @@ describe('Response Helpers', () => {
       expect(res.status).toHaveBeenCalledWith(400);
       expect(res.json).toHaveBeenCalledWith({
         success: false,
-        message: 'An error occurred',
+        message: 'Bad request',
         error: {
           code: 400,
           details: null
