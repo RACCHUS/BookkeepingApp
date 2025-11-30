@@ -1,13 +1,37 @@
+/**
+ * Error Handling Middleware Module
+ * 
+ * Provides centralized error handling for all application errors including
+ * Firestore index errors, validation errors, authentication errors, file upload errors,
+ * and generic server errors.
+ * 
+ * @module middlewares/errorMiddleware
+ * @author BookkeepingApp Team
+ * @version 2.0.0
+ */
+
 import { logger } from '../config/index.js';
 import { 
   isFirestoreIndexError, 
   getIndexErrorMessage, 
   extractIndexCreationUrl 
 } from '../utils/errorHandler.js';
+import {
+  HTTP_STATUS,
+  ERROR_MESSAGES,
+  ERROR_TYPES,
+  FILE_LIMITS,
+  AVAILABLE_ROUTES
+} from './middlewareConstants.js';
 
 /**
  * Global error handling middleware
- * Handles different types of errors and provides appropriate responses
+ * @param {Error} error - The error object
+ * @param {object} req - Express request object
+ * @param {object} res - Express response object
+ * @param {Function} next - Express next function
+ * @example
+ * app.use(errorHandler); // Mount as last middleware
  */
 export const errorHandler = (error, req, res, next) => {
   // Log the error with context
@@ -29,28 +53,28 @@ export const errorHandler = (error, req, res, next) => {
     return handleFirestoreIndexError(error, req, res);
   }
 
-  if (error.name === 'ValidationError') {
+  if (error.name === ERROR_TYPES.VALIDATION) {
     return handleValidationError(error, req, res);
   }
 
-  if (error.code === 'auth/invalid-user-token') {
+  if (error.code === ERROR_TYPES.AUTH_INVALID_TOKEN) {
     return handleAuthError(error, req, res);
   }
 
-  if (error.name === 'MulterError') {
+  if (error.name === ERROR_TYPES.MULTER) {
     return handleFileUploadError(error, req, res);
   }
 
-  if (error.code === 'ENOENT') {
+  if (error.code === ERROR_TYPES.FILE_NOT_FOUND) {
     return handleFileNotFoundError(error, req, res);
   }
 
-  if (error.code === 'LIMIT_FILE_SIZE') {
+  if (error.code === ERROR_TYPES.FILE_SIZE_LIMIT) {
     return handleFileSizeError(error, req, res);
   }
 
   // Handle rate limiting errors
-  if (error.status === 429) {
+  if (error.status === HTTP_STATUS.TOO_MANY_REQUESTS) {
     return handleRateLimitError(error, req, res);
   }
 
@@ -60,6 +84,10 @@ export const errorHandler = (error, req, res, next) => {
 
 /**
  * Handle Firestore index errors gracefully
+ * @param {Error} error - Firestore error
+ * @param {object} req - Express request
+ * @param {object} res - Express response
+ * @returns {object} JSON error response
  */
 const handleFirestoreIndexError = (error, req, res) => {
   const indexUrl = extractIndexCreationUrl(error);
@@ -70,7 +98,7 @@ const handleFirestoreIndexError = (error, req, res) => {
     fallbackUsed: true
   });
 
-  return res.status(400).json({
+  return res.status(HTTP_STATUS.BAD_REQUEST).json({
     error: 'Database Index Required',
     message: getIndexErrorMessage(error),
     details: {
@@ -83,13 +111,17 @@ const handleFirestoreIndexError = (error, req, res) => {
 
 /**
  * Handle validation errors from express-validator or Joi
+ * @param {Error} error - Validation error
+ * @param {object} req - Express request
+ * @param {object} res - Express response
+ * @returns {object} JSON error response
  */
 const handleValidationError = (error, req, res) => {
   const validationErrors = error.details || error.errors || [];
   
-  return res.status(400).json({
+  return res.status(HTTP_STATUS.BAD_REQUEST).json({
     error: 'Validation Error',
-    message: 'The request contains invalid data',
+    message: ERROR_MESSAGES.VALIDATION.INVALID_DATA,
     details: validationErrors.map(err => ({
       field: err.path || err.param,
       message: err.message,
@@ -100,39 +132,47 @@ const handleValidationError = (error, req, res) => {
 
 /**
  * Handle authentication errors
+ * @param {Error} error - Authentication error
+ * @param {object} req - Express request
+ * @param {object} res - Express response
+ * @returns {object} JSON error response
  */
 const handleAuthError = (error, req, res) => {
-  return res.status(401).json({
+  return res.status(HTTP_STATUS.UNAUTHORIZED).json({
     error: 'Authentication Error',
-    message: 'Your session has expired. Please log in again.',
+    message: ERROR_MESSAGES.AUTH.SESSION_EXPIRED,
     details: {
       code: error.code,
-      recommendation: 'Refresh your authentication token'
+      recommendation: ERROR_MESSAGES.AUTH.REFRESH_TOKEN
     }
   });
 };
 
 /**
- * Handle file upload errors
+ * Handle file upload errors from Multer
+ * @param {Error} error - Multer error
+ * @param {object} req - Express request
+ * @param {object} res - Express response
+ * @returns {object} JSON error response
  */
 const handleFileUploadError = (error, req, res) => {
-  let message = 'File upload failed';
+  let message = ERROR_MESSAGES.FILE.UPLOAD_FAILED;
   
   switch (error.code) {
-    case 'LIMIT_FILE_SIZE':
-      message = 'File size exceeds the maximum allowed limit';
+    case ERROR_TYPES.FILE_SIZE_LIMIT:
+      message = ERROR_MESSAGES.FILE.SIZE_EXCEEDED;
       break;
-    case 'LIMIT_FILE_COUNT':
-      message = 'Too many files uploaded';
+    case ERROR_TYPES.FILE_COUNT_LIMIT:
+      message = ERROR_MESSAGES.FILE.TOO_MANY_FILES;
       break;
-    case 'LIMIT_UNEXPECTED_FILE':
-      message = 'Unexpected file field';
+    case ERROR_TYPES.UNEXPECTED_FILE:
+      message = ERROR_MESSAGES.FILE.UNEXPECTED_FIELD;
       break;
     default:
-      message = error.message || 'File upload error';
+      message = error.message || ERROR_MESSAGES.FILE.UPLOAD_FAILED;
   }
 
-  return res.status(400).json({
+  return res.status(HTTP_STATUS.BAD_REQUEST).json({
     error: 'File Upload Error',
     message,
     details: {
@@ -144,11 +184,15 @@ const handleFileUploadError = (error, req, res) => {
 
 /**
  * Handle file not found errors
+ * @param {Error} error - File system error
+ * @param {object} req - Express request
+ * @param {object} res - Express response
+ * @returns {object} JSON error response
  */
 const handleFileNotFoundError = (error, req, res) => {
-  return res.status(404).json({
+  return res.status(HTTP_STATUS.NOT_FOUND).json({
     error: 'File Not Found',
-    message: 'The requested file could not be found',
+    message: ERROR_MESSAGES.FILE.NOT_FOUND,
     details: {
       path: error.path
     }
@@ -157,13 +201,17 @@ const handleFileNotFoundError = (error, req, res) => {
 
 /**
  * Handle file size limit errors
+ * @param {Error} error - File size error
+ * @param {object} req - Express request
+ * @param {object} res - Express response
+ * @returns {object} JSON error response
  */
 const handleFileSizeError = (error, req, res) => {
-  return res.status(413).json({
+  return res.status(HTTP_STATUS.PAYLOAD_TOO_LARGE).json({
     error: 'File Too Large',
-    message: 'The uploaded file exceeds the size limit',
+    message: ERROR_MESSAGES.FILE.TOO_LARGE,
     details: {
-      maxSize: '10MB',
+      maxSize: `${FILE_LIMITS.DEFAULT_MAX_SIZE_MB}MB`,
       recommendation: 'Please upload a smaller file'
     }
   });
@@ -171,11 +219,15 @@ const handleFileSizeError = (error, req, res) => {
 
 /**
  * Handle rate limiting errors
+ * @param {Error} error - Rate limit error
+ * @param {object} req - Express request
+ * @param {object} res - Express response
+ * @returns {object} JSON error response
  */
 const handleRateLimitError = (error, req, res) => {
-  return res.status(429).json({
+  return res.status(HTTP_STATUS.TOO_MANY_REQUESTS).json({
     error: 'Too Many Requests',
-    message: 'Rate limit exceeded. Please try again later.',
+    message: ERROR_MESSAGES.RATE_LIMIT.GENERAL,
     details: {
       retryAfter: error.retryAfter || 60,
       limit: error.limit,
@@ -186,15 +238,19 @@ const handleRateLimitError = (error, req, res) => {
 
 /**
  * Handle generic/unknown errors
+ * @param {Error} error - Any uncaught error
+ * @param {object} req - Express request
+ * @param {object} res - Express response
+ * @returns {object} JSON error response
  */
 const handleGenericError = (error, req, res) => {
   const isDevelopment = process.env.NODE_ENV === 'development';
   
   // In development, provide detailed error information
   if (isDevelopment) {
-    return res.status(error.status || 500).json({
-      error: 'Internal Server Error',
-      message: error.message || 'An unexpected error occurred',
+    return res.status(error.status || HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+      error: ERROR_MESSAGES.GENERIC.INTERNAL_ERROR,
+      message: error.message || ERROR_MESSAGES.GENERIC.UNEXPECTED_ERROR,
       details: {
         name: error.name,
         stack: error.stack,
@@ -206,9 +262,9 @@ const handleGenericError = (error, req, res) => {
   }
 
   // In production, provide minimal error information
-  return res.status(error.status || 500).json({
-    error: 'Internal Server Error',
-    message: 'An unexpected error occurred. Please try again later.',
+  return res.status(error.status || HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+    error: ERROR_MESSAGES.GENERIC.INTERNAL_ERROR,
+    message: ERROR_MESSAGES.GENERIC.TRY_AGAIN_LATER,
     details: {
       timestamp: new Date().toISOString(),
       requestId: req.id || 'unknown'
@@ -218,6 +274,11 @@ const handleGenericError = (error, req, res) => {
 
 /**
  * Handle 404 errors for unmatched routes
+ * @param {object} req - Express request
+ * @param {object} res - Express response
+ * @returns {object} JSON error response
+ * @example
+ * app.use(notFoundHandler); // Mount after all routes
  */
 export const notFoundHandler = (req, res) => {
   logger.warn('Route not found', {
@@ -228,23 +289,24 @@ export const notFoundHandler = (req, res) => {
     userAgent: req.get('User-Agent')
   });
 
-  res.status(404).json({
+  res.status(HTTP_STATUS.NOT_FOUND).json({
     error: 'Not Found',
     message: `Route ${req.method} ${req.path} not found`,
     details: {
-      availableRoutes: [
-        'GET /api/health',
-        'POST /api/auth/login',
-        'GET /api/transactions',
-        'POST /api/pdf/upload',
-        'GET /api/reports/*'
-      ]
+      availableRoutes: AVAILABLE_ROUTES
     }
   });
 };
 
 /**
  * Async error wrapper to catch promise rejections
+ * @param {Function} fn - Async route handler function
+ * @returns {Function} Express middleware that catches errors
+ * @example
+ * app.get('/api/data', asyncHandler(async (req, res) => {
+ *   const data = await fetchData();
+ *   res.json(data);
+ * }));
  */
 export const asyncHandler = (fn) => (req, res, next) => {
   Promise.resolve(fn(req, res, next)).catch(next);
