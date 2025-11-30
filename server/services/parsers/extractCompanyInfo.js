@@ -1,38 +1,53 @@
-// Utility to extract company info from Chase PDF text
+/**
+ * @fileoverview Extract company information from Chase PDF statements
+ * @module services/parsers/extractCompanyInfo
+ * @version 2.0.0
+ */
+
+import { COMPANY_PATTERNS, NUMERIC } from './parserConstants.js';
 
 /**
  * Extract company information from Chase PDF statement header
+ * Scans the first 20 lines for business name and address patterns
+ * 
  * @param {string} text - PDF text content
- * @returns {object} Company information object (never null fields)
+ * @returns {object} Company information object with never-null fields
+ * @property {string} name - Extracted company name (empty if not found)
+ * @property {string} address - Extracted company address (empty if not found)
+ * @property {boolean} extracted - True if any company info was found
+ * 
+ * @example
+ * // Returns {name: 'ACME CONSTRUCTION LLC', address: '123 Main Street', extracted: true}
+ * extractCompanyInfo('ACME CONSTRUCTION LLC\n123 Main Street\n...');
+ * 
+ * @example
+ * // Returns {name: '', address: '', extracted: false}
+ * extractCompanyInfo('Chase Bank Statement\nNo company info\n...');
  */
 export default function extractCompanyInfo(text) {
-  const lines = text.split('\n').slice(0, 20);
+  const lines = text.split('\n').slice(0, COMPANY_PATTERNS.HEADER_SCAN_LINES);
   let companyName = '';
   let companyAddress = '';
 
-  const businessPatterns = [
-    /^([A-Z\s]+(?:INC|LLC|CORP|CORPORATION|COMPANY|CO|LTD|LIMITED|CONSTRUCTION|ENTERPRISES|SERVICES|GROUP)\.?),?\s*$/i,
-    /^([A-Z\s]+(?:&|AND)\s+[A-Z\s]+(?:INC|LLC|CORP|CONSTRUCTION)\.?),?\s*$/i,
-    /^([A-Z][A-Za-z\s]+(?:CONSTRUCTION|CONTRACTING|BUILDER|BUILDERS|COMPANY)\.?),?\s*$/i,
-    /^([A-Z][A-Za-z\s]{10,50})\s*$/
-  ];
-  const addressPatterns = [
-    /^\d+\s+[A-Za-z\s]+(?:Street|St|Avenue|Ave|Road|Rd|Drive|Dr|Lane|Ln|Boulevard|Blvd|Circle|Cir|Court|Ct|Way|Place|Pl)\.?\s*$/i,
-    /^[A-Za-z\s]+,\s*[A-Z]{2}\s+\d{5}(?:-\d{4})?\s*$/
-  ];
+  const businessPatterns = COMPANY_PATTERNS.BUSINESS_ENTITIES;
+  const addressPatterns = COMPANY_PATTERNS.ADDRESS;
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i].trim();
+    
+    // Skip empty lines and lines with common statement keywords
     if (!line ||
-      line.includes('Chase') ||
-      line.includes('Statement') ||
-      line.includes('Account') ||
-      line.includes('Period') ||
-      line.includes('Balance') ||
-      line.includes('Page') ||
-      line.match(/^\d+$/)) {
+      line.includes(COMPANY_PATTERNS.SKIP_KEYWORDS[0]) ||  // Chase
+      line.includes(COMPANY_PATTERNS.SKIP_KEYWORDS[1]) ||  // Statement
+      line.includes(COMPANY_PATTERNS.SKIP_KEYWORDS[2]) ||  // Account
+      line.includes(COMPANY_PATTERNS.SKIP_KEYWORDS[3]) ||  // Period
+      line.includes(COMPANY_PATTERNS.SKIP_KEYWORDS[4]) ||  // Balance
+      line.includes(COMPANY_PATTERNS.SKIP_KEYWORDS[5]) ||  // Page
+      line.match(NUMERIC.NUMBERS_ONLY)) {
       continue;
     }
+    
+    // Try to extract company name if not found yet
     if (!companyName) {
       for (const pattern of businessPatterns) {
         const match = line.match(pattern);
@@ -42,6 +57,8 @@ export default function extractCompanyInfo(text) {
         }
       }
     }
+    
+    // Try to extract address if we have a name but no address yet
     if (companyName && !companyAddress) {
       for (const pattern of addressPatterns) {
         if (pattern.test(line)) {
@@ -50,8 +67,11 @@ export default function extractCompanyInfo(text) {
         }
       }
     }
+    
+    // Stop scanning if we found both
     if (companyName && companyAddress) break;
   }
+  
   return {
     name: companyName || '',
     address: companyAddress || '',
