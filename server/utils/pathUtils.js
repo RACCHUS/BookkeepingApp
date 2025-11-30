@@ -5,8 +5,9 @@
  * This module provides consistent helpers for __dirname and __filename patterns
  * and common path operations throughout the application.
  * 
+ * @module utils/pathUtils
  * @author BookkeepingApp Team
- * @version 1.0.0
+ * @version 2.0.0
  */
 
 import { fileURLToPath } from 'url';
@@ -17,6 +18,9 @@ import { existsSync, mkdirSync } from 'fs';
  * Get current file's directory (ES module equivalent of __dirname)
  * @param {string} importMetaUrl - import.meta.url from calling module
  * @returns {string} Directory path
+ * @example
+ * const currentDir = getCurrentDir(import.meta.url);
+ * // '/path/to/server/controllers'
  */
 export function getCurrentDir(importMetaUrl) {
   return dirname(fileURLToPath(importMetaUrl));
@@ -26,6 +30,9 @@ export function getCurrentDir(importMetaUrl) {
  * Get current file's path (ES module equivalent of __filename)
  * @param {string} importMetaUrl - import.meta.url from calling module
  * @returns {string} File path
+ * @example
+ * const currentFile = getCurrentFile(import.meta.url);
+ * // '/path/to/server/controllers/userController.js'
  */
 export function getCurrentFile(importMetaUrl) {
   return fileURLToPath(importMetaUrl);
@@ -63,6 +70,9 @@ export function getServerRoot(importMetaUrl) {
  * @param {string} importMetaUrl - import.meta.url from calling module
  * @param {string} relativePath - Path relative to server root
  * @returns {string} Absolute path
+ * @example
+ * const uploadsPath = resolveServerPath(import.meta.url, 'uploads');
+ * // '/path/to/server/uploads'
  */
 export function resolveServerPath(importMetaUrl, relativePath) {
   return join(getServerRoot(importMetaUrl), relativePath);
@@ -103,8 +113,11 @@ export const getCommonPaths = (importMetaUrl) => {
 /**
  * Ensure directory exists, create if it doesn't
  * @param {string} dirPath - Directory path to ensure
- * @param {object} options - Options for directory creation
- * @returns {boolean} True if directory exists or was created
+ * @param {object} options - Options for directory creation (default: {recursive: true})
+ * @returns {boolean} True if directory exists or was created successfully
+ * @example
+ * ensureDirectoryExists('/path/to/uploads');
+ * ensureDirectoryExists('/path/to/nested/dir', { recursive: true });
  */
 export function ensureDirectoryExists(dirPath, options = { recursive: true }) {
   try {
@@ -122,6 +135,9 @@ export function ensureDirectoryExists(dirPath, options = { recursive: true }) {
  * Get file extension
  * @param {string} filePath - File path
  * @returns {string} File extension (including dot)
+ * @example
+ * getFileExtension('document.pdf') // '.pdf'
+ * getFileExtension('/path/to/file.txt') // '.txt'
  */
 export function getFileExtension(filePath) {
   return extname(filePath);
@@ -131,6 +147,9 @@ export function getFileExtension(filePath) {
  * Get file name without extension
  * @param {string} filePath - File path
  * @returns {string} File name without extension
+ * @example
+ * getFileNameWithoutExtension('document.pdf') // 'document'
+ * getFileNameWithoutExtension('/path/to/report.xlsx') // 'report'
  */
 export function getFileNameWithoutExtension(filePath) {
   const fileName = basename(filePath);
@@ -143,6 +162,10 @@ export function getFileNameWithoutExtension(filePath) {
  * @param {string} filePath - File path
  * @param {string|string[]} extensions - Extension(s) to check (with or without dot)
  * @returns {boolean} True if file has one of the specified extensions
+ * @example
+ * hasFileExtension('file.pdf', '.pdf') // true
+ * hasFileExtension('file.pdf', 'pdf') // true
+ * hasFileExtension('file.pdf', ['.pdf', '.doc']) // true
  */
 export function hasFileExtension(filePath, extensions) {
   const fileExt = extname(filePath).toLowerCase();
@@ -158,6 +181,10 @@ export function hasFileExtension(filePath, extensions) {
  * Generate unique file path by appending number if file exists
  * @param {string} basePath - Base file path
  * @returns {string} Unique file path
+ * @example
+ * generateUniqueFilePath('/uploads/file.pdf')
+ * // If file.pdf exists: '/uploads/file_1.pdf'
+ * // If file_1.pdf exists: '/uploads/file_2.pdf'
  */
 export function generateUniqueFilePath(basePath) {
   if (!existsSync(basePath)) {
