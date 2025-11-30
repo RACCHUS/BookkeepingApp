@@ -4,9 +4,22 @@
  * Specialized utilities for financial calculations, accounting operations,
  * and business logic specific to bookkeeping applications.
  * 
+ * @module utils/financialUtils
+ * @requires utils/financialConstants
  * @author BookkeepingApp Team
- * @version 1.0.0
+ * @version 2.0.0
  */
+
+import {
+  CURRENCY,
+  PRECISION,
+  ROUNDING,
+  TRANSACTION_TYPES,
+  PERCENTAGE,
+  DEFAULTS,
+  FORMAT_OPTIONS,
+  FINANCIAL_ERRORS
+} from './financialConstants.js';
 
 /**
  * Format currency for display
@@ -14,17 +27,20 @@
  * @param {string} currency - Currency code (default: 'USD')
  * @param {object} options - Formatting options
  * @returns {string} Formatted currency string
+ * @example
+ * formatCurrency(1234.56) // "$1,234.56"
+ * formatCurrency(1234.56, 'USD', { showSymbol: false }) // "1,234.56"
  */
-export function formatCurrency(amount, currency = 'USD', options = {}) {
+export function formatCurrency(amount, currency = CURRENCY.DEFAULT_CODE, options = {}) {
   const {
-    locale = 'en-US',
-    minimumFractionDigits = 2,
-    maximumFractionDigits = 2,
-    showSymbol = true
+    locale = CURRENCY.DEFAULT_LOCALE,
+    minimumFractionDigits = PRECISION.CURRENCY,
+    maximumFractionDigits = PRECISION.CURRENCY,
+    showSymbol = FORMAT_OPTIONS.SHOW_SYMBOL
   } = options;
   
   if (typeof amount !== 'number' || isNaN(amount)) {
-    return showSymbol ? '$0.00' : '0.00';
+    return showSymbol ? DEFAULTS.FALLBACK_DISPLAY : '0.00';
   }
   
   const formatter = new Intl.NumberFormat(locale, {
@@ -43,10 +59,13 @@ export function formatCurrency(amount, currency = 'USD', options = {}) {
  * @param {number} total - Total value
  * @param {number} precision - Decimal places (default: 2)
  * @returns {number} Percentage value
+ * @example
+ * calculatePercentage(25, 100) // 25.00
+ * calculatePercentage(1, 3, 4) // 33.3333
  */
-export function calculatePercentage(part, total, precision = 2) {
-  if (total === 0) return 0;
-  const percentage = (part / total) * 100;
+export function calculatePercentage(part, total, precision = PRECISION.PERCENTAGE) {
+  if (total === 0) return DEFAULTS.ZERO_AMOUNT;
+  const percentage = (part / total) * PERCENTAGE.MULTIPLIER;
   return Number(percentage.toFixed(precision));
 }
 
@@ -56,77 +75,89 @@ export function calculatePercentage(part, total, precision = 2) {
  * @param {number} newValue - Current value
  * @param {number} precision - Decimal places (default: 2)
  * @returns {number} Percentage change
+ * @example
+ * calculatePercentageChange(100, 150) // 50.00
+ * calculatePercentageChange(100, 75) // -25.00
  */
-export function calculatePercentageChange(oldValue, newValue, precision = 2) {
+export function calculatePercentageChange(oldValue, newValue, precision = PRECISION.PERCENTAGE) {
   if (oldValue === 0) {
-    return newValue === 0 ? 0 : 100;
+    return newValue === 0 ? DEFAULTS.ZERO_AMOUNT : PERCENTAGE.FULL;
   }
   
-  const change = ((newValue - oldValue) / Math.abs(oldValue)) * 100;
+  const change = ((newValue - oldValue) / Math.abs(oldValue)) * PERCENTAGE.MULTIPLIER;
   return Number(change.toFixed(precision));
 }
 
 /**
  * Sum array of amounts with proper decimal handling
- * @param {Array} amounts - Array of numeric amounts
+ * @param {Array<number>} amounts - Array of numeric amounts
  * @returns {number} Sum rounded to 2 decimal places
+ * @throws {Error} If amounts is not an array
+ * @example
+ * sumAmounts([10.50, 20.25, 5.75]) // 36.50
  */
 export function sumAmounts(amounts) {
   if (!Array.isArray(amounts)) {
-    throw new Error('Amounts must be an array');
+    throw new Error(FINANCIAL_ERRORS.INVALID_ARRAY);
   }
   
   const sum = amounts.reduce((total, amount) => {
-    const numAmount = Number(amount) || 0;
+    const numAmount = Number(amount) || DEFAULTS.ZERO_AMOUNT;
     return total + numAmount;
-  }, 0);
+  }, DEFAULTS.ZERO_AMOUNT);
   
   // Round to 2 decimal places to handle floating point precision
-  return Math.round(sum * 100) / 100;
+  return Math.round(sum * ROUNDING.CENTS) / ROUNDING.CENTS;
 }
 
 /**
  * Calculate running balance
- * @param {Array} transactions - Array of transaction objects with amount property
+ * @param {Array<object>} transactions - Array of transaction objects with amount property
  * @param {number} startingBalance - Starting balance (default: 0)
- * @returns {Array} Array of transactions with running balance
+ * @returns {Array<object>} Array of transactions with running balance
+ * @example
+ * calculateRunningBalance([{amount: 100}, {amount: -50}], 0)
+ * // [{amount: 100, runningBalance: 100}, {amount: -50, runningBalance: 50}]
  */
-export function calculateRunningBalance(transactions, startingBalance = 0) {
+export function calculateRunningBalance(transactions, startingBalance = DEFAULTS.STARTING_BALANCE) {
   let balance = startingBalance;
   
   return transactions.map(transaction => {
-    balance += Number(transaction.amount) || 0;
+    balance += Number(transaction.amount) || DEFAULTS.ZERO_AMOUNT;
     return {
       ...transaction,
-      runningBalance: Math.round(balance * 100) / 100
+      runningBalance: Math.round(balance * ROUNDING.CENTS) / ROUNDING.CENTS
     };
   });
 }
 
 /**
  * Categorize transaction amounts by type
- * @param {Array} transactions - Array of transactions
- * @returns {object} Categorized amounts
+ * @param {Array<object>} transactions - Array of transactions with type and amount properties
+ * @returns {object} Categorized amounts {income, expenses, transfers, total}
+ * @example
+ * categorizeAmounts([{type: 'income', amount: 100}, {type: 'expense', amount: -50}])
+ * // {income: 100, expenses: 50, transfers: 0, total: 150}
  */
 export function categorizeAmounts(transactions) {
   const categories = {
-    income: 0,
-    expenses: 0,
-    transfers: 0,
-    total: 0
+    income: DEFAULTS.ZERO_AMOUNT,
+    expenses: DEFAULTS.ZERO_AMOUNT,
+    transfers: DEFAULTS.ZERO_AMOUNT,
+    total: DEFAULTS.ZERO_AMOUNT
   };
   
   transactions.forEach(transaction => {
-    const amount = Math.abs(Number(transaction.amount) || 0);
+    const amount = Math.abs(Number(transaction.amount) || DEFAULTS.ZERO_AMOUNT);
     
     switch (transaction.type) {
-      case 'income':
+      case TRANSACTION_TYPES.INCOME:
         categories.income += amount;
         break;
-      case 'expense':
+      case TRANSACTION_TYPES.EXPENSE:
         categories.expenses += amount;
         break;
-      case 'transfer':
+      case TRANSACTION_TYPES.TRANSFER:
         categories.transfers += amount;
         break;
     }
@@ -136,7 +167,7 @@ export function categorizeAmounts(transactions) {
   
   // Round all values
   Object.keys(categories).forEach(key => {
-    categories[key] = Math.round(categories[key] * 100) / 100;
+    categories[key] = Math.round(categories[key] * ROUNDING.CENTS) / ROUNDING.CENTS;
   });
   
   return categories;
