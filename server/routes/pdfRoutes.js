@@ -19,6 +19,7 @@ import {
   requestSizeLimit,
   handleValidationErrors
 } from '../middlewares/index.js';
+import { PDF_CONSTANTS } from './routeConstants.js';
 
 import { authMiddleware } from '../middlewares/index.js';
 const router = express.Router();
@@ -27,15 +28,14 @@ const router = express.Router();
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: parseInt(process.env.MAX_FILE_SIZE) || 10 * 1024 * 1024, // 10MB default
-    files: 1 // Only allow one file at a time
+    fileSize: parseInt(process.env.MAX_FILE_SIZE) || PDF_CONSTANTS.SIZE_LIMITS.DEFAULT,
+    files: PDF_CONSTANTS.UPLOAD.MAX_FILES
   },
   fileFilter: (req, file, cb) => {
-    const allowedTypes = ['application/pdf'];
-    const allowedExtensions = ['.pdf'];
     const fileExtension = '.' + file.originalname.split('.').pop().toLowerCase();
     
-    if (allowedTypes.includes(file.mimetype) && allowedExtensions.includes(fileExtension)) {
+    if (PDF_CONSTANTS.ALLOWED_MIME_TYPES.includes(file.mimetype) && 
+        PDF_CONSTANTS.ALLOWED_EXTENSIONS.includes(fileExtension)) {
       cb(null, true);
     } else {
       cb(new Error('Only PDF files are allowed'), false);
@@ -52,7 +52,7 @@ const upload = multer({
  */
 router.post('/upload', 
   uploadRateLimit,
-  requestSizeLimit('10mb'),
+  requestSizeLimit(PDF_CONSTANTS.SIZE_LIMITS.STRING),
   upload.single('pdf'), 
   validatePdfUpload,
   uploadPDF

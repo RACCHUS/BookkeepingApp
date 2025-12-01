@@ -20,6 +20,11 @@ import {
   requestSizeLimit,
   apiRateLimit
 } from '../middlewares/index.js';
+import { 
+  TRANSACTION_CONSTANTS, 
+  COMMON_VALIDATION, 
+  REQUEST_LIMITS 
+} from './routeConstants.js';
 
 const router = express.Router();
 
@@ -28,40 +33,86 @@ router.use(apiRateLimit);
 
 // Validation schemas
 const createTransactionValidation = [
-  body('date').isISO8601().withMessage('Date must be a valid ISO 8601 date'),
-  body('amount').isNumeric().withMessage('Amount must be a number'),
-  body('description').isLength({ min: 1, max: 500 }).withMessage('Description is required and must be less than 500 characters'),
-  body('category').isLength({ min: 1 }).withMessage('Category is required'),
-  body('type').isIn(['income', 'expense', 'transfer']).withMessage('Type must be income, expense, or transfer'),
-  body('sectionCode').optional().isIn(['deposits', 'checks', 'card', 'electronic', 'manual', 'uncategorized']).withMessage('Section code must be valid'),
+  body('date').isISO8601().withMessage(`Date ${COMMON_VALIDATION.DATE_MESSAGE}`),
+  body('amount').isNumeric().withMessage(`Amount ${COMMON_VALIDATION.NUMERIC_MESSAGE}`),
+  body('description')
+    .isLength({ 
+      min: TRANSACTION_CONSTANTS.LIMITS.DESCRIPTION_MIN, 
+      max: TRANSACTION_CONSTANTS.LIMITS.DESCRIPTION_MAX 
+    })
+    .withMessage(`Description is required and must be less than ${TRANSACTION_CONSTANTS.LIMITS.DESCRIPTION_MAX} characters`),
+  body('category')
+    .isLength({ min: TRANSACTION_CONSTANTS.LIMITS.CATEGORY_MIN })
+    .withMessage('Category is required'),
+  body('type')
+    .isIn(TRANSACTION_CONSTANTS.TYPES)
+    .withMessage(`Type must be one of: ${TRANSACTION_CONSTANTS.TYPES.join(', ')}`),
+  body('sectionCode')
+    .optional()
+    .isIn(TRANSACTION_CONSTANTS.SECTION_CODES)
+    .withMessage(`Section code must be one of: ${TRANSACTION_CONSTANTS.SECTION_CODES.join(', ')}`),
   handleValidationErrors
 ];
 
 const updateTransactionValidation = [
-  param('id').isLength({ min: 1 }).withMessage('Transaction ID is required'),
-  body('date').optional().isISO8601().withMessage('Date must be a valid ISO 8601 date'),
-  body('amount').optional().isNumeric().withMessage('Amount must be a number'),
-  body('description').optional().isLength({ min: 1, max: 500 }).withMessage('Description must be less than 500 characters'),
-  body('category').optional().isLength({ min: 1 }).withMessage('Category cannot be empty'),
-  body('type').optional().isIn(['income', 'expense', 'transfer']).withMessage('Type must be income, expense, or transfer'),
-  body('sectionCode').optional().isIn(['deposits', 'checks', 'card', 'electronic', 'manual', 'uncategorized']).withMessage('Section code must be valid'),
+  param('id').isLength({ min: 1 }).withMessage(`Transaction ${COMMON_VALIDATION.OBJECT_ID_MESSAGE}`),
+  body('date').optional().isISO8601().withMessage(`Date ${COMMON_VALIDATION.DATE_MESSAGE}`),
+  body('amount').optional().isNumeric().withMessage(`Amount ${COMMON_VALIDATION.NUMERIC_MESSAGE}`),
+  body('description')
+    .optional()
+    .isLength({ 
+      min: TRANSACTION_CONSTANTS.LIMITS.DESCRIPTION_MIN, 
+      max: TRANSACTION_CONSTANTS.LIMITS.DESCRIPTION_MAX 
+    })
+    .withMessage(`Description must be less than ${TRANSACTION_CONSTANTS.LIMITS.DESCRIPTION_MAX} characters`),
+  body('category')
+    .optional()
+    .isLength({ min: TRANSACTION_CONSTANTS.LIMITS.CATEGORY_MIN })
+    .withMessage('Category cannot be empty'),
+  body('type')
+    .optional()
+    .isIn(TRANSACTION_CONSTANTS.TYPES)
+    .withMessage(`Type must be one of: ${TRANSACTION_CONSTANTS.TYPES.join(', ')}`),
+  body('sectionCode')
+    .optional()
+    .isIn(TRANSACTION_CONSTANTS.SECTION_CODES)
+    .withMessage(`Section code must be one of: ${TRANSACTION_CONSTANTS.SECTION_CODES.join(', ')}`),
   handleValidationErrors
 ];
 
 const getTransactionsValidation = [
-  query('limit').optional().isInt({ min: 1, max: 1000 }).withMessage('Limit must be between 1 and 1000'),
-  query('offset').optional().isInt({ min: 0 }).withMessage('Offset must be 0 or greater'),
-  query('startDate').optional().isISO8601().withMessage('Start date must be a valid ISO 8601 date'),
-  query('endDate').optional().isISO8601().withMessage('End date must be a valid ISO 8601 date'),
-  query('orderBy').optional().isIn(['date', 'amount', 'description', 'category', 'type', 'payee', 'sectionCode', 'createdAt', 'updatedAt']).withMessage('OrderBy must be a valid field'),
-  query('order').optional().isIn(['asc', 'desc']).withMessage('Order must be asc or desc'),
+  query('limit')
+    .optional()
+    .isInt({ 
+      min: TRANSACTION_CONSTANTS.LIMITS.QUERY_LIMIT_MIN, 
+      max: TRANSACTION_CONSTANTS.LIMITS.QUERY_LIMIT_MAX 
+    })
+    .withMessage(`Limit must be between ${TRANSACTION_CONSTANTS.LIMITS.QUERY_LIMIT_MIN} and ${TRANSACTION_CONSTANTS.LIMITS.QUERY_LIMIT_MAX}`),
+  query('offset')
+    .optional()
+    .isInt({ min: TRANSACTION_CONSTANTS.LIMITS.QUERY_OFFSET_MIN })
+    .withMessage(`Offset must be ${TRANSACTION_CONSTANTS.LIMITS.QUERY_OFFSET_MIN} or greater`),
+  query('startDate').optional().isISO8601().withMessage(`Start date ${COMMON_VALIDATION.DATE_MESSAGE}`),
+  query('endDate').optional().isISO8601().withMessage(`End date ${COMMON_VALIDATION.DATE_MESSAGE}`),
+  query('orderBy')
+    .optional()
+    .isIn(TRANSACTION_CONSTANTS.ORDER_BY_FIELDS)
+    .withMessage(`OrderBy must be one of: ${TRANSACTION_CONSTANTS.ORDER_BY_FIELDS.join(', ')}`),
+  query('order')
+    .optional()
+    .isIn(TRANSACTION_CONSTANTS.SORT_ORDERS)
+    .withMessage(`Order must be one of: ${TRANSACTION_CONSTANTS.SORT_ORDERS.join(', ')}`),
   handleValidationErrors
 ];
 
 const bulkOperationValidation = [
-  body('transactions').isArray({ min: 1 }).withMessage('Transactions must be a non-empty array'),
-  body('transactions.*.id').isLength({ min: 1 }).withMessage('Each transaction must have an ID'),
-  requestSizeLimit('1mb'),
+  body('transactions')
+    .isArray({ min: TRANSACTION_CONSTANTS.LIMITS.BULK_ARRAY_MIN })
+    .withMessage(`Transactions ${COMMON_VALIDATION.ARRAY_MESSAGE}`),
+  body('transactions.*.id')
+    .isLength({ min: 1 })
+    .withMessage('Each transaction must have an ID'),
+  requestSizeLimit(REQUEST_LIMITS.SIZE.MEDIUM),
   handleValidationErrors
 ];
 
@@ -108,7 +159,7 @@ router.post('/', createTransactionValidation, createTransaction);
  * @access Private
  */
 router.post('/classify', 
-  requestSizeLimit('500kb'),
+  requestSizeLimit(REQUEST_LIMITS.SIZE.SMALL),
   getClassificationSuggestions
 );
 

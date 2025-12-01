@@ -19,6 +19,10 @@ import {
   requestSizeLimit,
   apiRateLimit
 } from '../middlewares/index.js';
+import { 
+  REPORT_CONSTANTS, 
+  COMMON_VALIDATION 
+} from './routeConstants.js';
 
 const router = express.Router();
 
@@ -27,20 +31,23 @@ router.use(apiRateLimit);
 
 // Validation schemas
 const reportValidation = [
-  query('startDate').isISO8601().withMessage('Start date must be a valid ISO 8601 date'),
-  query('endDate').isISO8601().withMessage('End date must be a valid ISO 8601 date'),
-  query('format').optional().isIn(['json', 'pdf', 'csv']).withMessage('Format must be json, pdf, or csv'),
+  query('startDate').isISO8601().withMessage(`Start date ${COMMON_VALIDATION.DATE_MESSAGE}`),
+  query('endDate').isISO8601().withMessage(`End date ${COMMON_VALIDATION.DATE_MESSAGE}`),
+  query('format')
+    .optional()
+    .isIn(REPORT_CONSTANTS.FORMATS)
+    .withMessage(`Format must be one of: ${REPORT_CONSTANTS.FORMATS.join(', ')}`),
   query('companyId').optional().isLength({ min: 1 }).withMessage('Company ID must be valid'),
   handleValidationErrors
 ];
 
 const pdfReportValidation = [
-  body('startDate').isISO8601().withMessage('Start date must be a valid ISO 8601 date'),
-  body('endDate').isISO8601().withMessage('End date must be a valid ISO 8601 date'),
+  body('startDate').isISO8601().withMessage(`Start date ${COMMON_VALIDATION.DATE_MESSAGE}`),
+  body('endDate').isISO8601().withMessage(`End date ${COMMON_VALIDATION.DATE_MESSAGE}`),
   body('includeDetails').optional().isBoolean().withMessage('includeDetails must be a boolean'),
   body('includeTransactionDetails').optional().isBoolean().withMessage('includeTransactionDetails must be a boolean'),
   body('companyId').optional().isLength({ min: 1 }).withMessage('Company ID must be valid'),
-  requestSizeLimit('2mb'),
+  requestSizeLimit(REPORT_CONSTANTS.SIZE_LIMITS.PDF_GENERATION),
   handleValidationErrors
 ];
 

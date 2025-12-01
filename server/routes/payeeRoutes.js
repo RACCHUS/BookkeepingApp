@@ -23,7 +23,13 @@ const router = express.Router();
 // Apply rate limiting to all payee routes
 router.use(apiRateLimit);
 
-// Enhanced Payee Routes with validation
+/**
+ * Enhanced Payee Routes
+ * 
+ * Note: Validation schemas are defined in payeeController.js and imported here.
+ * This centralizes validation logic with the controller that uses it.
+ * See PAYEE_CONSTANTS in routeConstants.js for validation constraints.
+ */
 
 /**
  * @route POST /api/payees
