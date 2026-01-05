@@ -1,0 +1,41 @@
+[
+  {
+    "id": "company-001",
+    "userId": "test-user-123",
+    "name": "ABC Company LLC",
+    "ein": "12-3456789",
+    "address": "123 Main Street",
+    "city": "Anytown",
+    "state": "CA",
+    "zipCode": "90210",
+    "phone": "(555) 123-4567",
+    "email": "contact@abccompany.com",
+    "createdAt": "2024-01-01T10:00:00.000Z"
+  },
+  {
+    "id": "company-002",
+    "userId": "test-user-123",
+    "name": "XYZ Corporation",
+    "ein": "98-7654321",
+    "address": "456 Oak Avenue",
+    "city": "Business City",
+    "state": "NY",
+    "zipCode": "10001",
+    "phone": "(555) 987-6543",
+    "email": "info@xyzcorp.com",
+    "createdAt": "2024-01-05T11:00:00.000Z"
+  },
+  {
+    "id": "company-003",
+    "userId": "test-user-456",
+    "name": "123 Services Inc",
+    "ein": "55-5555555",
+    "address": "789 Pine Road",
+    "city": "Service Town",
+    "state": "TX",
+    "zipCode": "75001",
+    "phone": "(555) 555-5555",
+    "email": "services@123services.com",
+    "createdAt": "2024-01-10T09:00:00.000Z"
+  }
+]

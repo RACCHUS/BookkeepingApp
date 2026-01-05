@@ -313,9 +313,10 @@ module.exports = errorHandler;
 
 ## Testing
 
-### Frontend Testing (Jest + React Testing Library)
+### Frontend Testing (Vitest + React Testing Library)
 ```javascript
 import { render, screen, fireEvent } from '@testing-library/react';
+import { vi, describe, test, expect } from 'vitest';
 import { QueryClient, QueryClientProvider } from 'react-query';
 import TransactionForm from './TransactionForm';
 
@@ -336,7 +337,7 @@ const renderWithQuery = (component) => {
 
 describe('TransactionForm', () => {
   test('submits form with valid data', async () => {
-    const onSubmit = jest.fn();
+    const onSubmit = vi.fn();
     renderWithQuery(<TransactionForm onSubmit={onSubmit} />);
 
     fireEvent.change(screen.getByLabelText(/amount/i), {

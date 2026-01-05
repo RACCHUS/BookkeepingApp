@@ -10,6 +10,7 @@ import { ThemeProvider } from './context/ThemeContext';
 // Components
 import { Layout } from './components/layout';
 import { LoadingSpinner } from './components/ui';
+import ErrorBoundary from './components/ErrorBoundary';
 import TestPage from './components/TestPage';
 
 // Feature components
@@ -19,9 +20,16 @@ import TransactionList from './features/Transactions/TransactionList';
 import PDFUpload from './features/PDFUpload/PDFUpload';
 import Classification from './features/Classification/Classification';
 import Reports from './features/Reports/Reports';
+import MonthlyReports from './features/Reports/MonthlyReports';
 import CompanyManagement from './features/Companies/CompanyManagement';
 import UploadManagement from './features/Uploads/UploadManagement';
 import PayeeManagement from './features/Payees/PayeeManagement';
+import { VendorManagement } from './features/Vendors';
+import { IncomeManagement, IncomeSourcesPage } from './features/Income';
+import { ExpenseManagement } from './features/Expenses';
+import { ReceiptList } from './features/Receipts';
+import { CheckList } from './features/Checks';
+import { DocumentManagement } from './features/Documents';
 
 // Create a client
 const queryClient = new QueryClient({
@@ -65,17 +73,18 @@ const PublicRoute = ({ children }) => {
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <ThemeProvider>
-          <Router 
-            future={{
-              v7_startTransition: true,
-              v7_relativeSplatPath: true
-            }}
-          >
-            <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors">
-              <Toaster
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <ThemeProvider>
+            <Router 
+              future={{
+                v7_startTransition: true,
+                v7_relativeSplatPath: true
+              }}
+            >
+              <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors">
+                <Toaster
                 position="top-right"
                 toastOptions={{
                   duration: 4000,
@@ -137,12 +146,20 @@ function App() {
                   <Route index element={<Navigate to="/dashboard" replace />} />
                   <Route path="dashboard" element={<Dashboard />} />
                   <Route path="transactions" element={<TransactionList />} />
+                  <Route path="documents" element={<DocumentManagement />} />
                   <Route path="upload" element={<PDFUpload />} />
                   <Route path="uploads" element={<UploadManagement />} />
                   <Route path="classification" element={<Classification />} />
                   <Route path="reports" element={<Reports />} />
+                  <Route path="reports/monthly" element={<MonthlyReports />} />
                   <Route path="companies" element={<CompanyManagement />} />
                   <Route path="payees" element={<PayeeManagement />} />
+                  <Route path="vendors" element={<VendorManagement />} />
+                  <Route path="income" element={<IncomeManagement />} />
+                  <Route path="income-sources" element={<IncomeSourcesPage />} />
+                  <Route path="expenses" element={<ExpenseManagement />} />
+                  <Route path="receipts" element={<ReceiptList />} />
+                  <Route path="checks" element={<CheckList />} />
                 </Route>
                 
                 {/* Catch all route */}
@@ -153,6 +170,7 @@ function App() {
         </ThemeProvider>
       </AuthProvider>
     </QueryClientProvider>
+    </ErrorBoundary>
   );
 }
 

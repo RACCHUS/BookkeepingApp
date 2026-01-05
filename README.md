@@ -1,16 +1,16 @@
 # Bookkeeping App
 
-A comprehensive bookkeeping application that allows users to import Chase bank PDFs, extract and classify transactions into IRS tax-relevant categories, and track business expenses, revenue, and employee payments.
+A comprehensive bookkeeping application for managing business transactions, tracking expenses and income by IRS tax categories, and generating financial reports. Supports manual transaction entry, CSV import, and PDF document storage for reference.
 
 ## Features
 
 ### Core Functionality
-- **PDF Import**: Upload and parse Chase bank statements and other PDF files
-- **Automatic Classification**: Smart categorization of transactions into IRS tax categories
-- **Manual Transaction Entry**: Add cash transactions and missing entries
+- **Transaction Management**: Add, edit, and bulk-update transactions with comprehensive filtering
+- **Income & Expense Tracking**: Separate management for income and expense transactions
+- **Income Sources**: Track customers, clients, and revenue sources with transaction assignment
 - **Multi-Company Support**: Manage multiple companies with separate financial tracking
-- **Employee & Vendor Management**: Track payees and assign them to transactions
-- **Upload Management**: Organize and manage PDF uploads with company assignment
+- **Employee & Vendor Management**: Track payees and vendors, assign them to transactions
+- **Document Storage**: Upload and store PDFs (bank statements, receipts, checks) for reference
 - **Real-time Updates**: Live dashboard with financial summaries
 
 ### Tax & Reporting
@@ -19,19 +19,19 @@ A comprehensive bookkeeping application that allows users to import Chase bank P
 - **Profit & Loss**: Comprehensive P&L statements
 - **Company-Specific Reports**: Generate reports filtered by company
 - **Payee-Based Reports**: Track expenses and payments by employee/vendor
+- **1099 Tracking**: Flag and track 1099-reportable payments
 - **Export to PDF**: Professional report generation
 
-### Payee Management
-- **Employee Tracking**: Manage employee information and payments
-- **Vendor Management**: Track vendor details and expenses
-- **Check Assignment**: Assign payees to check transactions (PDFs don't contain payee info)
-- **Quick Check Review**: Easily find and assign payees to checks without assigned recipients
-- **Payee-Based Filtering**: Filter transactions and reports by specific payees
+### Transaction Entry
+- **Manual Entry**: Add individual transactions with full detail
+- **Bulk Import**: Import transactions from CSV files
+- **Bulk Editing**: Select multiple transactions and update fields in bulk
+- **Category Assignment**: Quick categorization with IRS-compliant categories
 
-### Learning System
-- **Smart Classification**: Machine learning-based transaction categorization
-- **User Training**: Learn from manual corrections to improve accuracy
-- **Custom Rules**: Create custom classification rules for specific payees
+### Classification Rules
+- **Rule-Based System**: User-defined rules map transaction names to IRS categories
+- **Custom Rules**: Create and manage classification rules for specific payees/descriptions
+- **Manual Assignment**: Unmatched transactions can be manually categorized
 
 ## Tech Stack
 
@@ -49,7 +49,6 @@ A comprehensive bookkeeping application that allows users to import Chase bank P
 - **Firebase Admin SDK** for authentication and database
 - **Firebase Firestore** for data storage
 - **Firebase Storage** for file uploads
-- **PDF-Parse** for PDF text extraction
 - **PDFKit** for report generation
 - **Express Validator** for input validation
 
@@ -58,6 +57,12 @@ A comprehensive bookkeeping application that allows users to import Chase bank P
 - **Firestore** for document-based data storage
 - **Firebase Storage** for file management
 - **Security Rules** for data protection
+
+### Testing
+- **Vitest** for client-side testing (React components, hooks, services)
+- **Jest** for server-side testing (controllers, services, utilities)
+- **React Testing Library** for component testing
+- **1100+ tests** with comprehensive coverage
 
 ## Project Structure
 
@@ -76,8 +81,7 @@ BookkeepingApp/
 ├── 📄 package.json            # Root package.json for workspace commands
 ├── 📄 README.md               # Project overview and setup
 ├── 📄 PROJECT_STRUCTURE.md    # Detailed project structure guide
-├── 📄 CONTRIBUTING.md         # Contribution guidelines
-├── 📄 CHANGELOG.md            # Project change history
+├── 📄 LICENSE                 # MIT License
 └── 📄 .env.example            # Environment variables template
 ```
 
@@ -152,31 +156,50 @@ For detailed project structure information, see [PROJECT_STRUCTURE.md](PROJECT_S
    - Client on http://localhost:3000
    - Server on http://localhost:5000
 
+6. **Run Tests**
+   ```bash
+   # Run all server tests (Jest)
+   cd server && npm test
+   
+   # Run all client tests (Vitest)
+   cd client && npm test
+   
+   # Run client tests in watch mode
+   cd client && npm run test:watch
+   
+   # Run client tests with UI
+   cd client && npm run test:ui
+   ```
+
 ## Usage
 
 ### 1. Authentication
 - Sign up with email/password or Google
 - Secure authentication with Firebase Auth
 
-### 2. PDF Upload & Processing
-- Upload Chase bank statements (PDF format)
-- Automatic text extraction and parsing
-- Transaction detection and classification
-- **Note**: Check transactions from PDFs don't contain payee information (bank statements only show check numbers). Use the Payee Management feature to manually assign payees to checks after import.
+### 2. Transaction Entry
+- **Manual Entry**: Add transactions one at a time with full details
+- **CSV Import**: Bulk import transactions from bank CSV exports
+- **Bulk Edit**: Select multiple transactions to update category, company, payee, etc.
 
-### 3. Transaction Management
-- View all imported transactions
-- Manually edit categories and details
-- Add missing cash transactions
-- Bulk edit capabilities
+### 3. Document Storage
+- Upload PDF bank statements, receipts, and checks for reference
+- Link transactions to uploaded documents
+- Organize documents by company
 
-### 4. Classification System
+### 4. Transaction Management
+- View all transactions with powerful filtering
+- Separate views for Income and Expenses
+- Assign transactions to income sources, payees, vendors
+- Bulk edit capabilities for efficient categorization
+
+### 5. Classification System
 - Automatic categorization using IRS tax categories
-- Machine learning from user corrections
+- Rule-based matching of transaction descriptions
 - Custom rules for specific payees
-- Confidence scoring
+- Manual category assignment for unmatched transactions
 
-### 5. Reporting
+### 6. Reporting
 - Generate Profit & Loss statements
 - Tax-ready expense summaries
 - Employee cost tracking
@@ -215,15 +238,18 @@ All API endpoints require Bearer token authentication.
 
 ### Upload Management
 - `GET /api/uploads` - Get user uploads
+- `POST /api/pdf/upload` - Upload PDF file
 - `PUT /api/uploads/:id/rename` - Rename upload
 - `DELETE /api/uploads/:id` - Delete upload
 - `GET /api/uploads/:id` - Get upload details
-- `GET /api/uploads/:id/transactions` - Get transactions from upload
+- `POST /api/uploads/:id/link` - Link transactions to upload
+- `POST /api/uploads/:id/unlink` - Unlink transactions from upload
 
-### PDF Processing
-- `POST /api/pdf/upload` - Upload PDF file
-- `POST /api/pdf/process/:fileId` - Process uploaded PDF
-- `GET /api/pdf/status/:processId` - Check processing status
+### Income Sources
+- `GET /api/income-sources` - Get income sources
+- `POST /api/income-sources` - Create income source
+- `PUT /api/income-sources/:id` - Update income source
+- `DELETE /api/income-sources/:id` - Delete income source
 
 ### Classification
 - `POST /api/classification/classify` - Classify transaction
@@ -253,8 +279,6 @@ All API endpoints require Bearer token authentication.
 ## Documentation
 
 - **📖 [Project Structure](PROJECT_STRUCTURE.md)** - Detailed project organization guide
-- **🤝 [Contributing Guide](CONTRIBUTING.md)** - How to contribute to the project
-- **📋 [Changelog](CHANGELOG.md)** - Project version history and updates
 - **📁 [Documentation Directory](docs/)** - Complete documentation including:
   - API Reference
   - User Guide  
@@ -264,12 +288,10 @@ All API endpoints require Bearer token authentication.
 
 ## Contributing
 
-Please read our [Contributing Guide](CONTRIBUTING.md) for details on our code of conduct and the process for submitting pull requests.
-
-Quick start:
+We welcome contributions! Quick start:
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Follow our [coding standards](CONTRIBUTING.md#coding-standards)
+3. Follow the coding standards in `.github/copilot-instructions.md`
 4. Commit your changes (`git commit -m 'feat: add amazing feature'`)
 5. Push to the branch (`git push origin feature/amazing-feature`)
 6. Open a Pull Request
@@ -280,16 +302,18 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Support
 
-For support, email support@bookkeepingapp.com or create an issue in the repository.
+For support, email richardgurudeo@gmail.com or create an issue in the repository.
 
 ## Roadmap
 
+- [ ] CSV import for transactions
 - [ ] QuickBooks integration
-- [ ] Bank API connections
+- [ ] Bank API connections (Plaid)
 - [ ] Mobile app
 - [ ] Advanced reporting features
 - [ ] Multi-currency support
-- [ ] Automatic receipt scanning
+- [ ] Receipt OCR scanning
 - [ ] Tax form generation (1099, W-2)
 - [ ] Inventory tracking
-- [ ] Multi-user/business accounts
+- [ ] Multi-user/team accounts
+- [ ] Recurring transaction templates

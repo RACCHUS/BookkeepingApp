@@ -9,7 +9,11 @@ import {
   TagIcon,
   BuildingOfficeIcon,
   FolderIcon,
-  UserGroupIcon
+  UserGroupIcon,
+  BuildingStorefrontIcon,
+  BanknotesIcon,
+  CreditCardIcon,
+  WalletIcon
 } from '@heroicons/react/24/outline';
 
 const Sidebar = () => {
@@ -18,10 +22,13 @@ const Sidebar = () => {
   const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: HomeIcon },
     { name: 'Transactions', href: '/transactions', icon: DocumentTextIcon },
+    { name: 'Income', href: '/income', icon: BanknotesIcon },
+    { name: 'Income Sources', href: '/income-sources', icon: WalletIcon },
+    { name: 'Expenses', href: '/expenses', icon: CreditCardIcon },
+    { name: 'Documents', href: '/documents', icon: FolderIcon },
     { name: 'Companies', href: '/companies', icon: BuildingOfficeIcon },
     { name: 'Payees', href: '/payees', icon: UserGroupIcon },
-    { name: 'Upload PDF', href: '/upload', icon: CloudArrowUpIcon },
-    { name: 'Uploads', href: '/uploads', icon: FolderIcon },
+    { name: 'Vendors', href: '/vendors', icon: BuildingStorefrontIcon },
     { name: 'Classification', href: '/classification', icon: TagIcon },
     { name: 'Reports', href: '/reports', icon: ChartBarIcon },
   ];

@@ -20,6 +20,7 @@ const PDFUpload = () => {
   const [processingFiles, setProcessingFiles] = useState(new Set());
   const [selectedCompany, setSelectedCompany] = useState('');
   const [selectedCompanyData, setSelectedCompanyData] = useState(null);
+  const [createTransactions, setCreateTransactions] = useState(true); // Option to auto-create transactions
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
@@ -67,6 +68,7 @@ const PDFUpload = () => {
       const formData = new FormData();
       formData.append('pdf', file);
       formData.append('bankType', 'chase'); // Default to Chase for now
+      formData.append('createTransactions', createTransactions.toString());
       // Only append companyId if it is a valid non-empty string
       if (selectedCompany && typeof selectedCompany === 'string' && selectedCompany.trim().length > 0) {
         formData.append('companyId', selectedCompany);
@@ -128,8 +130,11 @@ const PDFUpload = () => {
 
   // Process PDF mutation
   const processMutation = useMutation({
-    mutationFn: (uploadId) => apiClient.pdf.process(uploadId, { autoSave: true }),
-    onSuccess: async (data, uploadId) => {
+    mutationFn: ({uploadId, shouldCreateTransactions}) => apiClient.pdf.process(uploadId, { 
+      autoSave: shouldCreateTransactions !== false,
+      createTransactions: shouldCreateTransactions !== false
+    }),
+    onSuccess: async (data, {uploadId, shouldCreateTransactions}) => {
       console.log('🔍 Process success response:', data);
       
       // Backend returns: { success: true, data: { processId: '...', status: 'processing' } }
@@ -359,10 +364,10 @@ const PDFUpload = () => {
     maxSize: 10 * 1024 * 1024, // 10MB
   });
 
-  const handleProcess = (uploadId) => {
-    console.log('🔍 Processing file with ID:', uploadId);
+  const handleProcess = (uploadId, shouldCreateTransactions = createTransactions) => {
+    console.log('🔍 Processing file with ID:', uploadId, 'createTransactions:', shouldCreateTransactions);
     setProcessingFiles(prev => new Set(prev).add(uploadId));
-    processMutation.mutate(uploadId);
+    processMutation.mutate({ uploadId, shouldCreateTransactions });
   };
 
   const handleRemove = (index) => {
@@ -460,6 +465,29 @@ const PDFUpload = () => {
             )}
           </div>
         )}
+      </div>
+
+      {/* Upload Options */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border border-gray-200 dark:border-gray-700">
+        <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Upload Options</h2>
+        <label className="flex items-center space-x-3 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={createTransactions}
+            onChange={(e) => setCreateTransactions(e.target.checked)}
+            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+          />
+          <div>
+            <span className="text-sm font-medium text-gray-900 dark:text-white">
+              Automatically create transactions from PDF
+            </span>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              {createTransactions 
+                ? 'Transactions will be extracted and created when the PDF is processed.'
+                : 'PDF will be stored but no transactions will be created. You can link existing transactions manually.'}
+            </p>
+          </div>
+        </label>
       </div>
 
       {/* Upload Area */}

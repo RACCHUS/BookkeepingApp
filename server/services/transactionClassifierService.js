@@ -1,9 +1,14 @@
 
 import { IRS_CATEGORIES } from '../../shared/constants/categories.js';
 import firebaseService from './cleanFirebaseService.js';
+import { logger } from '../config/index.js';
 
 class TransactionClassifierService {
   constructor() {
+    // Rule cache to avoid repeated database queries
+    this.ruleCache = new Map();
+    this.cacheTTL = 60000; // 60 seconds cache TTL
+
     // Hardcoded fallback rules (kept for compatibility)
     this.fallbackRules = {
       [IRS_CATEGORIES.GROSS_RECEIPTS]: ['deposit', 'payment received', 'invoice payment', 'customer payment'],
@@ -21,6 +26,37 @@ class TransactionClassifierService {
   }
 
   /**
+   * Get cached rules for a user, or fetch from database if expired/missing
+   * @param {string} userId - User ID
+   * @returns {Promise<Array>} User's classification rules
+   */
+  async getCachedRules(userId) {
+    const cached = this.ruleCache.get(userId);
+    const now = Date.now();
+
+    if (cached && (now - cached.timestamp) < this.cacheTTL) {
+      return cached.rules;
+    }
+
+    // Fetch fresh rules from database
+    const rules = await firebaseService.getClassificationRules(userId);
+    this.ruleCache.set(userId, { rules, timestamp: now });
+    return rules;
+  }
+
+  /**
+   * Clear the rule cache for a specific user (call after rule changes)
+   * @param {string} userId - User ID
+   */
+  clearCache(userId) {
+    if (userId) {
+      this.ruleCache.delete(userId);
+    } else {
+      this.ruleCache.clear();
+    }
+  }
+
+  /**
    * Rule-based classification: Check user rules first, then fallback rules
    * @param {Object} transaction - Transaction object
    * @param {string} userId - User ID to load user-specific rules
@@ -35,8 +71,8 @@ class TransactionClassifierService {
     const searchText = `${description} ${payee}`;
 
     try {
-      // First, try user-defined rules from Firestore
-      const userRules = await firebaseService.getClassificationRules(userId);
+      // Use cached rules to avoid repeated database calls during batch processing
+      const userRules = await this.getCachedRules(userId);
       // console.log(`[Classifier] classifyTransaction: searchText="${searchText.slice(0,100)}" | rules=${userRules.length}`);
 
       for (const rule of userRules) {
@@ -67,7 +103,7 @@ class TransactionClassifierService {
       }
 
     } catch (error) {
-      // console.error('[Classifier] Error loading user rules, using fallback only:', error);
+      logger.error('Error loading user rules, using fallback only:', error);
       
       // Try fallback rules only
       for (const [category, keywords] of Object.entries(this.fallbackRules)) {

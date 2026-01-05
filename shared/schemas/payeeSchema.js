@@ -24,7 +24,9 @@ export const PayeeSchema = {
   
   // Tax information
   taxId: '', // SSN for employees, EIN for vendors
+  taxIdType: '', // 'SSN' or 'EIN'
   is1099Required: false, // True if need to send 1099 at year end
+  total1099Payments: 0, // Calculated YTD for 1099 threshold tracking
   
   // Employee-specific fields
   employeeId: '', // Employee number

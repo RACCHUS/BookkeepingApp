@@ -1,13 +1,20 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-hot-toast';
 import { apiClient } from '../../services/api';
 import { IRS_CATEGORIES } from '@shared/constants/categories';
 import { LoadingSpinner } from '../../components/ui';
 
+// React Query cache settings to prevent excessive Firestore reads
+const QUERY_CONFIG = {
+  staleTime: 5 * 60 * 1000, // Data stays fresh for 5 minutes
+  cacheTime: 10 * 60 * 1000, // Cache persists for 10 minutes
+  refetchOnWindowFocus: false,
+  retry: 1,
+};
+
 const Classification = () => {
-  const [rules, setRules] = useState([]);
-  const [uncategorizedTransactions, setUncategorizedTransactions] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [testResult, setTestResult] = useState(null);
   const [newRule, setNewRule] = useState({
     keywords: '',
@@ -21,26 +28,45 @@ const Classification = () => {
     type: 'debit'
   });
 
-  useEffect(() => {
-    loadClassificationData();
-  }, []);
+  // Fetch classification rules with React Query caching
+  const { 
+    data: rules = [], 
+    isLoading: rulesLoading,
+    refetch: refetchRules 
+  } = useQuery({
+    queryKey: ['classification-rules'],
+    queryFn: async () => {
+      const response = await apiClient.classification.getRules();
+      return response.rules || response;
+    },
+    ...QUERY_CONFIG,
+    onError: (error) => {
+      console.error('Error loading classification rules:', error);
+      toast.error('Failed to load classification rules');
+    },
+  });
 
-  const loadClassificationData = async () => {
-    try {
-      setLoading(true);
-      const [rulesResponse, uncategorizedResponse] = await Promise.all([
-        apiClient.classification.getRules(),
-        apiClient.classification.getUncategorized()
-      ]);
+  // Fetch uncategorized transactions with React Query caching
+  const { 
+    data: uncategorizedTransactions = [], 
+    isLoading: uncategorizedLoading 
+  } = useQuery({
+    queryKey: ['uncategorized-transactions'],
+    queryFn: async () => {
+      const response = await apiClient.classification.getUncategorized();
+      return response.transactions || response;
+    },
+    ...QUERY_CONFIG,
+    onError: (error) => {
+      console.error('Error loading uncategorized transactions:', error);
+    },
+  });
 
-      setRules(rulesResponse.rules || rulesResponse);
-      setUncategorizedTransactions(uncategorizedResponse.transactions || uncategorizedResponse);
-    } catch (error) {
-      console.error('Error loading classification data:', error);
-      toast.error('Failed to load classification data');
-    } finally {
-      setLoading(false);
-    }
+  const loading = rulesLoading || uncategorizedLoading;
+
+  const handleRefresh = () => {
+    queryClient.invalidateQueries(['classification-rules']);
+    queryClient.invalidateQueries(['uncategorized-transactions']);
   };
 
   // Remove test classification logic (no longer needed)
@@ -61,7 +87,7 @@ const Classification = () => {
       toast.success('Classification rule created');
       // Reset form and reload data
       setNewRule({ keywords: '', category: '' });
-      loadClassificationData();
+      handleRefresh();
     } catch (error) {
       console.error('Create rule error:', error);
       toast.error('Failed to create rule');
@@ -72,7 +98,7 @@ const Classification = () => {
     try {
       await apiClient.classification.deleteRule(ruleId);
       toast.success('Rule deleted');
-      loadClassificationData();
+      handleRefresh();
     } catch (error) {
       console.error('Delete rule error:', error);
       toast.error('Failed to delete rule');

@@ -1,5 +1,8 @@
 import { validationResult } from 'express-validator';
-import firebaseService from '../services/cleanFirebaseService.js';
+import { getDatabaseAdapter } from '../services/adapters/index.js';
+
+// Get database adapter (Supabase or Firebase based on DB_PROVIDER)
+const getDb = () => getDatabaseAdapter();
 
 export const getTransactions = async (req, res) => {
   try {
@@ -40,7 +43,7 @@ export const getTransactions = async (req, res) => {
     if (type) filters.type = type;
     if (payee) filters.payee = payee;
 
-    const result = await firebaseService.getTransactions(userId, filters);
+    const result = await getDb().getTransactions(userId, filters);
 
     console.log('🔍 Firebase result:', result);
     console.log('🔍 Transaction count returned:', result.transactions?.length || 0);
@@ -49,12 +52,12 @@ export const getTransactions = async (req, res) => {
     if (result.transactions.length === 0 && userId !== 'dev-user-123') {
       try {
         console.log('🔄 Attempting to migrate dev transactions...');
-        const migrationResult = await firebaseService.migrateDevTransactions(userId);
+        const migrationResult = await getDb().migrateDevTransactions(userId);
         console.log('🔄 Migration result:', migrationResult);
         
         if (migrationResult.migrated > 0) {
           // Re-fetch transactions after migration
-          const updatedResult = await firebaseService.getTransactions(userId, filters);
+          const updatedResult = await getDb().getTransactions(userId, filters);
           console.log('🔍 After migration - Transaction count:', updatedResult.transactions?.length || 0);
           
           res.json({
@@ -97,7 +100,7 @@ export const createTransaction = async (req, res) => {
     }    const { uid: userId } = req.user;
     const transactionData = req.body;
 
-    const result = await firebaseService.createTransaction(userId, transactionData);
+    const result = await getDb().createTransaction(userId, transactionData);
 
     res.status(201).json({
       success: true,
@@ -126,7 +129,7 @@ export const updateTransaction = async (req, res) => {
     const { id: transactionId } = req.params;
     const updateData = req.body;
 
-    const result = await firebaseService.updateTransaction(userId, transactionId, updateData);
+    const result = await getDb().updateTransaction(userId, transactionId, updateData);
 
     res.json({
       success: true,
@@ -152,7 +155,7 @@ export const deleteTransaction = async (req, res) => {
   try {    const { uid: userId } = req.user;
     const { id: transactionId } = req.params;
 
-    await firebaseService.deleteTransaction(userId, transactionId);
+    await getDb().deleteTransaction(userId, transactionId);
 
     res.json({
       success: true,
@@ -177,7 +180,7 @@ export const getTransactionById = async (req, res) => {
   try {    const { uid: userId } = req.user;
     const { id: transactionId } = req.params;
 
-    const transaction = await firebaseService.getTransactionById(userId, transactionId);
+    const transaction = await getDb().getTransactionById(userId, transactionId);
 
     res.json({
       success: true,
@@ -212,7 +215,7 @@ export const bulkUpdateTransactions = async (req, res) => {
     const results = [];
     for (const update of updates) {
       try {
-        const result = await firebaseService.updateTransaction(userId, update.id, update.data);
+        const result = await getDb().updateTransaction(userId, update.id, update.data);
         results.push(result);
       } catch (error) {
         console.error(`Failed to update transaction ${update.id}:`, error.message);
@@ -249,7 +252,7 @@ export const getTransactionSummary = async (req, res) => {
     if (category) filters.category = category;
     if (type) filters.type = type;
 
-    const summary = await firebaseService.getTransactionSummary(userId, filters);
+    const summary = await getDb().getTransactionSummary(userId, filters);
 
     res.json({
       success: true,
@@ -305,12 +308,12 @@ export const debugGetAllTransactions = async (req, res) => {
   try {
     console.log('🔍 Debug: Getting ALL transactions regardless of user');
     
-    const result = await firebaseService.getTransactions('dev-user-123', {});
+    const result = await getDb().getTransactions('dev-user-123', {});
     console.log('🔍 Debug: Dev transactions found:', result.transactions?.length || 0);
     
     // Also try to get the authenticated user's transactions
     const { uid: userId } = req.user;
-    const userResult = await firebaseService.getTransactions(userId, {});
+    const userResult = await getDb().getTransactions(userId, {});
     console.log('🔍 Debug: User transactions found:', userResult.transactions?.length || 0);
     
     res.json({

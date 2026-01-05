@@ -1,5 +1,14 @@
 import PDFDocument from 'pdfkit';
 
+/**
+ * Legacy Report Generator
+ * Generates PDF reports for Profit & Loss, Expense Summary, Employee Summary, and Tax Summary
+ * 
+ * Optimizations:
+ * - PDF compression enabled
+ * - Proper document metadata
+ * - Memory-efficient buffer handling
+ */
 class ReportGenerator {
   constructor() {
     this.pageMargin = 50;
@@ -19,15 +28,35 @@ class ReportGenerator {
       light: '#f8fafc',
       dark: '#1e293b'
     };
+    // PDF optimization settings
+    this.pdfOptions = {
+      size: 'A4',
+      margin: this.pageMargin,
+      compress: true,
+      pdfVersion: '1.5',
+      bufferPages: true
+    };
+  }
+
+  /**
+   * Create optimized PDF document with standard settings
+   */
+  createPDFDocument(title = 'Financial Report') {
+    return new PDFDocument({
+      ...this.pdfOptions,
+      info: {
+        Title: title,
+        Author: 'Bookkeeping App',
+        Creator: 'PDFKit',
+        CreationDate: new Date()
+      }
+    });
   }
 
   async generateProfitLossPDF(reportData) {
     return new Promise((resolve, reject) => {
       try {
-        const doc = new PDFDocument({
-          size: 'A4',
-          margin: this.pageMargin
-        });
+        const doc = this.createPDFDocument('Profit & Loss Statement');
 
         const chunks = [];
         doc.on('data', chunks.push.bind(chunks));
@@ -96,10 +125,7 @@ class ReportGenerator {
   async generateExpenseSummaryPDF(reportData) {
     return new Promise((resolve, reject) => {
       try {
-        const doc = new PDFDocument({
-          size: 'A4',
-          margin: this.pageMargin
-        });
+        const doc = this.createPDFDocument('Expense Summary Report');
 
         const chunks = [];
         doc.on('data', chunks.push.bind(chunks));
@@ -153,10 +179,7 @@ class ReportGenerator {
   async generateEmployeeSummaryPDF(reportData) {
     return new Promise((resolve, reject) => {
       try {
-        const doc = new PDFDocument({
-          size: 'A4',
-          margin: this.pageMargin
-        });
+        const doc = this.createPDFDocument('Employee Summary Report');
 
         const chunks = [];
         doc.on('data', chunks.push.bind(chunks));
@@ -213,10 +236,7 @@ class ReportGenerator {
   async generateTaxSummaryPDF(reportData) {
     return new Promise((resolve, reject) => {
       try {
-        const doc = new PDFDocument({
-          size: 'A4',
-          margin: this.pageMargin
-        });
+        const doc = this.createPDFDocument(`Tax Summary Report - ${reportData.taxYear}`);
 
         const chunks = [];
         doc.on('data', chunks.push.bind(chunks));

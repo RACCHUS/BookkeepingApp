@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { toast } from 'react-hot-toast';
 import { CalendarIcon, ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import { getYearDateRange, getMonthDateRange, getCurrentDate, formatDateForDisplay } from "../../utils";
 
@@ -6,6 +7,11 @@ const SmartDateSelector = ({ dateRange, onDateChange, className = '' }) => {
   const [selectedMode, setSelectedMode] = useState('preset'); // 'preset', 'monthly', 'yearly', 'custom'
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
+  
+  // Local state for custom date inputs to prevent refetch on every keystroke
+  // Initialize with current dateRange but manage independently
+  const [customStart, setCustomStart] = useState(dateRange.start);
+  const [customEnd, setCustomEnd] = useState(dateRange.end);
 
   const currentYear = new Date().getFullYear();
   const currentMonth = new Date().getMonth();
@@ -27,6 +33,12 @@ const SmartDateSelector = ({ dateRange, onDateChange, className = '' }) => {
 
   // Quick presets
   const getPresets = () => [
+    {
+      id: 'all-time',
+      label: 'All Time',
+      start: '2000-01-01',
+      end: getCurrentDate()
+    },
     {
       id: 'current-month',
       label: 'This Month',
@@ -234,39 +246,61 @@ const SmartDateSelector = ({ dateRange, onDateChange, className = '' }) => {
 
       {/* Custom Date Range */}
       {selectedMode === 'custom' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Start Date
-            </label>
-            <div className="relative">
-              <input
-                type="date"
-                value={dateRange.start}
-                onChange={(e) => onDateChange(prev => ({ ...prev, start: e.target.value }))}
-                className="block w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md leading-5 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-              />
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <CalendarIcon className="h-5 w-5 text-gray-400 dark:text-gray-500" />
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Start Date
+              </label>
+              <div className="relative">
+                <input
+                  type="date"
+                  value={customStart}
+                  onChange={(e) => setCustomStart(e.target.value)}
+                  onBlur={() => {
+                    if (customStart && customStart !== dateRange.start) {
+                      onDateChange({ start: customStart, end: customEnd });
+                    }
+                  }}
+                  className="block w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md leading-5 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                />
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <CalendarIcon className="h-5 w-5 text-gray-400 dark:text-gray-500" />
+                </div>
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                End Date
+              </label>
+              <div className="relative">
+                <input
+                  type="date"
+                  value={customEnd}
+                  onChange={(e) => setCustomEnd(e.target.value)}
+                  onBlur={() => {
+                    if (customEnd && customEnd !== dateRange.end) {
+                      onDateChange({ start: customStart, end: customEnd });
+                    }
+                  }}
+                  className="block w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md leading-5 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                />
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <CalendarIcon className="h-5 w-5 text-gray-400 dark:text-gray-500" />
+                </div>
               </div>
             </div>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              End Date
-            </label>
-            <div className="relative">
-              <input
-                type="date"
-                value={dateRange.end}
-                onChange={(e) => onDateChange(prev => ({ ...prev, end: e.target.value }))}
-                className="block w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md leading-5 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-              />
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <CalendarIcon className="h-5 w-5 text-gray-400 dark:text-gray-500" />
-              </div>
-            </div>
-          </div>
+          <button
+            onClick={() => {
+              onDateChange({ start: customStart, end: customEnd });
+              toast.success('Custom date range applied');
+            }}
+            disabled={!customStart || !customEnd}
+            className="w-full md:w-auto px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+          >
+            Apply Date Range
+          </button>
         </div>
       )}
 

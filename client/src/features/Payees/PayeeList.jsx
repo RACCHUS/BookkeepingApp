@@ -1,6 +1,9 @@
 import React from 'react';
 
-const PayeeList = ({ payees, isLoading, type, onEdit, onDelete }) => {
+const PayeeList = ({ payees: payeesProp = [], isLoading, type, onEdit, onDelete }) => {
+  // Ensure payees is always an array
+  const payees = Array.isArray(payeesProp) ? payeesProp : [];
+  
   if (isLoading) {
     return (
       <div className="p-6">

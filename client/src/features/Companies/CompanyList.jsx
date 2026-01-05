@@ -1,13 +1,16 @@
 import React from 'react';
 
 const CompanyList = ({ 
-  companies, 
+  companies: companiesProp = [], 
   onEdit, 
   onDelete, 
   onSetDefault, 
   isDeleting, 
   isSettingDefault 
 }) => {
+  // Ensure companies is always an array
+  const companies = Array.isArray(companiesProp) ? companiesProp : [];
+  
   console.log('CompanyList received companies:', companies);
   
   const formatAddress = (address) => {

@@ -7,9 +7,12 @@ import {
   getPDFStatus,
   getUserUploads,
   deleteUpload,
+  batchDeleteUploads,
   renameUpload,
   getUploadDetails,
   updateUploadCompany,
+  linkTransactionsToUpload,
+  unlinkTransactionsFromUpload,
   testChasePDF
 } from '../controllers/pdfController.js';
 import {
@@ -100,6 +103,44 @@ router.delete('/uploads/:uploadId',
   authMiddleware,
   param('uploadId').notEmpty().withMessage('Upload ID is required'),
   deleteUpload
+);
+
+/**
+ * @route POST /api/pdf/uploads/batch-delete
+ * @desc Batch delete multiple uploads
+ * @access Private
+ */
+router.post('/uploads/batch-delete',
+  authMiddleware,
+  body('uploadIds').isArray({ min: 1 }).withMessage('uploadIds must be a non-empty array'),
+  body('deleteTransactions').optional().isBoolean(),
+  handleValidationErrors,
+  batchDeleteUploads
+);
+
+/**
+ * @route POST /api/pdf/uploads/:uploadId/link-transactions
+ * @desc Link existing transactions to an upload
+ * @access Private
+ */
+router.post('/uploads/:uploadId/link-transactions',
+  authMiddleware,
+  param('uploadId').notEmpty().withMessage('Upload ID is required'),
+  body('transactionIds').isArray({ min: 1 }).withMessage('transactionIds must be a non-empty array'),
+  handleValidationErrors,
+  linkTransactionsToUpload
+);
+
+/**
+ * @route POST /api/pdf/uploads/unlink-transactions
+ * @desc Unlink transactions from their uploads (remove statementId)
+ * @access Private
+ */
+router.post('/uploads/unlink-transactions',
+  authMiddleware,
+  body('transactionIds').isArray({ min: 1 }).withMessage('transactionIds must be a non-empty array'),
+  handleValidationErrors,
+  unlinkTransactionsFromUpload
 );
 
 // Test endpoint for Chase PDF parsing

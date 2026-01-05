@@ -1,0 +1,58 @@
+[
+  {
+    "id": "rule-001",
+    "userId": "test-user-123",
+    "category": "Office Expenses",
+    "keywords": ["office depot", "staples", "office supplies"],
+    "confidence": 0.95,
+    "createdAt": "2024-01-15T10:00:00.000Z"
+  },
+  {
+    "id": "rule-002",
+    "userId": "test-user-123",
+    "category": "Car & Truck Expenses",
+    "keywords": ["chevron", "shell", "exxon", "gas station"],
+    "confidence": 0.90,
+    "createdAt": "2024-01-15T10:05:00.000Z"
+  },
+  {
+    "id": "rule-003",
+    "userId": "test-user-123",
+    "category": "Meals",
+    "keywords": ["mcdonald", "starbucks", "restaurant", "pizza"],
+    "confidence": 0.85,
+    "createdAt": "2024-01-15T10:10:00.000Z"
+  },
+  {
+    "id": "rule-004",
+    "userId": "test-user-123",
+    "category": "Utilities",
+    "keywords": ["electric", "water", "internet", "phone"],
+    "confidence": 0.90,
+    "createdAt": "2024-01-15T10:15:00.000Z"
+  },
+  {
+    "id": "rule-005",
+    "userId": "test-user-123",
+    "category": "Software Subscriptions",
+    "keywords": ["adobe", "microsoft", "quickbooks", "zoom"],
+    "confidence": 0.95,
+    "createdAt": "2024-01-15T10:20:00.000Z"
+  },
+  {
+    "id": "rule-006",
+    "userId": "test-user-456",
+    "category": "Professional Services",
+    "keywords": ["lawyer", "attorney", "accountant", "cpa"],
+    "confidence": 0.90,
+    "createdAt": "2024-01-16T09:00:00.000Z"
+  },
+  {
+    "id": "rule-007",
+    "userId": "test-user-456",
+    "category": "Supplies",
+    "keywords": ["home depot", "lowes", "walmart", "target"],
+    "confidence": 0.80,
+    "createdAt": "2024-01-16T09:05:00.000Z"
+  }
+]

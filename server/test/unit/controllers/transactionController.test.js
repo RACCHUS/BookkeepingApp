@@ -9,7 +9,9 @@ import {
   getTransactionSummary,
   bulkUpdateCategories,
   assignPayeeToTransaction,
-  bulkAssignPayeeToTransactions
+  bulkAssignPayeeToTransactions,
+  bulkUnassignPayeeFromTransactions,
+  bulkUnassignCompanyFromTransactions
 } from '../../../controllers/transactionController.js';
 
 describe('Transaction Controller', () => {
@@ -488,6 +490,162 @@ describe('Transaction Controller', () => {
       }
 
       expect(req.user.uid).toBe('bulk-payee-user');
+    });
+  });
+
+  describe('bulkUnassignPayeeFromTransactions', () => {
+    it('should extract transaction IDs from body', async () => {
+      req.body = {
+        transactionIds: ['tx-1', 'tx-2', 'tx-3']
+      };
+
+      try {
+        await bulkUnassignPayeeFromTransactions(req, res);
+      } catch (error) {
+        // Expected
+      }
+
+      expect(req.body.transactionIds).toHaveLength(3);
+    });
+
+    it('should reject empty transaction IDs array', async () => {
+      req.body = {
+        transactionIds: []
+      };
+
+      await bulkUnassignPayeeFromTransactions(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: false,
+          error: 'Invalid request',
+          message: 'transactionIds must be a non-empty array'
+        })
+      );
+    });
+
+    it('should reject non-array transaction IDs', async () => {
+      req.body = {
+        transactionIds: 'not-an-array'
+      };
+
+      await bulkUnassignPayeeFromTransactions(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: false,
+          error: 'Invalid request'
+        })
+      );
+    });
+
+    it('should reject missing transaction IDs', async () => {
+      req.body = {};
+
+      await bulkUnassignPayeeFromTransactions(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: false,
+          error: 'Invalid request'
+        })
+      );
+    });
+
+    it('should use authenticated user', async () => {
+      req.user = { uid: 'unassign-payee-user' };
+      req.body = {
+        transactionIds: ['tx-1']
+      };
+
+      try {
+        await bulkUnassignPayeeFromTransactions(req, res);
+      } catch (error) {
+        // Expected
+      }
+
+      expect(req.user.uid).toBe('unassign-payee-user');
+    });
+  });
+
+  describe('bulkUnassignCompanyFromTransactions', () => {
+    it('should extract transaction IDs from body', async () => {
+      req.body = {
+        transactionIds: ['tx-1', 'tx-2', 'tx-3']
+      };
+
+      try {
+        await bulkUnassignCompanyFromTransactions(req, res);
+      } catch (error) {
+        // Expected
+      }
+
+      expect(req.body.transactionIds).toHaveLength(3);
+    });
+
+    it('should reject empty transaction IDs array', async () => {
+      req.body = {
+        transactionIds: []
+      };
+
+      await bulkUnassignCompanyFromTransactions(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: false,
+          error: 'Invalid request',
+          message: 'transactionIds must be a non-empty array'
+        })
+      );
+    });
+
+    it('should reject non-array transaction IDs', async () => {
+      req.body = {
+        transactionIds: 'not-an-array'
+      };
+
+      await bulkUnassignCompanyFromTransactions(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: false,
+          error: 'Invalid request'
+        })
+      );
+    });
+
+    it('should reject missing transaction IDs', async () => {
+      req.body = {};
+
+      await bulkUnassignCompanyFromTransactions(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: false,
+          error: 'Invalid request'
+        })
+      );
+    });
+
+    it('should use authenticated user', async () => {
+      req.user = { uid: 'unassign-company-user' };
+      req.body = {
+        transactionIds: ['tx-1']
+      };
+
+      try {
+        await bulkUnassignCompanyFromTransactions(req, res);
+      } catch (error) {
+        // Expected
+      }
+
+      expect(req.user.uid).toBe('unassign-company-user');
     });
   });
 

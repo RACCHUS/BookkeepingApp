@@ -9,14 +9,19 @@ import { db } from './firebase';
  * @returns {Promise<Array>}
  */
 export async function getTransactions(userId, maxResults = 50) {
-  const q = query(
-    collection(db, 'transactions'),
-    where('userId', '==', userId),
-    orderBy('date', 'desc'),
-    limit(maxResults)
-  );
-  const snapshot = await getDocs(q);
-  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  try {
+    const q = query(
+      collection(db, 'transactions'),
+      where('userId', '==', userId),
+      orderBy('date', 'desc'),
+      limit(maxResults)
+    );
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  } catch (error) {
+    console.error('Failed to fetch transactions:', error);
+    throw new Error('Unable to load transactions. Please try again.');
+  }
 }
 
 
@@ -27,9 +32,14 @@ export async function getTransactions(userId, maxResults = 50) {
  * @returns {Promise<string>} Document ID
  */
 export async function addTransaction(txData, userId) {
-  if (!userId) throw new Error('Missing userId for Firestore document');
-  const docRef = await addDoc(collection(db, 'transactions'), { ...txData, userId });
-  return docRef.id;
+  try {
+    if (!userId) throw new Error('Missing userId for Firestore document');
+    const docRef = await addDoc(collection(db, 'transactions'), { ...txData, userId });
+    return docRef.id;
+  } catch (error) {
+    console.error('Failed to add transaction:', error);
+    throw new Error('Unable to save transaction. Please try again.');
+  }
 }
 
 /**
@@ -38,7 +48,12 @@ export async function addTransaction(txData, userId) {
  * @param {object} txData
  */
 export async function updateTransaction(id, txData) {
-  await updateDoc(doc(db, 'transactions', id), txData);
+  try {
+    await updateDoc(doc(db, 'transactions', id), txData);
+  } catch (error) {
+    console.error('Failed to update transaction:', error);
+    throw new Error('Unable to update transaction. Please try again.');
+  }
 }
 
 /**
@@ -46,5 +61,10 @@ export async function updateTransaction(id, txData) {
  * @param {string} id
  */
 export async function deleteTransaction(id) {
-  await deleteDoc(doc(db, 'transactions', id));
+  try {
+    await deleteDoc(doc(db, 'transactions', id));
+  } catch (error) {
+    console.error('Failed to delete transaction:', error);
+    throw new Error('Unable to delete transaction. Please try again.');
+  }
 }

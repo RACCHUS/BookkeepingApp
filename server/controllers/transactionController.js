@@ -22,11 +22,14 @@ function mapTransactionForClient(tx) {
   }
   return { ...tx, date };
 }
-import firebaseService from '../services/cleanFirebaseService.js';
+import { getDatabaseAdapter } from '../services/adapters/index.js';
 import transactionClassifierService from '../services/transactionClassifierService.js';
 import { TransactionSchema } from '../../shared/schemas/transactionSchema.js';
 import { logger } from '../config/index.js';
 import { asyncHandler } from '../middlewares/index.js';
+
+// Get database adapter (Supabase or Firebase based on DB_PROVIDER)
+const getDb = () => getDatabaseAdapter();
 
 /**
  * Get transactions with filtering and pagination
@@ -107,10 +110,10 @@ export const getTransactions = asyncHandler(async (req, res) => {
     let usingMockData = false;
     
     try {
-      const result = await firebaseService.getTransactions(userId, filters);
+      const result = await getDb().getTransactions(userId, filters);
       transactions = result.transactions || result || [];
     } catch (error) {
-      console.warn('Firestore query failed:', error.message);
+      logger.warn('Firestore query failed:', error.message);
       // Return empty transactions instead of mock data
       transactions = [];
       usingMockData = false; // Don't indicate mock data usage
@@ -167,7 +170,7 @@ export const getTransactionById = async (req, res) => {
     const { uid: userId } = req.user;
 
     // Get single transaction by ID
-    const transactions = await firebaseService.getTransactions(userId);
+    const transactions = await getDb().getTransactions(userId);
     const transaction = transactions.find(t => t.id === id);
 
     if (!transaction) {
@@ -183,8 +186,9 @@ export const getTransactionById = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Get transaction by ID error:', error);
+    logger.error('Get transaction by ID error:', error);
     res.status(500).json({
+      success: false,
       error: 'Failed to get transaction',
       message: error.message
     });
@@ -225,7 +229,7 @@ export const createTransaction = async (req, res) => {
       quarterlyPeriod: getQuarterFromDate(new Date(transactionData.date))
     };
 
-    const transactionId = await firebaseService.createTransaction(userId, transaction);
+    const transactionId = await getDb().createTransaction(userId, transaction);
 
     res.status(201).json({
       success: true,
@@ -238,8 +242,9 @@ export const createTransaction = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Create transaction error:', error);
+    logger.error('Create transaction error:', error);
     res.status(500).json({
+      success: false,
       error: 'Failed to create transaction',
       message: error.message
     });
@@ -262,7 +267,7 @@ export const updateTransaction = async (req, res) => {
     const updateData = req.body;
 
     // Get the original transaction for learning purposes
-    const originalTransaction = await firebaseService.getTransactionById(userId, id);
+    const originalTransaction = await getDb().getTransactionById(userId, id);
 
     // --- Date Handling: Always save as JS Date object ---
     if (updateData.date !== undefined) {
@@ -306,7 +311,7 @@ export const updateTransaction = async (req, res) => {
 
       // Learn from the user's correction (user rules based)
       // Note: Learning functionality not implemented for user rules classifier
-      console.log(`User corrected category from "${originalTransaction.category}" to "${updateData.category}" for transaction: ${originalTransaction.description}`);
+      logger.info(`User corrected category from "${originalTransaction.category}" to "${updateData.category}" for transaction: ${originalTransaction.description}`);
     }
 
     // Mark as manually reviewed if user is updating classification
@@ -318,7 +323,7 @@ export const updateTransaction = async (req, res) => {
     updateData.lastModifiedBy = userId;
     updateData.lastModified = new Date();
 
-    await firebaseService.updateTransaction(userId, id, updateData);
+    await getDb().updateTransaction(userId, id, updateData);
 
     res.json({
       success: true,
@@ -326,16 +331,18 @@ export const updateTransaction = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Update transaction error:', error);
+    logger.error('Update transaction error:', error);
     
     if (error.message.includes('not found') || error.message.includes('access denied')) {
       return res.status(404).json({
+        success: false,
         error: 'Transaction not found',
         message: error.message
       });
     }
 
     res.status(500).json({
+      success: false,
       error: 'Failed to update transaction',
       message: error.message
     });
@@ -348,9 +355,9 @@ export const deleteTransaction = async (req, res) => {
     const { uid: userId } = req.user;
 
     // Debug log for tracing delete issues
-    console.log('[DEBUG] Attempting to delete transaction', { userId, transactionId: id });
+    logger.debug('Attempting to delete transaction', { userId, transactionId: id });
 
-    await firebaseService.deleteTransaction(userId, id);
+    await getDb().deleteTransaction(userId, id);
 
     res.json({
       success: true,
@@ -358,16 +365,18 @@ export const deleteTransaction = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Delete transaction error:', error);
+    logger.error('Delete transaction error:', error);
     
     if (error.message.includes('not found') || error.message.includes('access denied')) {
       return res.status(404).json({
+        success: false,
         error: 'Transaction not found',
         message: error.message
       });
     }
 
     res.status(500).json({
+      success: false,
       error: 'Failed to delete transaction',
       message: error.message
     });
@@ -400,7 +409,7 @@ export const bulkUpdateTransactions = async (req, res) => {
         updateData.isTrainingData = true;
 
         // FIX: Correct parameter order: userId, transactionId, updateData
-        await firebaseService.updateTransaction(userId, id, updateData);
+        await getDb().updateTransaction(userId, id, updateData);
         results.push({ id, success: true });
       } catch (error) {
         results.push({ id: transactionUpdate.id, success: false, error: error.message });
@@ -417,8 +426,9 @@ export const bulkUpdateTransactions = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Bulk update transactions error:', error);
+    logger.error('Bulk update transactions error:', error);
     res.status(500).json({
+      success: false,
       error: 'Bulk update failed',
       message: error.message
     });
@@ -456,9 +466,9 @@ export const getTransactionSummary = async (req, res) => {
         filters.uploadId = uploadId;
       }
       
-      summary = await firebaseService.getTransactionSummary(userId, filters);
+      summary = await getDb().getTransactionSummary(userId, filters);
     } catch (error) {
-      console.warn('Firestore summary query failed:', error.message);
+      logger.warn('Firestore summary query failed:', error.message);
       // Return empty summary instead of mock data
       summary = {
         totalIncome: 0,
@@ -486,8 +496,9 @@ export const getTransactionSummary = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Get transaction summary error:', error);
+    logger.error('Get transaction summary error:', error);
     res.status(500).json({
+      success: false,
       error: 'Failed to get transaction summary',
       message: error.message
     });
@@ -511,10 +522,10 @@ export const getClassificationSuggestions = async (req, res) => {
     const transactions = [];
     for (const id of transactionIds) {
       try {
-        const transaction = await firebaseService.getTransactionById(id, userId);
+        const transaction = await getDb().getTransactionById(id, userId);
         transactions.push({ id, ...transaction });
       } catch (error) {
-        console.warn(`Transaction ${id} not found or not accessible`);
+        logger.warn(`Transaction ${id} not found or not accessible`);
       }
     }
 
@@ -532,7 +543,7 @@ export const getClassificationSuggestions = async (req, res) => {
           });
         }
       } catch (error) {
-        console.error(`Error classifying transaction ${transaction.id}:`, error);
+        logger.error(`Error classifying transaction ${transaction.id}:`, error);
       }
     }
 
@@ -542,8 +553,9 @@ export const getClassificationSuggestions = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Get classification suggestions error:', error);
+    logger.error('Get classification suggestions error:', error);
     res.status(500).json({
+      success: false,
       error: 'Failed to get classification suggestions',
       message: error.message
     });
@@ -570,10 +582,10 @@ export const bulkUpdateCategories = async (req, res) => {
         const { transactionId, category } = update;
         
         // Get original transaction for learning
-        const originalTransaction = await firebaseService.getTransactionById(transactionId, userId);
+        const originalTransaction = await getDb().getTransactionById(transactionId, userId);
         
         // Update the transaction
-        await firebaseService.updateTransaction(userId, transactionId, {
+        await getDb().updateTransaction(userId, transactionId, {
           category,
           manuallySet: true,
           lastModifiedBy: userId,
@@ -583,7 +595,7 @@ export const bulkUpdateCategories = async (req, res) => {
 
         // Learn from the correction if category changed (user rules based)
         if (originalTransaction.category !== category) {
-          console.log(`Bulk update: User corrected category from "${originalTransaction.category}" to "${category}" for transaction: ${originalTransaction.description}`);
+          logger.info(`Bulk update: User corrected category from "${originalTransaction.category}" to "${category}" for transaction: ${originalTransaction.description}`);
         }
 
         results.push({
@@ -592,7 +604,7 @@ export const bulkUpdateCategories = async (req, res) => {
         });
 
       } catch (error) {
-        console.error(`Failed to update transaction ${update.transactionId}:`, error);
+        logger.error(`Failed to update transaction ${update.transactionId}:`, error);
         results.push({
           transactionId: update.transactionId,
           success: false,
@@ -611,8 +623,9 @@ export const bulkUpdateCategories = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Bulk update categories error:', error);
+    logger.error('Bulk update categories error:', error);
     res.status(500).json({
+      success: false,
       error: 'Failed to bulk update categories',
       message: error.message
     });
@@ -625,7 +638,7 @@ export const getCategoryStats = async (req, res) => {
     const { uid: userId } = req.user;
     const { startDate, endDate, companyId, uploadId } = req.query;
 
-    console.log(`📊 Getting category stats for user ${userId}`, { startDate, endDate, companyId, uploadId });
+    logger.debug(`Getting category stats for user ${userId}`, { startDate, endDate, companyId, uploadId });
 
     let dateRange = null;
     if (startDate && endDate) {
@@ -633,7 +646,7 @@ export const getCategoryStats = async (req, res) => {
         start: new Date(startDate),
         end: new Date(endDate)
       };
-      console.log(`📅 Date range: ${dateRange.start} to ${dateRange.end}`);
+      logger.debug(`Date range: ${dateRange.start} to ${dateRange.end}`);
     }
 
     const filters = {};
@@ -645,10 +658,10 @@ export const getCategoryStats = async (req, res) => {
       filters.uploadId = uploadId;
     }
 
-    console.log(`🔍 Applying filters:`, filters);
+    logger.debug('Applying filters:', filters);
 
     // Get basic stats from transactions (simplified implementation)
-    const result = await firebaseService.getTransactions(userId, { 
+    const result = await getDb().getTransactions(userId, { 
       limit: 10000, // Get all transactions for stats
       ...filters,
       startDate: dateRange?.start,
@@ -658,12 +671,11 @@ export const getCategoryStats = async (req, res) => {
     // Extract transactions from the result object
     const transactions = result?.transactions || [];
     
-    console.log(`📈 Retrieved ${transactions.length} transactions for stats`);
-    console.log(`📈 Total available: ${result?.total || 0}`);
+    logger.debug(`Retrieved ${transactions.length} transactions for stats, total available: ${result?.total || 0}`);
     
     // Ensure transactions is an array
     if (!Array.isArray(transactions)) {
-      console.error(`❌ getTransactions returned non-array:`, transactions);
+      logger.error('getTransactions returned non-array:', transactions);
       return res.status(500).json({
         error: 'Failed to retrieve transactions',
         details: 'getTransactions returned invalid data'
@@ -694,8 +706,9 @@ export const getCategoryStats = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Get category stats error:', error);
+    logger.error('Get category stats error:', error);
     res.status(500).json({
+      success: false,
       error: 'Failed to get category statistics',
       message: error.message
     });
@@ -719,7 +732,7 @@ export const assignPayeeToTransaction = async (req, res) => {
     const { id: transactionId } = req.params;
     const { payeeId, payeeName } = req.body;
 
-    const result = await firebaseService.assignPayeeToTransaction(userId, transactionId, payeeId, payeeName);
+    const result = await getDb().assignPayeeToTransaction(userId, transactionId, payeeId, payeeName);
 
     res.json({
       success: true,
@@ -728,10 +741,11 @@ export const assignPayeeToTransaction = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Assign payee to transaction error:', error);
+    logger.error('Assign payee to transaction error:', error);
     const status = error.message.includes('not found') ? 404 : 
                    error.message.includes('Unauthorized') ? 403 : 500;
     res.status(status).json({
+      success: false,
       error: 'Failed to assign payee to transaction',
       message: error.message
     });
@@ -761,7 +775,7 @@ export const bulkAssignPayeeToTransactions = async (req, res) => {
       });
     }
 
-    const result = await firebaseService.bulkAssignPayeeToTransactions(userId, transactionIds, payeeId, payeeName);
+    const result = await getDb().bulkAssignPayeeToTransactions(userId, transactionIds, payeeId, payeeName);
 
     res.json({
       success: true,
@@ -770,9 +784,78 @@ export const bulkAssignPayeeToTransactions = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Bulk assign payee error:', error);
+    logger.error('Bulk assign payee error:', error);
     res.status(500).json({
+      success: false,
       error: 'Failed to bulk assign payee',
+      message: error.message
+    });
+  }
+};
+
+/**
+ * Bulk unassign payee from transactions
+ */
+export const bulkUnassignPayeeFromTransactions = async (req, res) => {
+  try {
+    const { uid: userId } = req.user;
+    const { transactionIds } = req.body;
+
+    if (!Array.isArray(transactionIds) || transactionIds.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid request',
+        message: 'transactionIds must be a non-empty array'
+      });
+    }
+
+    const result = await getDb().bulkUnassignPayeeFromTransactions(userId, transactionIds);
+
+    res.json({
+      success: true,
+      message: `Payee removed from ${result.updatedCount} transactions`,
+      ...result
+    });
+
+  } catch (error) {
+    logger.error('Bulk unassign payee error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to bulk unassign payee',
+      message: error.message
+    });
+  }
+};
+
+/**
+ * Bulk unassign company from transactions
+ */
+export const bulkUnassignCompanyFromTransactions = async (req, res) => {
+  try {
+    const { uid: userId } = req.user;
+    const { transactionIds } = req.body;
+
+    if (!Array.isArray(transactionIds) || transactionIds.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid request',
+        message: 'transactionIds must be a non-empty array'
+      });
+    }
+
+    const result = await getDb().bulkUnassignCompanyFromTransactions(userId, transactionIds);
+
+    res.json({
+      success: true,
+      message: `Company removed from ${result.updatedCount} transactions`,
+      ...result
+    });
+
+  } catch (error) {
+    logger.error('Bulk unassign company error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to bulk unassign company',
       message: error.message
     });
   }
@@ -809,3 +892,118 @@ function getQuarterFromDate(date) {
   if (month <= 9) return 'Q3';
   return 'Q4';
 }
+
+/**
+ * Bulk create multiple transactions
+ * @route POST /api/transactions/bulk
+ * @access Private
+ */
+export const bulkCreateTransactions = async (req, res) => {
+  try {
+    const { uid: userId } = req.user;
+    const { transactions } = req.body;
+
+    // Validate input
+    if (!Array.isArray(transactions) || transactions.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'transactions must be a non-empty array'
+      });
+    }
+
+    if (transactions.length > 100) {
+      return res.status(400).json({
+        success: false,
+        error: 'Maximum 100 transactions per bulk request'
+      });
+    }
+
+    const results = [];
+    const errors = [];
+
+    for (let i = 0; i < transactions.length; i++) {
+      const txData = transactions[i];
+      
+      try {
+        // Validate required fields
+        if (!txData.description || !txData.amount || !txData.date) {
+          errors.push({
+            index: i,
+            error: 'Missing required fields: description, amount, date',
+            data: txData
+          });
+          continue;
+        }
+
+        // Apply classification if no category provided
+        let category = typeof txData.category === 'string' ? txData.category : '';
+        if (!category) {
+          try {
+            const classification = await transactionClassifierService.classifyTransaction(txData, userId);
+            category = typeof classification.category === 'string' ? classification.category : '';
+          } catch (classifyError) {
+            logger.warn('Classification failed for bulk transaction', { index: i, error: classifyError.message });
+          }
+        }
+
+        // Build transaction object
+        const transaction = {
+          ...TransactionSchema,
+          ...txData,
+          category,
+          type: txData.type || (parseFloat(txData.amount) >= 0 ? 'expense' : 'income'),
+          date: new Date(txData.date),
+          userId,
+          createdBy: userId,
+          lastModifiedBy: userId,
+          taxYear: new Date(txData.date).getFullYear(),
+          quarterlyPeriod: getQuarterFromDate(new Date(txData.date)),
+          sectionCode: txData.sectionCode || 'manual'
+        };
+
+        const result = await getDb().createTransaction(userId, transaction);
+        
+        results.push({
+          index: i,
+          success: true,
+          transactionId: result.id || result,
+          transaction: {
+            ...transaction,
+            id: result.id || result
+          }
+        });
+
+      } catch (txError) {
+        logger.error('Error creating bulk transaction', { index: i, error: txError.message });
+        errors.push({
+          index: i,
+          error: txError.message,
+          data: txData
+        });
+      }
+    }
+
+    const allSucceeded = errors.length === 0;
+    const someSucceeded = results.length > 0 && errors.length > 0;
+
+    logger.info(`Bulk created ${results.length} transactions, ${errors.length} failed`, { userId });
+
+    res.status(allSucceeded ? 201 : someSucceeded ? 207 : 400).json({
+      success: allSucceeded,
+      allSucceeded,
+      someSucceeded,
+      successCount: results.length,
+      failCount: errors.length,
+      results,
+      errors
+    });
+
+  } catch (error) {
+    logger.error('Bulk create transactions error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to bulk create transactions',
+      message: error.message
+    });
+  }
+};

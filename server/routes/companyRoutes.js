@@ -9,7 +9,9 @@ import {
   deleteCompany,
   setDefaultCompany,
   extractCompanyFromPDF,
-  findCompanyByName
+  findCompanyByName,
+  getTransactionsWithoutCompany,
+  bulkAssignCompany
 } from '../controllers/companyController.js';
 import { 
   handleValidationErrors,
@@ -185,6 +187,13 @@ router.get('/default', getDefaultCompany);
 router.get('/search', findByNameValidation, findCompanyByName);
 
 /**
+ * @route GET /api/companies/transactions/unassigned
+ * @desc Get transactions without a company assigned
+ * @access Private
+ */
+router.get('/transactions/unassigned', getTransactionsWithoutCompany);
+
+/**
  * @route GET /api/companies/:id
  * @desc Get specific company by ID
  * @access Private
@@ -218,6 +227,13 @@ router.put('/:id', updateCompanyValidation, updateCompany);
  * @access Private
  */
 router.put('/:id/set-default', validateObjectId('id'), setDefaultCompany);
+
+/**
+ * @route POST /api/companies/:id/assign-transactions
+ * @desc Bulk assign company to transactions
+ * @access Private
+ */
+router.post('/:id/assign-transactions', validateObjectId('id'), bulkAssignCompany);
 
 /**
  * @route DELETE /api/companies/:id

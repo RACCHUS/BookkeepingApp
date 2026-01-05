@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import StatementSelector from '../Statements/StatementSelector';
 import { CompanySelector } from '../../components/common';
@@ -77,8 +77,12 @@ import {
   XMarkIcon,
   TagIcon,
   CheckCircleIcon,
-  ArrowsUpDownIcon
+  ArrowsUpDownIcon,
+  ReceiptPercentIcon,
+  BanknotesIcon
 } from '@heroicons/react/24/outline';
+import QuickTransactionEntry from './QuickTransactionEntry';
+import TransactionBulkPanel from './TransactionBulkPanel';
 
 const TransactionList = () => {
   const { user, loading: authLoading } = useAuth(); // Add authentication context with loading state
@@ -93,6 +97,7 @@ const TransactionList = () => {
   
   // Search and filter state
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
   const [sectionFilter, setSectionFilter] = useState('');
@@ -100,14 +105,37 @@ const TransactionList = () => {
   const [uploadFilter, setUploadFilter] = useState('');
   const [dateRange, setDateRange] = useState({ start: '', end: '' });
   
+  // New filter states
+  const [amountRange, setAmountRange] = useState({ min: '', max: '' });
+  const [payeeFilter, setPayeeFilter] = useState('');
+  const [vendorFilter, setVendorFilter] = useState(''); // Filter by vendor (business you purchase from)
+  const [notesFilter, setNotesFilter] = useState(''); // '', 'with', 'without'
+  const [taxDeductibleFilter, setTaxDeductibleFilter] = useState(''); // '', 'yes', 'no'
+  const [reconciliationFilter, setReconciliationFilter] = useState(''); // '', 'reconciled', 'unreconciled'
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState(null);
   const [modalMode, setModalMode] = useState('edit'); // 'edit' or 'create'
+  const [isBulkEntryOpen, setIsBulkEntryOpen] = useState(false);
+  const [bulkEntryLoading, setBulkEntryLoading] = useState(false);
 
   // Statement/PDF filter state
   const [statements, setStatements] = useState([]);
   const [statementFilter, setStatementFilter] = useState('');
+
+  // Link to upload mode - when navigating from upload details to link transactions
+  const linkToUploadId = searchParams.get('linkToUpload');
+  const isLinkMode = !!linkToUploadId;
+
+  // Debounce search term - update debounced value after 300ms of no typing
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
   // Handle URL parameters for upload-specific filtering
   useEffect(() => {
@@ -116,7 +144,11 @@ const TransactionList = () => {
       setUploadFilter(uploadId);
       setStatementFilter(uploadId); // Also set statement filter for consistency
     }
-  }, [searchParams]);
+    // Enable select mode automatically when in link mode
+    if (linkToUploadId) {
+      setIsSelectMode(true);
+    }
+  }, [searchParams, linkToUploadId]);
 
   // Fetch available statements/PDFs for filter dropdown
   const fetchStatements = () => {
@@ -151,12 +183,16 @@ const TransactionList = () => {
         );
         }
       })
-      .catch(() => setStatements([]));
+      .catch((error) => {
+        console.error('Failed to load statements:', error);
+        toast.error('Failed to load statements');
+        setStatements([]);
+      });
   };
 
   // Bulk operations state
   const [selectedTransactions, setSelectedTransactions] = useState(new Set());
-  const [isSelectMode, setIsSelectMode] = useState(false);
+  const [isSelectMode, setIsSelectMode] = useState(true); // Enable selection by default for bulk operations
   const [bulkOperating, setBulkOperating] = useState(false);
 
   // Inline editing state
@@ -186,6 +222,33 @@ const TransactionList = () => {
     queryFn: () => apiClient.transactions.getAll(queryParams),
     enabled: !!user && !authLoading, // Only run query when user is authenticated and auth is not loading
   });
+
+  // Fetch companies for bulk transaction entry
+  const { data: companiesData } = useQuery({
+    queryKey: ['companies'],
+    queryFn: () => apiClient.companies.getAll(),
+    enabled: !!user && !authLoading,
+  });
+
+  const companies = companiesData?.data?.companies || companiesData?.companies || [];
+
+  // Fetch payees for bulk edit panel
+  const { data: payeesData } = useQuery({
+    queryKey: ['payees'],
+    queryFn: () => apiClient.payees?.getAll?.() || Promise.resolve({ data: [] }),
+    enabled: !!user && !authLoading,
+  });
+
+  const payees = payeesData?.data?.payees || payeesData?.data || [];
+
+  // Fetch income sources for bulk edit panel
+  const { data: incomeSourcesData } = useQuery({
+    queryKey: ['income-sources'],
+    queryFn: () => apiClient.incomeSources?.getAll?.() || Promise.resolve({ data: [] }),
+    enabled: !!user && !authLoading,
+  });
+
+  const incomeSources = incomeSourcesData?.data?.sources || incomeSourcesData?.data || [];
 
   // Refresh statements when transaction data changes (moved after data declaration)
   useEffect(() => {
@@ -243,17 +306,40 @@ const TransactionList = () => {
   const bulkUpdateMutation = useMutation({
     mutationFn: (transactions) => apiClient.transactions.bulkUpdate(transactions),
     onSuccess: () => {
-      toast.success('Bulk operation completed successfully');
       queryClient.invalidateQueries(['transactions']);
       setSelectedTransactions(new Set());
-      setIsSelectMode(false);
       setBulkOperating(false);
+      // Note: Don't disable select mode - user might want to continue bulk editing
     },
     onError: (error) => {
       console.error('Bulk update error:', error);
       const errorMessage = error.response?.data?.message || error.message || 'Bulk operation failed';
       toast.error(errorMessage);
       setBulkOperating(false);
+    }
+  });
+
+  // Bulk create mutation for quick transaction entry
+  const bulkCreateMutation = useMutation({
+    mutationFn: (transactions) => apiClient.transactions.bulkCreate(transactions),
+    onSuccess: (response) => {
+      const { results, successCount, failedCount } = response?.data || {};
+      if (failedCount === 0) {
+        toast.success(`${successCount} transaction${successCount !== 1 ? 's' : ''} created successfully`);
+      } else if (successCount > 0) {
+        toast.success(`${successCount} created, ${failedCount} failed`);
+      }
+      queryClient.invalidateQueries(['transactions']);
+      queryClient.invalidateQueries(['recent-transactions']);
+      queryClient.invalidateQueries(['transaction-summary']);
+      setIsBulkEntryOpen(false);
+      setBulkEntryLoading(false);
+    },
+    onError: (error) => {
+      console.error('Bulk create error:', error);
+      const errorMessage = error.response?.data?.message || error.message || 'Bulk create failed';
+      toast.error(errorMessage);
+      setBulkEntryLoading(false);
     }
   });
 
@@ -273,6 +359,45 @@ const TransactionList = () => {
       setEditingCategoryValue('');
     }
   });
+
+  // Link transactions to upload mutation
+  const linkToUploadMutation = useMutation({
+    mutationFn: ({ uploadId, transactionIds }) => apiClient.pdf.linkTransactions(uploadId, transactionIds),
+    onSuccess: (data) => {
+      const linkedCount = data?.data?.linkedCount || 0;
+      toast.success(`Linked ${linkedCount} transactions to upload`);
+      setSelectedTransactions(new Set());
+      queryClient.invalidateQueries(['transactions']);
+      queryClient.invalidateQueries(['uploads']);
+      queryClient.invalidateQueries(['uploadDetails']);
+      // Navigate back to upload details
+      window.history.back();
+    },
+    onError: (error) => {
+      console.error('Link transactions error:', error);
+      toast.error(error.message || 'Failed to link transactions');
+    }
+  });
+
+  // Handler for linking selected transactions to upload
+  const handleLinkToUpload = () => {
+    if (selectedTransactions.size === 0) {
+      toast.error('Please select transactions to link');
+      return;
+    }
+    if (!linkToUploadId) {
+      toast.error('No upload ID specified');
+      return;
+    }
+    
+    const confirmMessage = `Link ${selectedTransactions.size} transaction(s) to this upload?`;
+    if (window.confirm(confirmMessage)) {
+      linkToUploadMutation.mutate({
+        uploadId: linkToUploadId,
+        transactionIds: Array.from(selectedTransactions)
+      });
+    }
+  };
 
   const handleDelete = async (transactionId, description) => {
     if (window.confirm(`Are you sure you want to delete "${description}"?\n\nThis action cannot be undone.`)) {
@@ -404,7 +529,7 @@ const TransactionList = () => {
       toast.success(`${selectedTransactions.size} transaction(s) deleted successfully`);
       queryClient.invalidateQueries(['transactions']);
       setSelectedTransactions(new Set());
-      setIsSelectMode(false);
+      // Note: Don't disable select mode - user might want to continue bulk operations
     } catch (error) {
       console.error('Bulk delete error:', error);
       toast.error('Some transactions could not be deleted');
@@ -430,6 +555,48 @@ const TransactionList = () => {
     }
   };
 
+  // Comprehensive bulk update handler for the bulk panel
+  const handleBulkPanelUpdate = async (updateData) => {
+    if (selectedTransactions.size === 0) return;
+
+    setBulkOperating(true);
+    
+    try {
+      // Build transactions array with updates
+      const transactionsToUpdate = Array.from(selectedTransactions).map(id => {
+        const updatePayload = { id };
+        const existingTx = filteredTransactions.find(tx => tx.id === id);
+        
+        // Handle notes append logic
+        if (updateData.notes !== undefined) {
+          if (updateData.appendNotes && existingTx?.notes) {
+            updatePayload.notes = `${existingTx.notes}\n${updateData.notes}`;
+          } else {
+            updatePayload.notes = updateData.notes;
+          }
+        }
+        
+        // Add all other fields
+        Object.entries(updateData).forEach(([key, value]) => {
+          if (key !== 'notes' && key !== 'appendNotes') {
+            updatePayload[key] = value;
+          }
+        });
+        
+        return updatePayload;
+      });
+
+      await bulkUpdateMutation.mutateAsync(transactionsToUpdate);
+      toast.success(`Updated ${selectedTransactions.size} transaction(s)`);
+      setSelectedTransactions(new Set());
+    } catch (error) {
+      console.error('Bulk update error:', error);
+      toast.error('Failed to update transactions');
+    } finally {
+      setBulkOperating(false);
+    }
+  };
+
   const toggleSelectMode = () => {
     setIsSelectMode(!isSelectMode);
     setSelectedTransactions(new Set());
@@ -445,14 +612,16 @@ const TransactionList = () => {
     
     let filtered = [...transactions]; // Create a copy to avoid mutations
 
-    // Search filter
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase();
+    // Search filter (debounced)
+    if (debouncedSearchTerm) {
+      const term = debouncedSearchTerm.toLowerCase();
       filtered = filtered.filter(transaction => 
         transaction.description?.toLowerCase().includes(term) ||
         transaction.payee?.toLowerCase().includes(term) ||
         transaction.category?.toLowerCase().includes(term) ||
-        transaction.subcategory?.toLowerCase().includes(term)
+        transaction.subcategory?.toLowerCase().includes(term) ||
+        transaction.notes?.toLowerCase().includes(term) ||
+        transaction.checkNumber?.toString().includes(term)
       );
     }
 
@@ -513,6 +682,85 @@ const TransactionList = () => {
       }
     }
 
+    // Payee filter (who you pay - employees, contractors, vendors)
+    if (payeeFilter) {
+      if (payeeFilter === '__no_payee') {
+        filtered = filtered.filter(transaction => 
+          !transaction.payee || transaction.payee.trim() === ''
+        );
+      } else {
+        filtered = filtered.filter(transaction => 
+          transaction.payee === payeeFilter
+        );
+      }
+    }
+
+    // Vendor filter (external business you purchase from)
+    if (vendorFilter) {
+      if (vendorFilter === '__no_vendor') {
+        filtered = filtered.filter(transaction => 
+          !transaction.vendorName || transaction.vendorName.trim() === ''
+        );
+      } else {
+        filtered = filtered.filter(transaction => 
+          transaction.vendorName === vendorFilter
+        );
+      }
+    }
+
+    // Amount range filter
+    if (amountRange.min !== '') {
+      const minAmount = parseFloat(amountRange.min);
+      if (!isNaN(minAmount)) {
+        filtered = filtered.filter(transaction => 
+          Math.abs(parseFloat(transaction.amount) || 0) >= minAmount
+        );
+      }
+    }
+    if (amountRange.max !== '') {
+      const maxAmount = parseFloat(amountRange.max);
+      if (!isNaN(maxAmount)) {
+        filtered = filtered.filter(transaction => 
+          Math.abs(parseFloat(transaction.amount) || 0) <= maxAmount
+        );
+      }
+    }
+
+    // Notes filter
+    if (notesFilter) {
+      if (notesFilter === 'with') {
+        filtered = filtered.filter(transaction => 
+          transaction.notes && transaction.notes.trim() !== ''
+        );
+      } else if (notesFilter === 'without') {
+        filtered = filtered.filter(transaction => 
+          !transaction.notes || transaction.notes.trim() === ''
+        );
+      }
+    }
+
+    // Tax deductible filter
+    if (taxDeductibleFilter) {
+      if (taxDeductibleFilter === 'yes') {
+        filtered = filtered.filter(transaction => 
+          transaction.category && isTaxDeductible(transaction.category)
+        );
+      } else if (taxDeductibleFilter === 'no') {
+        filtered = filtered.filter(transaction => 
+          !transaction.category || !isTaxDeductible(transaction.category)
+        );
+      }
+    }
+
+    // Reconciliation filter
+    if (reconciliationFilter) {
+      if (reconciliationFilter === 'reconciled') {
+        filtered = filtered.filter(transaction => transaction.isReconciled === true);
+      } else if (reconciliationFilter === 'unreconciled') {
+        filtered = filtered.filter(transaction => !transaction.isReconciled);
+      }
+    }
+
     // Date range filter
     if (dateRange.start) {
       filtered = filtered.filter(transaction => 
@@ -526,7 +774,7 @@ const TransactionList = () => {
     }
 
     return filtered;
-  }, [data?.data?.transactions, searchTerm, categoryFilter, statementFilter, typeFilter, sectionFilter, companyFilter, dateRange]);
+  }, [data?.data?.transactions, debouncedSearchTerm, categoryFilter, statementFilter, typeFilter, sectionFilter, companyFilter, payeeFilter, vendorFilter, amountRange, notesFilter, taxDeductibleFilter, reconciliationFilter, dateRange]);
 
   // Available categories for filters - moved before conditional returns
   const availableCategories = useMemo(() => {
@@ -540,6 +788,51 @@ const TransactionList = () => {
       .sort()
     )];
   }, [data?.data?.transactions]);
+
+  // Available payees for filter dropdown (who you pay - employees, contractors, etc.)
+  const availablePayees = useMemo(() => {
+    const transactions = data?.data?.transactions;
+    if (!transactions || !Array.isArray(transactions)) {
+      return [];
+    }
+    return [...new Set(transactions
+      .map(t => t.payee)
+      .filter(p => p && p.trim() !== '')
+      .sort((a, b) => a.localeCompare(b))
+    )];
+  }, [data?.data?.transactions]);
+
+  // Available vendors for filter dropdown (external businesses you purchase from)
+  const availableVendors = useMemo(() => {
+    const transactions = data?.data?.transactions;
+    if (!transactions || !Array.isArray(transactions)) {
+      return [];
+    }
+    return [...new Set(transactions
+      .map(t => t.vendorName)
+      .filter(v => v && v.trim() !== '')
+      .sort((a, b) => a.localeCompare(b))
+    )];
+  }, [data?.data?.transactions]);
+
+  // Count of active filters for UI indicator
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (debouncedSearchTerm) count++;
+    if (categoryFilter) count++;
+    if (typeFilter) count++;
+    if (sectionFilter) count++;
+    if (companyFilter) count++;
+    if (statementFilter) count++;
+    if (payeeFilter) count++;
+    if (vendorFilter) count++;
+    if (amountRange.min || amountRange.max) count++;
+    if (notesFilter) count++;
+    if (taxDeductibleFilter) count++;
+    if (reconciliationFilter) count++;
+    if (dateRange.start || dateRange.end) count++;
+    return count;
+  }, [debouncedSearchTerm, categoryFilter, typeFilter, sectionFilter, companyFilter, statementFilter, payeeFilter, vendorFilter, amountRange, notesFilter, taxDeductibleFilter, reconciliationFilter, dateRange]);
 
   // Show loading state while auth is loading
   if (authLoading) {
@@ -629,6 +922,7 @@ const TransactionList = () => {
   // Reset filters
   const resetFilters = () => {
     setSearchTerm('');
+    setDebouncedSearchTerm('');
     setCategoryFilter('');
     setTypeFilter('');
     setSectionFilter('');
@@ -636,12 +930,81 @@ const TransactionList = () => {
     setUploadFilter('');
     setDateRange({ start: '', end: '' });
     setStatementFilter('');
+    // Reset new filters
+    setAmountRange({ min: '', max: '' });
+    setPayeeFilter('');
+    setVendorFilter('');
+    setNotesFilter('');
+    setTaxDeductibleFilter('');
+    setReconciliationFilter('');
     // Reset sorting to default
     setFilters(prev => ({ ...prev, orderBy: 'date', order: 'desc' }));
   };
 
   return (
     <div className="space-y-6">
+      {/* Link Mode Banner */}
+      {isLinkMode && (
+        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <svg className="h-5 w-5 text-blue-600 dark:text-blue-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+              </svg>
+              <div>
+                <h3 className="text-sm font-medium text-blue-800 dark:text-blue-200">
+                  Link Transactions to Upload
+                </h3>
+                <p className="text-xs text-blue-600 dark:text-blue-400 mt-0.5">
+                  Select transactions to link to this PDF upload. Use filters to find the right transactions.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center space-x-3">
+              <span className="text-sm text-blue-700 dark:text-blue-300">
+                {selectedTransactions.size} selected
+              </span>
+              <button
+                onClick={handleLinkToUpload}
+                disabled={selectedTransactions.size === 0 || linkToUploadMutation.isPending}
+                className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {linkToUploadMutation.isPending ? (
+                  <LoadingSpinner size="sm" className="mr-2" />
+                ) : (
+                  <CheckIcon className="h-4 w-4 mr-2" />
+                )}
+                Link Selected
+              </button>
+              <button
+                onClick={() => window.history.back()}
+                className="inline-flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Edit Panel - Shows when transactions are selected */}
+      {!isLinkMode && isSelectMode && (
+        <TransactionBulkPanel
+          selectedCount={selectedTransactions.size}
+          selectedTransactions={selectedTransactions}
+          transactions={filteredTransactions}
+          companies={companies}
+          payees={payees}
+          vendors={availableVendors}
+          incomeSources={incomeSources}
+          statements={statements}
+          onBulkUpdate={handleBulkPanelUpdate}
+          onBulkDelete={handleBulkDelete}
+          onClearSelection={() => setSelectedTransactions(new Set())}
+          isUpdating={bulkOperating}
+        />
+      )}
+
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
@@ -654,66 +1017,47 @@ const TransactionList = () => {
           )}
         </div>
         <div className="flex space-x-3">
+          {/* Selection toggle and count */}
           {isSelectMode ? (
             <>
-              {/* Bulk operation controls */}
               <div className="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-400">
-                <span>{selectedTransactions.size} selected</span>
+                <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded-full">
+                  {selectedTransactions.size} selected
+                </span>
               </div>
-              
-              {selectedTransactions.size > 0 && (
-                <>
-                  <select
-                    onChange={(e) => e.target.value && handleBulkCategorize(e.target.value)}
-                    className="text-sm border border-gray-300 dark:border-gray-600 rounded-md px-3 py-1 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                    disabled={bulkOperating}
-                  >
-                    <option value="">Change Category...</option>
-                    {Object.entries(CATEGORY_GROUPS).map(([group, cats]) => (
-                      <optgroup key={group} label={group.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}>
-                        {cats.map(category => (
-                          <option key={category} value={category}>{category}</option>
-                        ))}
-                      </optgroup>
-                    ))}
-                  </select>
-                  
-                  <button
-                    onClick={handleBulkDelete}
-                    disabled={bulkOperating}
-                    className="inline-flex items-center px-3 py-1 border border-red-300 dark:border-red-600 rounded-md text-sm font-medium text-red-700 dark:text-red-400 bg-white dark:bg-gray-700 hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-50"
-                  >
-                    <TrashIcon className="h-4 w-4 mr-1" />
-                    Delete ({selectedTransactions.size})
-                  </button>
-                </>
-              )}
               
               <button
                 onClick={toggleSelectMode}
                 className="inline-flex items-center px-3 py-1 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600"
               >
                 <XMarkIcon className="h-4 w-4 mr-1" />
-                Cancel
+                Exit Select Mode
               </button>
             </>
           ) : (
-            <>              <button
-                onClick={toggleSelectMode}
-                className="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
-              >
-                <CheckCircleIcon className="h-4 w-4 mr-2" />
-                Select
-              </button>
-              <button 
-                onClick={handleCreateTransaction}
-                className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600 transition-colors"
-              >
-                <PlusIcon className="h-4 w-4 mr-2" />
-                Add Transaction
-              </button>
-            </>
+            <button
+              onClick={toggleSelectMode}
+              className="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
+            >
+              <CheckCircleIcon className="h-4 w-4 mr-2" />
+              Select for Bulk Edit
+            </button>
           )}
+          
+          <button 
+            onClick={handleCreateTransaction}
+            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600 transition-colors"
+          >
+            <PlusIcon className="h-4 w-4 mr-2" />
+            Add Transaction
+          </button>
+          <button 
+            onClick={() => setIsBulkEntryOpen(true)}
+            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-600 transition-colors"
+          >
+            <BanknotesIcon className="h-4 w-4 mr-2" />
+            Bulk Add
+          </button>
         </div>
       </div>
 
@@ -808,10 +1152,258 @@ const TransactionList = () => {
             onClick={resetFilters}
             className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
           >
-            Reset
+            Reset {activeFilterCount > 0 && `(${activeFilterCount})`}
+          </button>
+          <button
+            onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+            className={`px-4 py-2 border rounded-md text-sm font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors ${
+              showAdvancedFilters 
+                ? 'border-blue-500 text-blue-700 bg-blue-50 dark:border-blue-400 dark:text-blue-300 dark:bg-blue-900/30' 
+                : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600'
+            }`}
+          >
+            {showAdvancedFilters ? '▼ Less Filters' : '▶ More Filters'}
           </button>
         </div>
         </div>
+
+        {/* Advanced Filters (collapsible) */}
+        {showAdvancedFilters && (
+          <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4 space-y-4">
+            <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-3">Advanced Filters</h4>
+            
+            {/* Row 1: Payee, Vendor, Amount Range */}
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+              {/* Payee Filter - who you pay (employees, contractors, etc.) */}
+              <div>
+                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1" title="Who you pay - employees, contractors, or vendors for services">
+                  Payee <span className="text-gray-400">(who you pay)</span>
+                </label>
+                <select
+                  value={payeeFilter}
+                  onChange={(e) => setPayeeFilter(e.target.value)}
+                  className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                >
+                  <option value="">All Payees</option>
+                  <option value="__no_payee">No Payee Assigned</option>
+                  {availablePayees.map(payee => (
+                    <option key={payee} value={payee}>{payee}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Vendor Filter - external business you purchase from */}
+              <div>
+                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1" title="External business you purchase goods/services from">
+                  Vendor <span className="text-gray-400">(purchase from)</span>
+                </label>
+                <select
+                  value={vendorFilter}
+                  onChange={(e) => setVendorFilter(e.target.value)}
+                  className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                >
+                  <option value="">All Vendors</option>
+                  <option value="__no_vendor">No Vendor Assigned</option>
+                  {availableVendors.map(vendor => (
+                    <option key={vendor} value={vendor}>{vendor}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Min Amount */}
+              <div>
+                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Min Amount ($)</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder="0.00"
+                  value={amountRange.min}
+                  onChange={(e) => setAmountRange(prev => ({ ...prev, min: e.target.value }))}
+                  className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                />
+              </div>
+
+              {/* Max Amount */}
+              <div>
+                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Max Amount ($)</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder="No limit"
+                  value={amountRange.max}
+                  onChange={(e) => setAmountRange(prev => ({ ...prev, max: e.target.value }))}
+                  className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                />
+              </div>
+
+              {/* Company Filter (for those without the main selector) */}
+              <div>
+                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Company</label>
+                <select
+                  value={companyFilter}
+                  onChange={(e) => setCompanyFilter(e.target.value)}
+                  className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                >
+                  <option value="">All Companies</option>
+                  <option value="__no_company">No Company Assigned</option>
+                  {companies.map(company => (
+                    <option key={company.id} value={company.id}>{company.name}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Row 2: Notes, Tax Deductible, Reconciliation, Date Quick Filters */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              {/* Notes Filter */}
+              <div>
+                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Notes</label>
+                <select
+                  value={notesFilter}
+                  onChange={(e) => setNotesFilter(e.target.value)}
+                  className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                >
+                  <option value="">All</option>
+                  <option value="with">📝 With Notes</option>
+                  <option value="without">🚫 Without Notes</option>
+                </select>
+              </div>
+
+              {/* Tax Deductible Filter */}
+              <div>
+                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Tax Deductible</label>
+                <select
+                  value={taxDeductibleFilter}
+                  onChange={(e) => setTaxDeductibleFilter(e.target.value)}
+                  className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                >
+                  <option value="">All</option>
+                  <option value="yes">✅ Tax Deductible</option>
+                  <option value="no">❌ Not Deductible</option>
+                </select>
+              </div>
+
+              {/* Reconciliation Filter */}
+              <div>
+                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Reconciliation</label>
+                <select
+                  value={reconciliationFilter}
+                  onChange={(e) => setReconciliationFilter(e.target.value)}
+                  className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                >
+                  <option value="">All</option>
+                  <option value="reconciled">✓ Reconciled</option>
+                  <option value="unreconciled">○ Not Reconciled</option>
+                </select>
+              </div>
+
+              {/* Quick Date Presets */}
+              <div>
+                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Quick Date Range</label>
+                <select
+                  onChange={(e) => {
+                    const preset = e.target.value;
+                    const today = new Date();
+                    let start = '', end = '';
+                    
+                    if (preset === 'today') {
+                      start = end = today.toISOString().split('T')[0];
+                    } else if (preset === 'week') {
+                      const weekAgo = new Date(today);
+                      weekAgo.setDate(weekAgo.getDate() - 7);
+                      start = weekAgo.toISOString().split('T')[0];
+                      end = today.toISOString().split('T')[0];
+                    } else if (preset === 'month') {
+                      const monthAgo = new Date(today);
+                      monthAgo.setMonth(monthAgo.getMonth() - 1);
+                      start = monthAgo.toISOString().split('T')[0];
+                      end = today.toISOString().split('T')[0];
+                    } else if (preset === 'quarter') {
+                      const quarterAgo = new Date(today);
+                      quarterAgo.setMonth(quarterAgo.getMonth() - 3);
+                      start = quarterAgo.toISOString().split('T')[0];
+                      end = today.toISOString().split('T')[0];
+                    } else if (preset === 'year') {
+                      start = `${today.getFullYear()}-01-01`;
+                      end = today.toISOString().split('T')[0];
+                    } else if (preset === 'lastyear') {
+                      start = `${today.getFullYear() - 1}-01-01`;
+                      end = `${today.getFullYear() - 1}-12-31`;
+                    }
+                    
+                    setDateRange({ start, end });
+                  }}
+                  className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                >
+                  <option value="">Select preset...</option>
+                  <option value="today">📅 Today</option>
+                  <option value="week">📆 Last 7 Days</option>
+                  <option value="month">🗓️ Last 30 Days</option>
+                  <option value="quarter">📊 Last 90 Days</option>
+                  <option value="year">🎯 This Year</option>
+                  <option value="lastyear">📁 Last Year</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Active Filters Summary */}
+            {activeFilterCount > 0 && (
+              <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-200 dark:border-gray-600">
+                <span className="text-xs text-gray-500 dark:text-gray-400 py-1">Active filters:</span>
+                {debouncedSearchTerm && (
+                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                    Search: "{debouncedSearchTerm}"
+                    <button onClick={() => setSearchTerm('')} className="ml-1 hover:text-blue-600">×</button>
+                  </span>
+                )}
+                {categoryFilter && (
+                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
+                    Category: {categoryFilter === '__uncategorized__' ? 'Uncategorized' : categoryFilter}
+                    <button onClick={() => setCategoryFilter('')} className="ml-1 hover:text-purple-600">×</button>
+                  </span>
+                )}
+                {typeFilter && (
+                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                    Type: {typeFilter}
+                    <button onClick={() => setTypeFilter('')} className="ml-1 hover:text-green-600">×</button>
+                  </span>
+                )}
+                {payeeFilter && (
+                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
+                    Payee: {payeeFilter === '__no_payee' ? 'None' : payeeFilter}
+                    <button onClick={() => setPayeeFilter('')} className="ml-1 hover:text-yellow-600">×</button>
+                  </span>
+                )}
+                {vendorFilter && (
+                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-200">
+                    Vendor: {vendorFilter === '__no_vendor' ? 'None' : vendorFilter}
+                    <button onClick={() => setVendorFilter('')} className="ml-1 hover:text-teal-600">×</button>
+                  </span>
+                )}
+                {(amountRange.min || amountRange.max) && (
+                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200">
+                    Amount: ${amountRange.min || '0'} - ${amountRange.max || '∞'}
+                    <button onClick={() => setAmountRange({ min: '', max: '' })} className="ml-1 hover:text-orange-600">×</button>
+                  </span>
+                )}
+                {notesFilter && (
+                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-600 dark:text-gray-200">
+                    Notes: {notesFilter === 'with' ? 'With' : 'Without'}
+                    <button onClick={() => setNotesFilter('')} className="ml-1 hover:text-gray-600">×</button>
+                  </span>
+                )}
+                {(dateRange.start || dateRange.end) && (
+                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200">
+                    Date: {dateRange.start || '...'} to {dateRange.end || '...'}
+                    <button onClick={() => setDateRange({ start: '', end: '' })} className="ml-1 hover:text-indigo-600">×</button>
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Sorting Controls */}
         <div className="bg-gray-50 dark:bg-gray-700 rounded-lg overflow-hidden">
@@ -1077,6 +1669,13 @@ const TransactionList = () => {
                         </div>
                       </div>
                       <div className="flex items-center space-x-4">
+                        {/* Receipt indicator */}
+                        <div 
+                          className={`flex items-center ${transaction.receiptId ? 'text-green-500' : 'text-gray-300 dark:text-gray-600'}`}
+                          title={transaction.receiptId ? 'Receipt attached' : 'No receipt'}
+                        >
+                          <ReceiptPercentIcon className="h-4 w-4" />
+                        </div>
                         <div className="text-right">
                           <div className={`text-sm font-medium ${
                             transaction.type === 'income' 
@@ -1139,6 +1738,19 @@ const TransactionList = () => {
         onSave={handleSaveTransaction}
         mode={modalMode}
         refreshTrigger={data?.timestamp || Date.now()}
+      />
+
+      {/* Quick Transaction Entry Modal for bulk adding */}
+      <QuickTransactionEntry
+        isOpen={isBulkEntryOpen}
+        onClose={() => setIsBulkEntryOpen(false)}
+        onSubmit={async (transactions) => {
+          setBulkEntryLoading(true);
+          const result = await bulkCreateMutation.mutateAsync(transactions);
+          return result;
+        }}
+        isLoading={bulkEntryLoading || bulkCreateMutation.isPending}
+        companies={companies}
       />
     </div>
   );

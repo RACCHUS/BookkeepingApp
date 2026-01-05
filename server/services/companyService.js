@@ -9,6 +9,9 @@ import { CompanySchema, CompanyBankAccountSchema } from '../../shared/schemas/co
 import { withIndexFallback, logIndexError } from '../utils/errorHandler.js';
 import { logger } from '../utils/index.js';
 import { validateRequired, validateUUID } from '../utils/index.js';
+import cache from '../utils/serverCache.js';
+
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 /**
  * Company Service - Manages business entities and bank accounts
@@ -58,6 +61,9 @@ class CompanyService {
 
       const docRef = await this.db.collection(this.companiesCollection).add(company);
       
+      // Invalidate cache for this user's companies
+      cache.delByPrefix(`user:${userId}:companies`);
+      
       logger.info(`✅ Created company: ${company.name} (${docRef.id})`);
       logger.debug('Company data:', { companyId: docRef.id, userId, name: company.name });
       
@@ -74,6 +80,16 @@ class CompanyService {
    * @returns {Promise<Array>} Array of companies
    */
   async getUserCompanies(userId) {
+    // Check cache first
+    const cacheKey = cache.makeKey(userId, 'companies');
+    const cached = cache.get(cacheKey);
+    if (cached) {
+      console.log('[Cache HIT] companies for user:', userId);
+      return cached;
+    }
+    
+    console.log('[Cache MISS] companies for user:', userId);
+    
     const primaryQuery = async () => {
       const snapshot = await this.db
         .collection(this.companiesCollection)
@@ -118,11 +134,16 @@ class CompanyService {
     };
 
     try {
-      return await withIndexFallback(
+      const result = await withIndexFallback(
         primaryQuery,
         fallbackQuery,
         'getUserCompanies query'
       );
+      
+      // Cache the result
+      cache.set(cacheKey, result, CACHE_TTL);
+      
+      return result;
     } catch (error) {
       logIndexError(error, 'getUserCompanies');
       
@@ -191,6 +212,9 @@ class CompanyService {
         .collection(this.companiesCollection)
         .doc(companyId)
         .update(updatedData);
+
+      // Invalidate cache for this user's companies
+      cache.delByPrefix(`user:${userId}:companies`);
 
       console.log(`✅ Updated company: ${companyId}`);
     } catch (error) {
@@ -507,6 +531,86 @@ class CompanyService {
   }
 
   /**
+   * Get transactions without a company assigned
+   * @param {string} userId - User ID
+   * @returns {Promise<Array>} Array of transactions without companyId
+   */
+  async getTransactionsWithoutCompany(userId) {
+    try {
+      const snapshot = await this.db
+        .collection('transactions')
+        .where('userId', '==', userId)
+        .get();
+      
+      const transactions = [];
+      snapshot.forEach(doc => {
+        const data = doc.data();
+        // Filter for transactions without a companyId
+        if (!data.companyId || data.companyId === '' || data.companyId === null) {
+          transactions.push({
+            id: doc.id,
+            ...data,
+            // Convert Firestore Timestamp to ISO string
+            date: data.date?.toDate?.()?.toISOString()?.split('T')[0] || data.date,
+            createdAt: data.createdAt?.toDate?.()?.toISOString() || data.createdAt,
+            updatedAt: data.updatedAt?.toDate?.()?.toISOString() || data.updatedAt
+          });
+        }
+      });
+      
+      // Sort by date descending
+      transactions.sort((a, b) => {
+        const dateA = new Date(a.date);
+        const dateB = new Date(b.date);
+        return dateB - dateA;
+      });
+      
+      logger.info(`Found ${transactions.length} transactions without company for user ${userId}`);
+      return transactions;
+    } catch (error) {
+      logger.error('Error getting transactions without company:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Bulk assign company to multiple transactions
+   * @param {string} userId - User ID
+   * @param {string} companyId - Company ID to assign
+   * @param {string} companyName - Company name for denormalization
+   * @param {Array<string>} transactionIds - Array of transaction IDs
+   * @returns {Promise<object>} Result with updatedCount
+   */
+  async bulkAssignCompanyToTransactions(userId, companyId, companyName, transactionIds) {
+    try {
+      const batch = this.db.batch();
+      let updatedCount = 0;
+      
+      for (const transactionId of transactionIds) {
+        const docRef = this.db.collection('transactions').doc(transactionId);
+        const doc = await docRef.get();
+        
+        if (doc.exists && doc.data().userId === userId) {
+          batch.update(docRef, {
+            companyId,
+            companyName,
+            updatedAt: new Date()
+          });
+          updatedCount++;
+        }
+      }
+      
+      await batch.commit();
+      
+      logger.info(`Assigned company ${companyName} to ${updatedCount} transactions`);
+      return { updatedCount };
+    } catch (error) {
+      logger.error('Error bulk assigning company to transactions:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Find or create a company based on PDF extracted data
    * @param {string} userId - User ID
    * @param {object} pdfCompanyInfo - Company info extracted from PDF
@@ -558,4 +662,19 @@ class CompanyService {
   }
 }
 
-export default new CompanyService();
+// Export the class for testing
+export { CompanyService };
+
+// Export singleton instance as default (commented out for testing - causes module load issues in Jest)
+// TODO: Re-enable after finding proper mocking strategy
+// export default new CompanyService();
+
+// Temporary: export a getter function for singleton
+let instance = null;
+export default function getCompanyService() {
+  if (!instance) {
+    instance = new CompanyService();
+  }
+  return instance;
+}
+

@@ -1,17 +1,19 @@
 import { validationResult, body, query, param } from 'express-validator';
-import payeeService from '../services/payeeService.js';
+import { getDatabaseAdapter } from '../services/adapters/index.js';
+import { logger } from '../config/index.js';
+
+// Get database adapter (Supabase or Firebase based on DB_PROVIDER)
+const getDb = () => getDatabaseAdapter();
 
 /**
  * Create a new payee (employee/vendor)
  */
 export const createPayee = async (req, res) => {
   try {
-    console.log('📋 Creating payee with data:', JSON.stringify(req.body, null, 2));
-    
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      console.log('❌ Validation errors:', errors.array());
       return res.status(400).json({
+        success: false,
         error: 'Validation failed',
         details: errors.array()
       });
@@ -20,12 +22,11 @@ export const createPayee = async (req, res) => {
     const { uid: userId } = req.user;
     const payeeData = req.body;
 
-    console.log('🔍 User ID:', userId);
-    console.log('📄 Payee data after validation:', payeeData);
+    logger.debug('Creating payee', { userId, payeeData });
 
-    const result = await payeeService.createPayee(userId, payeeData);
+    const result = await getDb().createPayee(userId, payeeData);
 
-    console.log('✅ Payee created successfully:', result.id);
+    logger.info('Payee created successfully', { payeeId: result.id });
 
     res.status(201).json({
       success: true,
@@ -34,8 +35,9 @@ export const createPayee = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('❌ Create payee error:', error);
+    logger.error('Create payee error:', error);
     res.status(500).json({
+      success: false,
       error: 'Failed to create payee',
       message: error.message
     });
@@ -50,6 +52,7 @@ export const getPayees = async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({
+        success: false,
         error: 'Validation failed',
         details: errors.array()
       });
@@ -65,9 +68,9 @@ export const getPayees = async (req, res) => {
 
     let payees;
     if (search) {
-      payees = await payeeService.searchPayees(userId, search, filters);
+      payees = await getDb().searchPayees(userId, search, filters);
     } else {
-      payees = await payeeService.getPayees(userId, filters);
+      payees = await getDb().getPayees(userId, filters);
     }
 
     res.json({
@@ -77,8 +80,9 @@ export const getPayees = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Get payees error:', error);
+    logger.error('Get payees error:', error);
     res.status(500).json({
+      success: false,
       error: 'Failed to get payees',
       message: error.message
     });
@@ -93,6 +97,7 @@ export const getPayeeById = async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({
+        success: false,
         error: 'Validation failed',
         details: errors.array()
       });
@@ -101,7 +106,7 @@ export const getPayeeById = async (req, res) => {
     const { uid: userId } = req.user;
     const { id } = req.params;
 
-    const payee = await payeeService.getPayeeById(userId, id);
+    const payee = await getDb().getPayeeById(userId, id);
 
     res.json({
       success: true,
@@ -109,10 +114,11 @@ export const getPayeeById = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Get payee error:', error);
+    logger.error('Get payee error:', error);
     const status = error.message.includes('not found') ? 404 : 
                    error.message.includes('Unauthorized') ? 403 : 500;
     res.status(status).json({
+      success: false,
       error: 'Failed to get payee',
       message: error.message
     });
@@ -127,6 +133,7 @@ export const updatePayee = async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({
+        success: false,
         error: 'Validation failed',
         details: errors.array()
       });
@@ -136,7 +143,7 @@ export const updatePayee = async (req, res) => {
     const { id } = req.params;
     const updates = req.body;
 
-    const result = await payeeService.updatePayee(userId, id, updates);
+    const result = await getDb().updatePayee(userId, id, updates);
 
     res.json({
       success: true,
@@ -145,10 +152,11 @@ export const updatePayee = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Update payee error:', error);
+    logger.error('Update payee error:', error);
     const status = error.message.includes('not found') ? 404 : 
                    error.message.includes('Unauthorized') ? 403 : 500;
     res.status(status).json({
+      success: false,
       error: 'Failed to update payee',
       message: error.message
     });
@@ -163,6 +171,7 @@ export const deletePayee = async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({
+        success: false,
         error: 'Validation failed',
         details: errors.array()
       });
@@ -171,7 +180,7 @@ export const deletePayee = async (req, res) => {
     const { uid: userId } = req.user;
     const { id } = req.params;
 
-    const result = await payeeService.deletePayee(userId, id);
+    const result = await getDb().deletePayee(userId, id);
 
     res.json({
       success: true,
@@ -180,10 +189,11 @@ export const deletePayee = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Delete payee error:', error);
+    logger.error('Delete payee error:', error);
     const status = error.message.includes('not found') ? 404 : 
                    error.message.includes('Unauthorized') ? 403 : 500;
     res.status(status).json({
+      success: false,
       error: 'Failed to delete payee',
       message: error.message
     });
@@ -198,7 +208,7 @@ export const getTransactionsWithoutPayees = async (req, res) => {
     const { uid: userId } = req.user;
     const { sectionCode = 'checks' } = req.query;
 
-    const transactions = await payeeService.getTransactionsWithoutPayees(userId, sectionCode);
+    const transactions = await getDb().getTransactionsWithoutPayees(userId, sectionCode);
 
     res.json({
       success: true,
@@ -207,8 +217,9 @@ export const getTransactionsWithoutPayees = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Get transactions without payees error:', error);
+    logger.error('Get transactions without payees error:', error);
     res.status(500).json({
+      success: false,
       error: 'Failed to get transactions without payees',
       message: error.message
     });
@@ -223,7 +234,7 @@ export const getEmployees = async (req, res) => {
     const { uid: userId } = req.user;
     const { companyId } = req.query;
 
-    const employees = await payeeService.getPayeesByType(userId, 'employee', companyId);
+    const employees = await getDb().getPayeesByType(userId, 'employee', companyId);
 
     res.json({
       success: true,
@@ -232,8 +243,9 @@ export const getEmployees = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Get employees error:', error);
+    logger.error('Get employees error:', error);
     res.status(500).json({
+      success: false,
       error: 'Failed to get employees',
       message: error.message
     });
@@ -248,7 +260,7 @@ export const getVendors = async (req, res) => {
     const { uid: userId } = req.user;
     const { companyId } = req.query;
 
-    const vendors = await payeeService.getPayeesByType(userId, 'vendor', companyId);
+    const vendors = await getDb().getPayeesByType(userId, 'vendor', companyId);
 
     res.json({
       success: true,
@@ -257,8 +269,9 @@ export const getVendors = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Get vendors error:', error);
+    logger.error('Get vendors error:', error);
     res.status(500).json({
+      success: false,
       error: 'Failed to get vendors',
       message: error.message
     });
@@ -270,39 +283,43 @@ export const getVendors = async (req, res) => {
  */
 export const bulkAssignPayee = async (req, res) => {
   try {
-    console.log('📋 Bulk assign payee request body:', JSON.stringify(req.body, null, 2));
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      console.log('❌ Validation errors:', errors.array());
       return res.status(400).json({
+        success: false,
         error: 'Validation failed',
         details: errors.array()
       });
     }
     const { uid: userId } = req.user;
     const { transactionIds, payeeId, payeeName } = req.body;
-    console.log('🔍 bulkAssignPayee userId:', userId);
-    console.log('🔍 bulkAssignPayee transactionIds:', transactionIds);
-    console.log('🔍 bulkAssignPayee payeeId:', payeeId);
-    console.log('🔍 bulkAssignPayee payeeName:', payeeName);
+    
+    logger.debug('Bulk assign payee', { userId, transactionIds, payeeId, payeeName });
+    
     if (!Array.isArray(transactionIds) || transactionIds.length === 0) {
-      console.log('❌ bulkAssignPayee: transactionIds missing or empty');
-      return res.status(400).json({ error: 'transactionIds is required and must be a non-empty array' });
+      return res.status(400).json({ 
+        success: false, 
+        error: 'transactionIds is required and must be a non-empty array' 
+      });
     }
     if (!payeeId || typeof payeeId !== 'string') {
-      console.log('❌ bulkAssignPayee: payeeId missing or invalid');
-      return res.status(400).json({ error: 'payeeId is required and must be a string' });
+      return res.status(400).json({ 
+        success: false, 
+        error: 'payeeId is required and must be a string' 
+      });
     }
-    // Call service
-    const result = await payeeService.bulkAssignPayeeToTransactions(userId, transactionIds, payeeId, payeeName);
-    console.log('✅ bulkAssignPayee result:', JSON.stringify(result, null, 2));
+    
+    const result = await getDb().bulkAssignPayeeToTransactions(userId, transactionIds, payeeId, payeeName);
+    logger.info('Bulk assign payee completed', { updatedCount: result.updatedCount });
+    
     res.json({
       success: true,
       ...result
     });
   } catch (error) {
-    console.error('❌ bulkAssignPayee error:', error);
+    logger.error('Bulk assign payee error:', error);
     res.status(500).json({
+      success: false,
       error: 'Failed to bulk assign payee',
       message: error.message
     });

@@ -151,6 +151,27 @@ Total Deposits and Additions          $300.00
       const result = ChaseSectionExtractor.extractDepositsSection('');
       expect(result).toBeNull();
     });
+
+    it('should handle multi-page deposits spanning sections', () => {
+      const text = `
+DEPOSITS AND ADDITIONS
+DATE    DESCRIPTION    AMOUNT
+12/01   Deposit 1      $1,000.00
+12/02   Deposit 2      $2,000.00
+12/03   Deposit 3      $3,000.00
+--- Page 2 ---
+12/04   Deposit 4      $4,000.00
+12/05   Deposit 5      $5,000.00
+Total Deposits and Additions          $15,000.00
+      `;
+      
+      const result = ChaseSectionExtractor.extractDepositsSection(text);
+      
+      expect(result).toBeTruthy();
+      expect(result).toContain('Deposit 1');
+      expect(result).toContain('Deposit 5');
+      expect(result).toContain('15,000.00');
+    });
   });
 
   describe('extractChecksSection', () => {
@@ -247,6 +268,26 @@ Total  Checks  Paid      $111.11
       expect(result).toBeNull();
     });
 
+    it('should handle checks with memo lines', () => {
+      const text = `
+CHECKS PAID
+NUMBER   DATE    AMOUNT
+1234     12/01   $100.00
+  Memo: Office supplies
+1235     12/05   $250.00
+  Memo: Rent payment
+Total Checks Paid      $350.00
+      `;
+      
+      const result = ChaseSectionExtractor.extractChecksSection(text);
+      
+      expect(result).toBeTruthy();
+      expect(result).toContain('1234');
+      expect(result).toContain('1235');
+      expect(result).toContain('Office supplies');
+      expect(result).toContain('Rent payment');
+    });
+
     it('should handle empty text', () => {
       const result = ChaseSectionExtractor.extractChecksSection('');
       expect(result).toBeNull();
@@ -318,6 +359,26 @@ Total  ATM  &  DEBIT  CARD  WITHDRAWALS    $100.00
       
       // Returns null because "ATM  &  DEBIT  CARD" doesn't match "ATM\s*&\s*DEBIT CARD"
       expect(result).toBeNull();
+    });
+
+    it('should handle mixed ATM and debit transactions', () => {
+      const text = `
+ATM & DEBIT CARD WITHDRAWALS
+DATE    DESCRIPTION    AMOUNT
+12/01   Card Purchase STORE NAME    $50.00
+12/03   ATM Withdrawal BANK ATM      $100.00
+12/05   Card Purchase GAS STATION    $45.00
+12/07   ATM Withdrawal LOCATION      $200.00
+Total ATM & DEBIT CARD WITHDRAWALS    $395.00
+      `;
+      
+      const result = ChaseSectionExtractor.extractCardSection(text);
+      
+      expect(result).toBeTruthy();
+      expect(result).toContain('Card Purchase STORE NAME');
+      expect(result).toContain('ATM Withdrawal BANK ATM');
+      expect(result).toContain('Card Purchase GAS STATION');
+      expect(result).toContain('ATM Withdrawal LOCATION');
     });
 
     it('should return null when no card section exists', () => {
@@ -441,6 +502,29 @@ Total  Electronic  Withdrawals          $250.00
       
       // Returns null because extra spaces break pattern matching
       expect(result).toBeNull();
+    });
+
+    it('should handle electronic section at end of document', () => {
+      const text = `
+CHECKS PAID
+12/01   Check #1234    $100.00
+Total Checks Paid      $100.00
+
+ELECTRONIC WITHDRAWALS
+DATE    DESCRIPTION    AMOUNT
+12/15   Final Payment  $500.00
+12/28   Year End Bill  $250.00
+Total Electronic Withdrawals          $750.00
+--- End of Statement ---
+      `;
+      
+      const result = ChaseSectionExtractor.extractElectronicSection(text);
+      
+      expect(result).toBeTruthy();
+      expect(result).toContain('Final Payment');
+      expect(result).toContain('Year End Bill');
+      expect(result).toContain('500.00');
+      expect(result).toContain('250.00');
     });
 
     it('should handle empty text', () => {

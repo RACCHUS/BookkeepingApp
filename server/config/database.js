@@ -167,6 +167,10 @@ export const initializeDatabase = async () => {
   } else if (health.status === 'unavailable') {
     console.log('⚠️  Database not available - running without Firebase');
     return false;
+  } else if (health.error === 8 || health.message?.includes('RESOURCE_EXHAUSTED') || health.message?.includes('Quota exceeded')) {
+    console.warn('⚠️  Firestore quota exhausted - server will use cached data where available');
+    console.warn('   Quota resets at midnight Pacific Time');
+    return true; // Don't block server startup
   } else {
     console.error('❌ Database connection failed:', health.message);
     return false;

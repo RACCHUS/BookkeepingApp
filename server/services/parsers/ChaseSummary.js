@@ -50,6 +50,7 @@ class ChaseSummary {
   static generate(transactions) {
     const summary = {
       totalTransactions: transactions.length,
+      transactionCount: transactions.length,
       totalIncome: SUMMARY_DEFAULTS.TOTAL_INCOME,
       totalExpenses: SUMMARY_DEFAULTS.TOTAL_EXPENSES,
       netIncome: SUMMARY_DEFAULTS.NET_INCOME,

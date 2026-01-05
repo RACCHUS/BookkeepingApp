@@ -54,6 +54,18 @@ import payeeRoutes from './routes/payeeRoutes.js';
 // Import report routes
 import reportRoutes from './routes/reportRoutes.js';
 
+// Import receipt routes
+import receiptRoutes from './routes/receiptRoutes.js';
+
+// Import check routes
+import checkRoutes from './routes/checkRoutes.js';
+
+// Import income source routes
+import incomeSourceRoutes from './routes/incomeSourceRoutes.js';
+
+// Import scheduler service for automatic cleanup
+import schedulerService from './services/schedulerService.js';
+
 const app = express();
 const PORT = process.env.PORT || 5000;
 
@@ -221,6 +233,15 @@ app.use('/api/payees', optionalAuthMiddleware, payeeRoutes);
 
 // Add report routes with optional auth
 app.use('/api/reports', optionalAuthMiddleware, reportRoutes);
+
+// Add receipt routes with optional auth
+app.use('/api/receipts', optionalAuthMiddleware, receiptRoutes);
+
+// Add check routes with optional auth
+app.use('/api/checks', optionalAuthMiddleware, checkRoutes);
+
+// Add income source routes with optional auth
+app.use('/api/income-sources', optionalAuthMiddleware, incomeSourceRoutes);
 
 // Test endpoint for PDF generation (no auth required)
 app.post('/api/test/pdf', async (req, res) => {
@@ -595,4 +616,7 @@ app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📝 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`🔗 CORS origin: ${process.env.CORS_ORIGIN || 'http://localhost:3000'}`);
+  
+  // Start the scheduler for automatic receipt cleanup (2-year retention)
+  schedulerService.start();
 });

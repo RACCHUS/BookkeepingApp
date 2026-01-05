@@ -8,6 +8,9 @@ import admin from '../config/firebaseAdmin.js';
 import { logger } from '../utils/index.js';
 import { validateRequired, validateEmail, validateUUID } from '../utils/index.js';
 import { sendSuccess, sendError, sendValidationError } from '../utils/index.js';
+import cache from '../utils/serverCache.js';
+
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 /**
  * Firebase Service - Centralized database and authentication operations
@@ -283,6 +286,9 @@ class FirebaseService {
           const doc = await docRef.get();
           const data = doc.data();
           
+          // Invalidate transactions cache for this user
+          cache.delByPrefix(`user:${userId}:transactions`);
+          
           logger.info(`🔥 Firebase: Created transaction ${docRef.id}`);
           return { 
             id: docRef.id, 
@@ -328,21 +334,39 @@ class FirebaseService {
     if (this.isInitialized) {
       try {
         console.log(`🔥 Firebase: Querying transactions for userId: ${userId}`);
-        // Only query the authenticated user's transactions (no dev fallback)
-        let query = this.db.collection('transactions').where('userId', '==', userId);
-        const snapshot = await query.get();
-        let transactions = [];
-        snapshot.forEach(doc => {
-          const data = doc.data();
-          transactions.push({
-            id: doc.id,
-            ...data,
-            // Always convert Firestore Timestamp to ISO string for date
-            date: data.date?.toDate?.()?.toISOString()?.split('T')[0] || data.date,
-            createdAt: data.createdAt?.toDate?.()?.toISOString() || data.createdAt,
-            updatedAt: data.updatedAt?.toDate?.()?.toISOString() || data.updatedAt
+        
+        // Check cache for base transactions (unfiltered)
+        const cacheKey = cache.makeKey(userId, 'transactions');
+        let allTransactions = cache.get(cacheKey);
+        
+        if (allTransactions) {
+          console.log(`[Cache HIT] transactions for user: ${userId} (${allTransactions.length} docs)`);
+        } else {
+          console.log(`[Cache MISS] transactions for user: ${userId}`);
+          
+          // Only query the authenticated user's transactions (no dev fallback)
+          let query = this.db.collection('transactions').where('userId', '==', userId);
+          const snapshot = await query.get();
+          allTransactions = [];
+          snapshot.forEach(doc => {
+            const data = doc.data();
+            allTransactions.push({
+              id: doc.id,
+              ...data,
+              // Always convert Firestore Timestamp to ISO string for date
+              date: data.date?.toDate?.()?.toISOString()?.split('T')[0] || data.date,
+              createdAt: data.createdAt?.toDate?.()?.toISOString() || data.createdAt,
+              updatedAt: data.updatedAt?.toDate?.()?.toISOString() || data.updatedAt
+            });
           });
-        });
+          
+          // Cache the base query result
+          cache.set(cacheKey, allTransactions, CACHE_TTL);
+          console.log(`[Cache SET] transactions for user: ${userId} (${allTransactions.length} docs)`);
+        }
+        
+        // Work with a copy to avoid mutating cache
+        let transactions = [...allTransactions];
 
         // Apply filters in memory for now
         if (filters.startDate) {
@@ -555,6 +579,9 @@ class FirebaseService {
 
         await docRef.update(safeUpdateData);
 
+        // Invalidate transactions cache for this user
+        cache.delByPrefix(`user:${userId}:transactions`);
+
         const updatedDoc = await docRef.get();
         const updatedData = updatedDoc.data();
         logger.debug(`[updateTransaction] Updated Firestore data:`, updatedData);
@@ -612,6 +639,10 @@ class FirebaseService {
         }
 
         await docRef.delete();
+        
+        // Invalidate transactions cache for this user
+        cache.delByPrefix(`user:${userId}:transactions`);
+        
         console.log(`🔥 Firebase: Deleted transaction ${transactionId}`);
         return { id: transactionId, ...data };
       } catch (error) {
@@ -987,6 +1018,184 @@ class FirebaseService {
     }
   }
 
+  /**
+   * Link transactions to an upload (set statementId)
+   * @param {string} userId - User ID
+   * @param {string} uploadId - Upload/statement ID to link to
+   * @param {Array<string>} transactionIds - Transaction IDs to link
+   * @returns {Object} Result with success count and errors
+   */
+  async linkTransactionsToUpload(userId, uploadId, transactionIds) {
+    if (!this.isInitialized) {
+      console.log('📁 Mock: Linking transactions to upload');
+      return { success: true, linkedCount: transactionIds.length, errors: [] };
+    }
+
+    try {
+      const batch = this.db.batch();
+      const errors = [];
+      let linkedCount = 0;
+
+      for (const transactionId of transactionIds) {
+        const transactionRef = this.db.collection('transactions').doc(transactionId);
+        const transactionDoc = await transactionRef.get();
+
+        if (!transactionDoc.exists) {
+          errors.push({ id: transactionId, error: 'Transaction not found' });
+          continue;
+        }
+
+        const transactionData = transactionDoc.data();
+        if (transactionData.userId !== userId) {
+          errors.push({ id: transactionId, error: 'Unauthorized access' });
+          continue;
+        }
+
+        batch.update(transactionRef, {
+          statementId: uploadId,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+        linkedCount++;
+      }
+
+      if (linkedCount > 0) {
+        await batch.commit();
+      }
+
+      console.log(`✅ Linked ${linkedCount} transactions to upload: ${uploadId}`);
+      return { success: true, linkedCount, errors };
+    } catch (error) {
+      console.error('Error linking transactions to upload:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Unlink transactions from an upload (remove statementId)
+   * @param {string} userId - User ID
+   * @param {Array<string>} transactionIds - Transaction IDs to unlink
+   * @returns {Object} Result with success count and errors
+   */
+  async unlinkTransactionsFromUpload(userId, transactionIds) {
+    if (!this.isInitialized) {
+      console.log('📁 Mock: Unlinking transactions from upload');
+      return { success: true, unlinkedCount: transactionIds.length, errors: [] };
+    }
+
+    try {
+      const batch = this.db.batch();
+      const errors = [];
+      let unlinkedCount = 0;
+
+      for (const transactionId of transactionIds) {
+        const transactionRef = this.db.collection('transactions').doc(transactionId);
+        const transactionDoc = await transactionRef.get();
+
+        if (!transactionDoc.exists) {
+          errors.push({ id: transactionId, error: 'Transaction not found' });
+          continue;
+        }
+
+        const transactionData = transactionDoc.data();
+        if (transactionData.userId !== userId) {
+          errors.push({ id: transactionId, error: 'Unauthorized access' });
+          continue;
+        }
+
+        batch.update(transactionRef, {
+          statementId: admin.firestore.FieldValue.delete(),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+        unlinkedCount++;
+      }
+
+      if (unlinkedCount > 0) {
+        await batch.commit();
+      }
+
+      console.log(`✅ Unlinked ${unlinkedCount} transactions from their uploads`);
+      return { success: true, unlinkedCount, errors };
+    } catch (error) {
+      console.error('Error unlinking transactions from upload:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Unlink all transactions from a specific upload by uploadId
+   * (removes statementId but keeps transactions)
+   * @param {string} userId - User ID
+   * @param {string} uploadId - Upload ID to unlink transactions from
+   * @returns {number} Number of unlinked transactions
+   */
+  async unlinkTransactionsByUploadId(userId, uploadId) {
+    if (!this.isInitialized) {
+      console.log('📁 Mock: Unlinking transactions by upload ID');
+      return 0;
+    }
+
+    try {
+      // Query transactions by statementId (which stores uploadId)
+      const query = this.db.collection('transactions')
+        .where('userId', '==', userId)
+        .where('statementId', '==', uploadId);
+      
+      const snapshot = await query.get();
+      
+      if (snapshot.empty) {
+        console.log(`No transactions found for upload: ${uploadId}`);
+        return 0;
+      }
+
+      const batch = this.db.batch();
+      
+      snapshot.docs.forEach(doc => {
+        batch.update(doc.ref, {
+          statementId: admin.firestore.FieldValue.delete(),
+          deletedUploadId: uploadId, // Keep reference to original upload
+          updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+      });
+      
+      await batch.commit();
+      console.log(`✅ Unlinked ${snapshot.size} transactions from upload: ${uploadId}`);
+      return snapshot.size;
+    } catch (error) {
+      console.error('Error unlinking transactions by upload ID:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Record a deleted upload ID for audit trail
+   * @param {string} userId - User ID
+   * @param {Object} deleteInfo - Info about the deleted upload
+   * @returns {string} The deleted record ID
+   */
+  async recordDeletedUploadId(userId, deleteInfo) {
+    if (!this.isInitialized) {
+      console.log('📁 Mock: Recording deleted upload ID');
+      return 'mock-deleted-record-id';
+    }
+
+    try {
+      const deletedUploadsRef = this.db.collection('deletedUploads').doc();
+      
+      await deletedUploadsRef.set({
+        userId,
+        ...deleteInfo,
+        createdAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+      
+      console.log(`✅ Recorded deleted upload: ${deleteInfo.uploadId}`);
+      return deletedUploadsRef.id;
+    } catch (error) {
+      console.error('Error recording deleted upload ID:', error);
+      // Don't throw - this is optional audit logging
+      return null;
+    }
+  }
+
   // === PAYEE MANAGEMENT METHODS ===
 
   /**
@@ -1067,6 +1276,9 @@ class FirebaseService {
 
       await batch.commit();
 
+      // Invalidate transactions cache for this user
+      cache.delByPrefix(`user:${userId}:transactions`);
+
       return {
         success: true,
         results,
@@ -1074,6 +1286,112 @@ class FirebaseService {
       };
     } catch (error) {
       console.error('Error bulk assigning payee:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Bulk unassign payee from multiple transactions
+   */
+  async bulkUnassignPayeeFromTransactions(userId, transactionIds) {
+    try {
+      if (!this.isInitialized) {
+        throw new Error('Firebase not initialized - cannot bulk unassign payee');
+      }
+
+      const batch = this.db.batch();
+      const results = [];
+
+      for (const transactionId of transactionIds) {
+        const transactionRef = this.db.collection('transactions').doc(transactionId);
+        const transactionDoc = await transactionRef.get();
+
+        if (!transactionDoc.exists) {
+          results.push({ id: transactionId, success: false, error: 'Transaction not found' });
+          continue;
+        }
+
+        const transactionData = transactionDoc.data();
+        if (transactionData.userId !== userId) {
+          results.push({ id: transactionId, success: false, error: 'Unauthorized access' });
+          continue;
+        }
+
+        batch.update(transactionRef, {
+          payeeId: null,
+          payee: null,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          lastModifiedBy: userId
+        });
+
+        results.push({ id: transactionId, success: true });
+      }
+
+      await batch.commit();
+
+      // Invalidate transactions cache for this user
+      cache.delByPrefix(`user:${userId}:transactions`);
+
+      return {
+        success: true,
+        results,
+        updatedCount: results.filter(r => r.success).length
+      };
+    } catch (error) {
+      console.error('Error bulk unassigning payee:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Bulk unassign company from multiple transactions
+   */
+  async bulkUnassignCompanyFromTransactions(userId, transactionIds) {
+    try {
+      if (!this.isInitialized) {
+        throw new Error('Firebase not initialized - cannot bulk unassign company');
+      }
+
+      const batch = this.db.batch();
+      const results = [];
+
+      for (const transactionId of transactionIds) {
+        const transactionRef = this.db.collection('transactions').doc(transactionId);
+        const transactionDoc = await transactionRef.get();
+
+        if (!transactionDoc.exists) {
+          results.push({ id: transactionId, success: false, error: 'Transaction not found' });
+          continue;
+        }
+
+        const transactionData = transactionDoc.data();
+        if (transactionData.userId !== userId) {
+          results.push({ id: transactionId, success: false, error: 'Unauthorized access' });
+          continue;
+        }
+
+        batch.update(transactionRef, {
+          companyId: null,
+          companyName: null,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          lastModifiedBy: userId
+        });
+
+        results.push({ id: transactionId, success: true });
+      }
+
+      await batch.commit();
+
+      // Invalidate transactions cache for this user
+      cache.delByPrefix(`user:${userId}:transactions`);
+
+      return {
+        success: true,
+        results,
+        updatedCount: results.filter(r => r.success).length
+      };
+    } catch (error) {
+      console.error('Error bulk unassigning company:', error);
       throw error;
     }
   }

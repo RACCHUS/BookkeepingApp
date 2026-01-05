@@ -602,7 +602,7 @@ const exportToCSV = (transactions) => {
 
 ## Testing
 
-### Report Generation Tests
+### Report Generation Tests (Backend - Jest)
 ```javascript
 describe('Report Service', () => {
   test('generates accurate P&L report', async () => {
@@ -626,8 +626,11 @@ describe('Report Service', () => {
 });
 ```
 
-### Frontend Report Tests
+### Frontend Report Tests (Vitest)
 ```javascript
+import { describe, test, expect } from 'vitest';
+import { render, screen } from '@testing-library/react';
+
 describe('Reports Dashboard', () => {
   test('displays overview metrics correctly', () => {
     const mockData = {

@@ -7,12 +7,15 @@ import {
   deleteTransaction,
   getTransactionById,
   bulkUpdateTransactions,
+  bulkCreateTransactions,
   getTransactionSummary,
   getClassificationSuggestions,
   bulkUpdateCategories,
   getCategoryStats,
   assignPayeeToTransaction,
-  bulkAssignPayeeToTransactions
+  bulkAssignPayeeToTransactions,
+  bulkUnassignPayeeFromTransactions,
+  bulkUnassignCompanyFromTransactions
 } from '../controllers/transactionController.js';
 import { 
   handleValidationErrors,
@@ -154,6 +157,29 @@ router.get('/:id', validateObjectId('id'), getTransactionById);
 router.post('/', createTransactionValidation, createTransaction);
 
 /**
+ * @route POST /api/transactions/bulk
+ * @desc Bulk create multiple transactions
+ * @access Private
+ */
+router.post('/bulk',
+  body('transactions')
+    .isArray({ min: 1, max: 100 })
+    .withMessage('transactions must be an array with 1-100 items'),
+  body('transactions.*.description')
+    .isString()
+    .notEmpty()
+    .withMessage('Each transaction must have a description'),
+  body('transactions.*.amount')
+    .isNumeric()
+    .withMessage('Each transaction must have a numeric amount'),
+  body('transactions.*.date')
+    .isISO8601()
+    .withMessage('Each transaction must have a valid date'),
+  handleValidationErrors,
+  bulkCreateTransactions
+);
+
+/**
  * @route POST /api/transactions/classify
  * @desc Get classification suggestions for transactions
  * @access Private
@@ -217,6 +243,28 @@ router.patch('/bulk-assign-payee',
   body('payeeName').optional({ checkFalsy: true }).isString().withMessage('payeeName must be a string'),
   handleValidationErrors,
   bulkAssignPayeeToTransactions
+);
+
+/**
+ * @route PATCH /api/transactions/bulk-unassign-payee
+ * @desc Bulk remove payee from transactions
+ * @access Private
+ */
+router.patch('/bulk-unassign-payee', 
+  body('transactionIds').isArray({ min: 1 }).withMessage('transactionIds must be a non-empty array'),
+  handleValidationErrors,
+  bulkUnassignPayeeFromTransactions
+);
+
+/**
+ * @route PATCH /api/transactions/bulk-unassign-company
+ * @desc Bulk remove company from transactions
+ * @access Private
+ */
+router.patch('/bulk-unassign-company', 
+  body('transactionIds').isArray({ min: 1 }).withMessage('transactionIds must be a non-empty array'),
+  handleValidationErrors,
+  bulkUnassignCompanyFromTransactions
 );
 
 export default router;

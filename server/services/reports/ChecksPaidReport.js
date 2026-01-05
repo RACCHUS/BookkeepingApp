@@ -3,11 +3,18 @@ import BaseReportGenerator from './BaseReportGenerator.js';
 /**
  * Checks Paid Report Generator
  * Filters transactions from "Checks Paid" section and groups by payee/vendor
+ * 
+ * Optimizations:
+ * - Transaction limits to prevent oversized PDFs
+ * - Grouped by payee for better readability
+ * - Page break detection
  */
 class ChecksPaidReport extends BaseReportGenerator {
   constructor() {
     super();
     this.reportType = 'checks-paid';
+    // Override for checks reports - typically fewer transactions
+    this.config.maxTransactionDetails = 300;
   }
 
   /**
@@ -202,9 +209,7 @@ class ChecksPaidReport extends BaseReportGenerator {
     }
 
     // Check if we need a new page
-    if (doc.y > 600) {
-      doc.addPage();
-    }
+    this.checkPageBreak(doc, 200);
 
     doc.fontSize(14)
        .font('Helvetica-Bold')
@@ -212,15 +217,29 @@ class ChecksPaidReport extends BaseReportGenerator {
 
     doc.moveDown(0.5);
 
+    // Limit total transactions shown
+    const { transactions: limitedTransactions, wasTruncated, originalCount } = 
+      this.limitTransactions(checksPaidData.allTransactions || []);
+    
+    if (wasTruncated) {
+      this.addTruncationWarning(doc, limitedTransactions.length, originalCount);
+    }
+
     // Sort payees by total amount (descending)
     const sortedPayees = Object.entries(checksPaidData.payeeGroups)
       .sort(([,a], [,b]) => b.totalAmount - a.totalAmount);
 
-    sortedPayees.forEach(([payeeName, payeeData]) => {
-      // Check if we need a new page
-      if (doc.y > 650) {
-        doc.addPage();
+    let transactionsShown = 0;
+    const maxToShow = this.config.maxTransactionDetails;
+
+    for (const [payeeName, payeeData] of sortedPayees) {
+      // Check if we've shown enough transactions
+      if (transactionsShown >= maxToShow) {
+        break;
       }
+
+      // Check if we need a new page
+      this.checkPageBreak(doc, 100);
 
       doc.fontSize(12)
          .font('Helvetica-Bold')
@@ -233,11 +252,17 @@ class ChecksPaidReport extends BaseReportGenerator {
       doc.moveDown(0.3);
 
       // Sort transactions by date (newest first)
-      const sortedTransactions = payeeData.transactions.sort((a, b) => 
+      const sortedTransactions = [...payeeData.transactions].sort((a, b) => 
         new Date(b.date) - new Date(a.date)
       );
 
-      sortedTransactions.forEach(transaction => {
+      // Limit transactions per payee
+      const transactionsToShow = sortedTransactions.slice(0, Math.min(
+        sortedTransactions.length,
+        maxToShow - transactionsShown
+      ));
+
+      transactionsToShow.forEach(transaction => {
         const date = new Date(transaction.date).toLocaleDateString();
         const amount = `$${Math.abs(transaction.amount).toLocaleString()}`;
         const description = transaction.description?.substring(0, 50) || 'N/A';
@@ -246,16 +271,24 @@ class ChecksPaidReport extends BaseReportGenerator {
            .font('Helvetica')
            .text(`${date}: ${description}`, 90, doc.y, { continued: true, width: 350 });
         
-        doc.fillColor('#DC2626')
+        doc.fillColor(this.config.colors.expense)
            .font('Helvetica-Bold')
            .text(amount, { align: 'right' });
         
         doc.fillColor('black');
         doc.moveDown(0.25);
+        transactionsShown++;
       });
 
+      if (sortedTransactions.length > transactionsToShow.length) {
+        doc.fontSize(8)
+           .fillColor(this.config.colors.secondary)
+           .text(`... and ${sortedTransactions.length - transactionsToShow.length} more payments`, 90);
+        doc.fillColor('black');
+      }
+
       doc.moveDown(0.5);
-    });
+    }
   }
 }
 

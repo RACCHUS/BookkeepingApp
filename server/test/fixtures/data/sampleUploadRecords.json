@@ -1,0 +1,118 @@
+[
+  {
+    "id": "upload-001",
+    "fileId": "upload-001",
+    "name": "January 2024 Statement",
+    "originalName": "20240131-statements-5697-.pdf.pdf",
+    "fileName": "test-user-123/upload-001-20240131-statements-5697-.pdf.pdf",
+    "fileSize": 245678,
+    "bankType": "chase",
+    "uploadedBy": "test-user-123",
+    "uploadedAt": "2024-01-31T16:30:00.000Z",
+    "status": "processed",
+    "processed": true,
+    "companyId": "company-001",
+    "companyName": "ABC Company LLC",
+    "supabaseUrl": "https://example.supabase.co/storage/v1/object/public/pdfs/test-user-123/upload-001-statement.pdf",
+    "transactionCount": 33,
+    "metadata": {
+      "accountNumber": "12345678901",
+      "statementPeriod": {
+        "start": "01/01/2024",
+        "end": "01/31/2024"
+      },
+      "beginningBalance": 5000.00,
+      "endingBalance": 6500.00
+    },
+    "createdAt": "2024-01-31T16:30:00.000Z"
+  },
+  {
+    "id": "upload-002",
+    "fileId": "upload-002",
+    "name": "February 2024 Statement",
+    "originalName": "20240229-statements-5697-.pdf.crdownload.pdf",
+    "fileName": "test-user-123/upload-002-20240229-statements-5697-.pdf.crdownload.pdf",
+    "fileSize": 189432,
+    "bankType": "chase",
+    "uploadedBy": "test-user-123",
+    "uploadedAt": "2024-02-29T15:45:00.000Z",
+    "status": "processed",
+    "processed": true,
+    "companyId": "company-002",
+    "companyName": "XYZ Corporation",
+    "supabaseUrl": "https://example.supabase.co/storage/v1/object/public/pdfs/test-user-123/upload-002-statement.pdf",
+    "transactionCount": 31,
+    "metadata": {
+      "accountNumber": "98765432101",
+      "statementPeriod": {
+        "start": "02/01/2024",
+        "end": "02/29/2024"
+      },
+      "beginningBalance": 6500.00,
+      "endingBalance": 7200.00
+    },
+    "createdAt": "2024-02-29T15:45:00.000Z"
+  },
+  {
+    "id": "upload-003",
+    "fileId": "upload-003",
+    "name": "March 2024 Statement",
+    "originalName": "20240329-statements-5697-.pdf.crdownload.pdf",
+    "fileName": "test-user-456/upload-003-20240329-statements-5697-.pdf.crdownload.pdf",
+    "fileSize": 198765,
+    "bankType": "chase",
+    "uploadedBy": "test-user-456",
+    "uploadedAt": "2024-03-29T14:20:00.000Z",
+    "status": "processed",
+    "processed": true,
+    "companyId": "company-003",
+    "companyName": "123 Services Inc",
+    "supabaseUrl": "https://example.supabase.co/storage/v1/object/public/pdfs/test-user-456/upload-003-statement.pdf",
+    "transactionCount": 37,
+    "metadata": {
+      "accountNumber": "11122233344",
+      "statementPeriod": {
+        "start": "03/01/2024",
+        "end": "03/31/2024"
+      },
+      "beginningBalance": 8000.00,
+      "endingBalance": 9500.00
+    },
+    "createdAt": "2024-03-29T14:20:00.000Z"
+  },
+  {
+    "id": "upload-004",
+    "fileId": "upload-004",
+    "name": "April 2024 Statement - Processing",
+    "originalName": "20240430-statements-5697-.pdf.crdownload.pdf",
+    "fileName": "test-user-123/upload-004-20240430-statements-5697-.pdf.crdownload.pdf",
+    "fileSize": 210543,
+    "bankType": "chase",
+    "uploadedBy": "test-user-123",
+    "uploadedAt": "2024-04-30T13:10:00.000Z",
+    "status": "processing",
+    "processed": false,
+    "companyId": "company-001",
+    "companyName": "ABC Company LLC",
+    "supabaseUrl": "https://example.supabase.co/storage/v1/object/public/pdfs/test-user-123/upload-004-statement.pdf",
+    "createdAt": "2024-04-30T13:10:00.000Z"
+  },
+  {
+    "id": "upload-005",
+    "fileId": "upload-005",
+    "name": "May 2024 Statement - Error",
+    "originalName": "20240531-statements-5697-.pdf.crdownload.pdf",
+    "fileName": "test-user-123/upload-005-20240531-statements-5697-.pdf.crdownload.pdf",
+    "fileSize": 0,
+    "bankType": "chase",
+    "uploadedBy": "test-user-123",
+    "uploadedAt": "2024-05-31T12:00:00.000Z",
+    "status": "error",
+    "processed": false,
+    "error": "Corrupted PDF file",
+    "companyId": "company-001",
+    "companyName": "ABC Company LLC",
+    "supabaseUrl": "https://example.supabase.co/storage/v1/object/public/pdfs/test-user-123/upload-005-statement.pdf",
+    "createdAt": "2024-05-31T12:00:00.000Z"
+  }
+]

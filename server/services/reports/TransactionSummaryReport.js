@@ -3,8 +3,18 @@ import { BaseReportGenerator } from './BaseReportGenerator.js';
 /**
  * Transaction Summary Report Generator
  * Generates comprehensive transaction reports with summary and details
+ * 
+ * Optimizations:
+ * - Transaction details limited to prevent huge PDFs (configurable)
+ * - Page breaks for proper pagination
+ * - Compression enabled via base class
  */
 export class TransactionSummaryReport extends BaseReportGenerator {
+  constructor() {
+    super();
+    // Override defaults for transaction summary reports
+    this.config.maxTransactionDetails = 500; // Max transactions in detail view
+  }
   
   async generate(transactions, summary, options = {}) {
     const {
@@ -115,6 +125,14 @@ export class TransactionSummaryReport extends BaseReportGenerator {
 
     doc.moveDown(0.5);
 
+    // Limit transactions to prevent huge PDFs
+    const { transactions: limitedTransactions, wasTruncated, originalCount } = 
+      this.limitTransactions(transactions);
+
+    if (wasTruncated) {
+      this.addTruncationWarning(doc, limitedTransactions.length, originalCount);
+    }
+
     // Table header
     const headerY = doc.y;
     doc.fontSize(9)
@@ -134,7 +152,7 @@ export class TransactionSummaryReport extends BaseReportGenerator {
     doc.moveDown(0.2);
 
     // Sort transactions by date (newest first)
-    const sortedTransactions = transactions.sort((a, b) => 
+    const sortedTransactions = [...limitedTransactions].sort((a, b) => 
       new Date(b.date) - new Date(a.date)
     );
 
@@ -145,22 +163,23 @@ export class TransactionSummaryReport extends BaseReportGenerator {
       const isIncome = transaction.type === 'income';
       const displayAmount = `${isIncome ? '+' : '-'}$${Math.abs(transaction.amount).toLocaleString()}`;
       const date = new Date(transaction.date).toLocaleDateString();
+      const rowY = doc.y;
       
       doc.fontSize(8)
          .font('Helvetica')
-         .text(date, 70, doc.y, { width: 60 })
-         .text(transaction.description?.substring(0, 40) || 'N/A', 135, doc.y, { width: 200 })
-         .text(transaction.category || 'Uncategorized', 340, doc.y, { width: 120 });
+         .text(date, 70, rowY, { width: 60 })
+         .text(transaction.description?.substring(0, 40) || 'N/A', 135, rowY, { width: 200 })
+         .text(transaction.category || 'Uncategorized', 340, rowY, { width: 120 });
 
-      doc.fillColor(isIncome ? '#059669' : '#DC2626')
+      doc.fillColor(isIncome ? this.config.colors.income : this.config.colors.expense)
          .font('Helvetica-Bold')
-         .text(displayAmount, 465, doc.y, { width: 80, align: 'right' });
+         .text(displayAmount, 465, rowY, { width: 80, align: 'right' });
 
       doc.fillColor('black'); // Reset color
       doc.moveDown(0.4);
 
-      // Add subtle line every 5 rows
-      if ((index + 1) % 5 === 0) {
+      // Add subtle line every 10 rows for readability
+      if ((index + 1) % 10 === 0) {
         doc.strokeColor('#E5E5E5')
            .moveTo(70, doc.y)
            .lineTo(550, doc.y)

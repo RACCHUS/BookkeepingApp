@@ -8,6 +8,9 @@ import { getFirestore } from 'firebase-admin/firestore';
 import { PayeeSchema, PAYEE_TYPES } from '../../shared/schemas/payeeSchema.js';
 import { logger } from '../utils/index.js';
 import { validateRequired, validateEmail } from '../utils/index.js';
+import cache from '../utils/serverCache.js';
+
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 /**
  * Payee Service - Manages employees and vendors
@@ -94,6 +97,9 @@ class PayeeService {
 
       await docRef.set(payee);
       
+      // Invalidate cache for this user's payees
+      cache.delByPrefix(`user:${userId}:payees`);
+      
       return {
         success: true,
         id: docRef.id,
@@ -110,6 +116,16 @@ class PayeeService {
    */
   async getPayees(userId, filters = {}) {
     try {
+      // Check cache first
+      const cacheKey = cache.makeKey(userId, 'payees', filters);
+      const cached = cache.get(cacheKey);
+      if (cached) {
+        console.log('[Cache HIT] payees for user:', userId);
+        return cached;
+      }
+      
+      console.log('[Cache MISS] payees for user:', userId);
+      
       let query = this.db.collection('payees')
         .where('userId', '==', userId);
 
@@ -142,6 +158,9 @@ class PayeeService {
 
       // Sort in memory
       payees.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+
+      // Cache the result
+      cache.set(cacheKey, payees, CACHE_TTL);
 
       return payees;
     } catch (error) {
@@ -201,6 +220,9 @@ class PayeeService {
 
       await payeeRef.update(updatedPayee);
 
+      // Invalidate cache for this user's payees
+      cache.delByPrefix(`user:${userId}:payees`);
+
       return {
         success: true,
         id: payeeId
@@ -229,6 +251,9 @@ class PayeeService {
       }
 
       await payeeRef.delete();
+
+      // Invalidate cache for this user's payees
+      cache.delByPrefix(`user:${userId}:payees`);
 
       return {
         success: true,
@@ -296,8 +321,11 @@ class PayeeService {
 
       snapshot.forEach(doc => {
         const data = doc.data();
-        // Include transactions that have no payee or empty payee
-        if (!data.payee || data.payee.trim() === '' || data.payee === 'Unknown Payee') {
+        // Include transactions that have no payee AND no vendor assigned
+        const hasNoPayee = !data.payee || data.payee.trim() === '' || data.payee === 'Unknown Payee';
+        const hasNoVendor = !data.vendorId && (!data.vendorName || data.vendorName.trim() === '');
+        
+        if (hasNoPayee && hasNoVendor) {
           let date = data.date;
           // Firestore Timestamp: has toDate()
           if (date && typeof date === 'object' && typeof date.toDate === 'function') {

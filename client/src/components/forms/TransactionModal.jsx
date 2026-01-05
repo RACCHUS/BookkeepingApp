@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import StatementSelector from '../../features/Statements/StatementSelector';
 import { CompanySelector } from '../common';
 import { apiClient } from '../../services/api';
+import api from '../../services/api';
 import { useForm } from 'react-hook-form';
 import { toast } from 'react-hot-toast';
 import { XMarkIcon } from '@heroicons/react/24/outline';
@@ -15,50 +17,62 @@ import {
 } from '@shared/constants/categories';
 import { STATEMENT_SECTIONS, SECTION_OPTIONS, getSectionDisplayName } from '@shared/constants/sections';
 
+// React Query cache settings to prevent excessive Firestore reads
+const QUERY_CONFIG = {
+  staleTime: 5 * 60 * 1000, // Data stays fresh for 5 minutes
+  cacheTime: 10 * 60 * 1000, // Cache persists for 10 minutes
+  refetchOnWindowFocus: false,
+  retry: 1,
+};
+
 const TransactionModal = ({ transaction, isOpen, onClose, onSave, mode = 'edit', refreshTrigger }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [statements, setStatements] = useState([]);
 
-  // Function to fetch statements
-  const fetchStatements = () => {
-    apiClient.pdf.getUploads()
-      .then((res) => {
-        // The response is { success: true, data: [...] } where data is the direct array
-        const uploads = Array.isArray(res?.data) ? res.data : (res?.data?.uploads || []);
-        if (Array.isArray(uploads)) {
-          setStatements(uploads
-            .map((u, idx) => {
-              // Robust unique id fallback (should always be present after backend fix)
-              const id = u.id || u.fileId || u._id || u.filename || u.originalname || `statement_${idx}`;
-              if (!id) return null; // skip if no id at all
-              let displayName = u.name && u.name !== 'undefined' ? u.name : '';
-              const uploadedAt = u.uploadedAt || u.createdAt || u.timestamp;
-              if (!displayName) {
-                if (uploadedAt) {
-                  displayName = `Statement (${new Date(uploadedAt).toLocaleDateString()}) [${String(id).slice(-6)}]`;
-                } else {
-                  displayName = `Statement [${id}]`;
-                }
-              } else {
-                displayName = `${displayName} (${uploadedAt ? new Date(uploadedAt).toLocaleDateString() : ''}) [${String(id).slice(-6)}]`;
-              }
-              return {
-                id: String(id),
-                name: displayName,
-                uploadedAt
-              };
-            })
-            .filter(Boolean)
-          );
-        }
-      })
-      .catch(() => setStatements([]));
-  };
+  // Fetch statements with React Query caching
+  const { data: statements = [] } = useQuery({
+    queryKey: ['statements-for-modal', refreshTrigger],
+    queryFn: async () => {
+      const res = await apiClient.pdf.getUploads();
+      // The response is { success: true, data: [...] } where data is the direct array
+      const uploads = Array.isArray(res?.data) ? res.data : (res?.data?.uploads || []);
+      if (!Array.isArray(uploads)) return [];
+      
+      return uploads
+        .map((u, idx) => {
+          // Robust unique id fallback (should always be present after backend fix)
+          const id = u.id || u.fileId || u._id || u.filename || u.originalname || `statement_${idx}`;
+          if (!id) return null; // skip if no id at all
+          let displayName = u.name && u.name !== 'undefined' ? u.name : '';
+          const uploadedAt = u.uploadedAt || u.createdAt || u.timestamp;
+          if (!displayName) {
+            if (uploadedAt) {
+              displayName = `Statement (${new Date(uploadedAt).toLocaleDateString()}) [${String(id).slice(-6)}]`;
+            } else {
+              displayName = `Statement [${id}]`;
+            }
+          } else {
+            displayName = `${displayName} (${uploadedAt ? new Date(uploadedAt).toLocaleDateString() : ''}) [${String(id).slice(-6)}]`;
+          }
+          return {
+            id: String(id),
+            name: displayName,
+            uploadedAt
+          };
+        })
+        .filter(Boolean);
+    },
+    ...QUERY_CONFIG,
+  });
 
-  // Fetch available statements/PDFs for linking
-  useEffect(() => {
-    fetchStatements();
-  }, [refreshTrigger]); // Re-fetch when refreshTrigger changes
+  // Fetch income sources with React Query caching
+  const { data: incomeSources = [] } = useQuery({
+    queryKey: ['income-sources-for-modal'],
+    queryFn: async () => {
+      const res = await api.incomeSources.getAll();
+      return res.sources || [];
+    },
+    ...QUERY_CONFIG,
+  });
 
   const {
     register,
@@ -102,11 +116,15 @@ const TransactionModal = ({ transaction, isOpen, onClose, onSave, mode = 'edit',
       subcategory: typeof transaction?.subcategory === 'string' ? transaction.subcategory : '',
       type: typeof transaction?.type === 'string' && ['income','expense'].includes(transaction.type) ? transaction.type : (typeof transaction?.amount === 'number' && transaction.amount > 0 ? 'income' : 'expense'),
       payee: typeof transaction?.payee === 'string' ? transaction.payee : '',
+      vendorName: typeof transaction?.vendorName === 'string' ? transaction.vendorName : '',
+      isContractorPayment: !!transaction?.isContractorPayment,
       notes: typeof transaction?.notes === 'string' ? transaction.notes : '',
       statementId: typeof transaction?.statementId === 'string' ? transaction.statementId : '',
       sectionCode: typeof transaction?.sectionCode === 'string' ? transaction.sectionCode : 'manual',
       companyId: typeof transaction?.companyId === 'string' ? transaction.companyId : '',
-      companyName: typeof transaction?.companyName === 'string' ? transaction.companyName : ''
+      companyName: typeof transaction?.companyName === 'string' ? transaction.companyName : '',
+      incomeSourceId: typeof transaction?.incomeSourceId === 'string' ? transaction.incomeSourceId : '',
+      incomeSourceName: typeof transaction?.incomeSourceName === 'string' ? transaction.incomeSourceName : ''
     }
   });
 
@@ -184,11 +202,15 @@ const TransactionModal = ({ transaction, isOpen, onClose, onSave, mode = 'edit',
         subcategory: typeof transaction?.subcategory === 'string' ? transaction.subcategory : '',
         type: typeof transaction?.type === 'string' && ['income','expense'].includes(transaction.type) ? transaction.type : (typeof transaction?.amount === 'number' && transaction.amount > 0 ? 'income' : 'expense'),
         payee: typeof transaction?.payee === 'string' ? transaction.payee : '',
+        vendorName: typeof transaction?.vendorName === 'string' ? transaction.vendorName : '',
+        isContractorPayment: !!transaction?.isContractorPayment,
         notes: typeof transaction?.notes === 'string' ? transaction.notes : '',
         statementId: typeof transaction?.statementId === 'string' ? transaction.statementId : '',
         sectionCode: typeof transaction?.sectionCode === 'string' ? transaction.sectionCode : 'manual',
         companyId: typeof transaction?.companyId === 'string' ? transaction.companyId : '',
-        companyName: typeof transaction?.companyName === 'string' ? transaction.companyName : ''
+        companyName: typeof transaction?.companyName === 'string' ? transaction.companyName : '',
+        incomeSourceId: typeof transaction?.incomeSourceId === 'string' ? transaction.incomeSourceId : '',
+        incomeSourceName: typeof transaction?.incomeSourceName === 'string' ? transaction.incomeSourceName : ''
       });
     } else if (mode === 'create') {
       reset({
@@ -199,11 +221,15 @@ const TransactionModal = ({ transaction, isOpen, onClose, onSave, mode = 'edit',
         subcategory: '',
         type: 'expense',
         payee: '',
+        vendorName: '',
+        isContractorPayment: false,
         notes: '',
         statementId: '',
         sectionCode: 'manual',
         companyId: '',
-        companyName: ''
+        companyName: '',
+        incomeSourceId: '',
+        incomeSourceName: ''
       });
     }
   }, [transaction, mode, reset]);
@@ -233,7 +259,9 @@ const TransactionModal = ({ transaction, isOpen, onClose, onSave, mode = 'edit',
         sectionCode: data.sectionCode || 'manual',
         section: data.sectionCode ? getSectionDisplayName(data.sectionCode) : 'Manual Entry',
         companyId: data.companyId || '',
-        companyName: data.companyName || ''
+        companyName: data.companyName || '',
+        incomeSourceId: data.type === 'income' ? (data.incomeSourceId || '') : '',
+        incomeSourceName: data.type === 'income' ? (data.incomeSourceName || '') : ''
       };
 
       await onSave(transactionData);
@@ -472,16 +500,84 @@ const TransactionModal = ({ transaction, isOpen, onClose, onSave, mode = 'edit',
               </div>
             )}
 
-            {/* Payee */}
+            {/* Payee (who you pay) */}
             <div>
-              <label className="form-label">Payee/Source</label>
+              <label className="form-label">
+                Payee
+                <span className="text-gray-500 text-xs ml-2">(who you pay - employee, contractor, etc.)</span>
+              </label>
               <input
                 type="text"
                 {...register('payee')}
                 className="form-input"
-                placeholder="Who did you pay or who paid you?"
+                placeholder="Employee, contractor, or service provider name"
               />
             </div>
+
+            {/* Vendor Name (business you purchase from) */}
+            <div>
+              <label className="form-label">
+                Vendor
+                <span className="text-gray-500 text-xs ml-2">(business you purchase from)</span>
+              </label>
+              <input
+                type="text"
+                {...register('vendorName')}
+                className="form-input"
+                placeholder="Store, supplier, or business name"
+              />
+            </div>
+
+            {/* Contractor Payment Checkbox */}
+            {watch('type') === 'expense' && (
+              <div className="flex items-start">
+                <div className="flex items-center h-5">
+                  <input
+                    type="checkbox"
+                    {...register('isContractorPayment')}
+                    className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700"
+                  />
+                </div>
+                <div className="ml-3 text-sm">
+                  <label className="font-medium text-gray-700 dark:text-gray-200">
+                    This is a contractor/1099 payment
+                  </label>
+                  <p className="text-gray-500 dark:text-gray-400">
+                    Check this if the payee is an independent contractor who may need a 1099-NEC form (payments of $600 or more require filing).
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Income Source (for income transactions) */}
+            {watch('type') === 'income' && (
+              <div>
+                <label className="form-label">
+                  Income Source
+                  <span className="text-gray-500 text-xs ml-2">(customer, client, or source of income)</span>
+                </label>
+                <select
+                  {...register('incomeSourceId')}
+                  onChange={(e) => {
+                    const sourceId = e.target.value;
+                    setValue('incomeSourceId', sourceId);
+                    const source = incomeSources.find(s => s.id === sourceId);
+                    setValue('incomeSourceName', source?.name || '');
+                  }}
+                  className={`form-input ${!watch('incomeSourceId') ? 'text-gray-400 dark:text-gray-500' : ''}`}
+                >
+                  <option value="" className="text-gray-400 dark:text-gray-500">Select an income source...</option>
+                  {incomeSources.map(source => (
+                    <option key={source.id} value={source.id}>
+                      {source.name} {source.sourceType ? `(${source.sourceType})` : ''}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                  Assign this income to a customer or source. Create new sources in Income Management.
+                </p>
+              </div>
+            )}
 
 
             {/* Statement/PDF Link */}

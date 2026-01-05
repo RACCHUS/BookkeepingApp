@@ -38,7 +38,9 @@ export {
   updateCompany,
   deleteCompany,
   getCompanyTransactions,
-  getCompanyReports
+  getCompanyReports,
+  getTransactionsWithoutCompany,
+  bulkAssignCompany
 } from './companyController.js';
 
 // Report generation controllers
@@ -74,6 +76,21 @@ export {
   trainClassifier,
   getClassificationStats
 } from './classificationController.js';
+
+// Check controllers
+export {
+  createCheck,
+  getCheck,
+  getChecks,
+  updateCheck,
+  deleteCheck,
+  uploadImage,
+  deleteImage,
+  bulkCreate,
+  bulkCreateFromTransactions,
+  linkToTransaction,
+  getStats
+} from './checkController.js';
 
 // Mock data controllers (for testing)
 export {
@@ -118,7 +135,9 @@ export const companyControllers = {
   updateCompany,
   deleteCompany,
   getCompanyTransactions,
-  getCompanyReports
+  getCompanyReports,
+  getTransactionsWithoutCompany,
+  bulkAssignCompany
 };
 
 export const reportControllers = {
@@ -152,6 +171,20 @@ export const classificationControllers = {
   getClassificationStats
 };
 
+export const checkControllers = {
+  createCheck,
+  getCheck,
+  getChecks,
+  updateCheck,
+  deleteCheck,
+  uploadImage,
+  deleteImage,
+  bulkCreate,
+  bulkCreateFromTransactions,
+  linkToTransaction,
+  getStats
+};
+
 /**
  * Controller configuration for validation and middleware
  */
@@ -162,7 +195,8 @@ export const controllerConfig = {
     'deleteTransaction',
     'deleteCompany',
     'deletePayee',
-    'deleteClassificationRule'
+    'deleteClassificationRule',
+    'deleteCheck'
   ],
   
   // Controllers that support pagination
@@ -171,7 +205,8 @@ export const controllerConfig = {
     'getCompanies',
     'getPayees',
     'getReports',
-    'getUserUploads'
+    'getUserUploads',
+    'getChecks'
   ],
   
   // Controllers that support filtering
@@ -179,12 +214,14 @@ export const controllerConfig = {
     'getTransactions',
     'getCompanies',
     'getReports',
-    'getPayees'
+    'getPayees',
+    'getChecks'
   ],
   
   // Controllers that handle file uploads
   fileUploadControllers: [
-    'uploadPDF'
+    'uploadPDF',
+    'uploadImage'
   ],
   
   // Controllers that generate exports

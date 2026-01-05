@@ -9,7 +9,7 @@ Modern React 18 application built with Vite, featuring:
 - 🔥 Firebase Authentication
 - 📊 Real-time data with React Query
 - 🎯 TypeScript support ready
-- 🧪 Testing setup with Jest and React Testing Library
+- 🧪 Testing setup with Vitest and React Testing Library
 
 ## Project Structure
 
@@ -249,8 +249,8 @@ __tests__/
 ├── components/          # Component unit tests
 ├── features/           # Feature integration tests
 ├── utils/              # Utility function tests
-├── setupTests.js       # Jest setup
-└── testUtils.js        # Testing utilities
+├── setupTests.js       # Vitest setup
+└── testUtils.jsx       # Testing utilities
 ```
 
 ### Testing Patterns
@@ -440,7 +440,7 @@ function App() {
 
 ### Development
 - **ESLint** - Code linting
-- **Jest** - Testing framework
+- **Vitest** - Testing framework (native Vite integration)
 - **React Testing Library** - Component testing
 
 For full dependency list, see `package.json`.

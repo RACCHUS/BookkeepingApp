@@ -34,13 +34,15 @@ BookkeepingApp/
 - **Framework**: React 18 with Vite
 - **Styling**: TailwindCSS
 - **State Management**: React Query + Context
+- **Testing**: Vitest + React Testing Library (45+ tests)
 - **Key Features**: Dashboard, transaction management, PDF upload, reports
 
 ### `/server/` - Backend API
 - **Framework**: Express.js with professional middleware stack
 - **Database**: Firebase Firestore with Admin SDK
 - **Architecture**: Enhanced controller-service-repository pattern
-- **Key Features**: PDF processing, transaction APIs, report generation, comprehensive testing
+- **Testing**: Jest with 1068+ unit and integration tests
+- **Key Features**: PDF processing, transaction APIs, report generation
 
 #### Server Structure (Enhanced)
 ```
@@ -132,7 +134,7 @@ server/
 - **Professional Architecture**: Enhanced controller-service-repository pattern
 - **Comprehensive Security**: Enterprise-grade middleware stack
 - **Utils Integration**: 70+ utility functions across 7 specialized modules
-- **Testing Infrastructure**: Complete unit and integration testing setup
+- **Testing Infrastructure**: 1068+ Jest tests with comprehensive coverage
 - **Centralized Exports**: Barrel files for easy imports and organization
 
 ### `/shared/` - Shared Code
@@ -225,8 +227,13 @@ npm run dev:server       # Start backend development server
 npm run dev:client       # Start frontend development server
 npm run build:client     # Build frontend for production
 npm run deploy           # Deploy to Firebase hosting
-npm run test             # Run all tests
 npm run lint             # Lint all code
+
+# Testing
+cd server && npm test    # Run server tests (Jest, 1068+ tests)
+cd client && npm test    # Run client tests (Vitest, 45+ tests)
+cd client && npm run test:watch  # Run client tests in watch mode
+cd client && npm run test:ui     # Run client tests with Vitest UI
 ```
 
 ## Development Workflow

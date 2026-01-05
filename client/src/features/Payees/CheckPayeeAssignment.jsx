@@ -6,6 +6,7 @@ import { formatDate } from '../../utils/dateUtils';
 import { formatCurrency } from '../../utils/currencyUtils';
 
 const CheckPayeeAssignment = ({ onAssignmentComplete }) => {
+  const [viewMode, setViewMode] = useState('unassigned'); // 'unassigned' or 'assigned'
   const [selectedTransactions, setSelectedTransactions] = useState(new Set());
   const [selectedPayee, setSelectedPayee] = useState('');
   const [showNewPayeeForm, setShowNewPayeeForm] = useState(false);
@@ -25,6 +26,14 @@ const CheckPayeeAssignment = ({ onAssignmentComplete }) => {
     }
   });
 
+  // Fetch assigned check transactions (for unassign view)
+  const { data: assignedData, isLoading: loadingAssigned } = useQuery({
+    queryKey: ['assigned-check-transactions'],
+    queryFn: () => apiClient.transactions.getAll({ sectionCode: 'checks', limit: 500 }),
+    retry: 2,
+    enabled: viewMode === 'assigned'
+  });
+
   // Fetch all payees for dropdown
   const { data: payeesData, isLoading: loadingPayees, error: payeesError } = useQuery({
     queryKey: ['all-payees'],
@@ -36,8 +45,18 @@ const CheckPayeeAssignment = ({ onAssignmentComplete }) => {
     }
   });
 
-  const transactions = transactionsData?.transactions || [];
-  const payees = payeesData?.payees || [];
+  const unassignedTransactionsRaw = transactionsData?.transactions;
+  const unassignedTransactions = Array.isArray(unassignedTransactionsRaw) ? unassignedTransactionsRaw : [];
+  const allCheckTransactionsRaw = assignedData?.data?.transactions;
+  const allCheckTransactions = Array.isArray(allCheckTransactionsRaw) ? allCheckTransactionsRaw : [];
+  // Assigned = has payee OR vendor
+  const assignedTransactions = allCheckTransactions.filter(t => 
+    (t.payee && t.payee.trim() !== '' && t.payee !== 'Unknown Payee') ||
+    (t.vendorId || t.vendorName)
+  );
+  const transactions = viewMode === 'unassigned' ? unassignedTransactions : assignedTransactions;
+  const payeesRaw = payeesData?.payees;
+  const payees = Array.isArray(payeesRaw) ? payeesRaw : [];
 
   // Mutation for bulk payee assignment
   const assignPayeeMutation = useMutation({
@@ -48,12 +67,30 @@ const CheckPayeeAssignment = ({ onAssignmentComplete }) => {
       setSelectedTransactions(new Set());
       setSelectedPayee('');
       queryClient.invalidateQueries(['unassigned-check-transactions']);
+      queryClient.invalidateQueries(['assigned-check-transactions']);
       queryClient.invalidateQueries(['transactions']);
       onAssignmentComplete?.();
     },
     onError: (error) => {
       console.error('Error assigning payee:', error);
       toast.error('Failed to assign payee to transactions');
+    }
+  });
+
+  // Mutation for bulk payee unassignment
+  const unassignPayeeMutation = useMutation({
+    mutationFn: (transactionIds) => apiClient.payees.bulkUnassign(transactionIds),
+    onSuccess: (data) => {
+      toast.success(`Payee removed from ${data.updatedCount} transactions`);
+      setSelectedTransactions(new Set());
+      queryClient.invalidateQueries(['unassigned-check-transactions']);
+      queryClient.invalidateQueries(['assigned-check-transactions']);
+      queryClient.invalidateQueries(['transactions']);
+      onAssignmentComplete?.();
+    },
+    onError: (error) => {
+      console.error('Error unassigning payee:', error);
+      toast.error('Failed to remove payee from transactions');
     }
   });
 
@@ -115,6 +152,21 @@ const CheckPayeeAssignment = ({ onAssignmentComplete }) => {
     });
   };
 
+  const handleUnassignPayee = () => {
+    if (selectedTransactions.size === 0) {
+      toast.error('Please select at least one transaction');
+      return;
+    }
+
+    unassignPayeeMutation.mutate(Array.from(selectedTransactions));
+  };
+
+  const handleViewModeChange = (mode) => {
+    setViewMode(mode);
+    setSelectedTransactions(new Set());
+    setSelectedPayee('');
+  };
+
   const handleCreateNewPayee = () => {
     if (!newPayeeName.trim()) {
       toast.error('Please enter a payee name');
@@ -166,61 +218,94 @@ const CheckPayeeAssignment = ({ onAssignmentComplete }) => {
     );
   }
 
-  if (transactions.length === 0) {
-    return (
-      <div className="p-6 text-center">
-        <div className="text-gray-500 dark:text-gray-400">
-          <div className="text-4xl mb-4">✅</div>
-          <p className="text-lg font-medium">All check transactions have payees assigned!</p>
-          <p className="text-sm">No unassigned check transactions found.</p>
-        </div>
-      </div>
-    );
-  }
+  const showEmptyState = transactions.length === 0;
 
   return (
     <div className="p-6 space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-lg font-medium text-gray-900 dark:text-white">
-            Assign Payees to Check Transactions
-          </h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            {transactions.length} check transactions need payee assignment
-          </p>
-        </div>
-        
-        {selectedTransactions.size > 0 && (
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-gray-500 dark:text-gray-400">
-              {selectedTransactions.size} selected
-            </span>
-          </div>
-        )}
+      {/* View Mode Toggle */}
+      <div className="flex items-center gap-4 border-b border-gray-200 dark:border-gray-700 pb-4">
+        <button
+          onClick={() => handleViewModeChange('unassigned')}
+          className={`px-4 py-2 text-sm font-medium rounded-md ${
+            viewMode === 'unassigned'
+              ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300'
+              : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+          }`}
+        >
+          Unassigned ({unassignedTransactions.length})
+        </button>
+        <button
+          onClick={() => handleViewModeChange('assigned')}
+          className={`px-4 py-2 text-sm font-medium rounded-md ${
+            viewMode === 'assigned'
+              ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300'
+              : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+          }`}
+        >
+          Assigned ({assignedTransactions.length})
+        </button>
       </div>
 
-      {/* Payee Selection */}
-      <div className="bg-gray-50 dark:bg-gray-900 p-4 rounded-lg space-y-4">
-        <div className="flex items-center gap-4">
-          <div className="flex-1">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Select Payee
-            </label>
-            <select
-              value={selectedPayee}
-              onChange={(e) => setSelectedPayee(e.target.value)}
-              className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-            >
-              <option value="">Choose a payee...</option>
-              {payees.map((payee) => (
-                <option key={payee.id} value={payee.id}>
-                  {payee.name} ({payee.type})
-                </option>
-              ))}
-            </select>
+      {showEmptyState ? (
+        <div className="text-center py-8">
+          <div className="text-gray-500 dark:text-gray-400">
+            <div className="text-4xl mb-4">{viewMode === 'unassigned' ? '✅' : '📋'}</div>
+            <p className="text-lg font-medium">
+              {viewMode === 'unassigned' 
+                ? 'All check transactions have payees assigned!' 
+                : 'No assigned check transactions found.'}
+            </p>
+            <p className="text-sm">
+              {viewMode === 'unassigned' 
+                ? 'No unassigned check transactions found.' 
+                : 'Check transactions will appear here once payees are assigned.'}
+            </p>
           </div>
-          
-          <div className="pt-6">
+        </div>
+      ) : (
+        <>
+          <div className="flex justify-between items-center">
+            <div>
+              <h2 className="text-lg font-medium text-gray-900 dark:text-white">
+                {viewMode === 'unassigned' ? 'Assign Payees to Check Transactions' : 'Remove Payees from Check Transactions'}
+              </h2>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                {transactions.length} check transaction{transactions.length !== 1 ? 's' : ''} {viewMode === 'unassigned' ? 'need payee assignment' : 'have payees assigned'}
+              </p>
+            </div>
+            
+            {selectedTransactions.size > 0 && (
+              <div className="flex items-center gap-4">
+                <span className="text-sm text-gray-500 dark:text-gray-400">
+                  {selectedTransactions.size} selected
+                </span>
+              </div>
+            )}
+          </div>
+
+      {/* Payee Selection / Unassign Section */}
+      {viewMode === 'unassigned' ? (
+        <div className="bg-gray-50 dark:bg-gray-900 p-4 rounded-lg space-y-4">
+          <div className="flex items-center gap-4">
+            <div className="flex-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Select Payee
+              </label>
+              <select
+                value={selectedPayee}
+                onChange={(e) => setSelectedPayee(e.target.value)}
+                className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+              >
+                <option value="">Choose a payee...</option>
+                {payees.map((payee) => (
+                  <option key={payee.id} value={payee.id}>
+                    {payee.name} ({payee.type})
+                  </option>
+                ))}
+              </select>
+            </div>
+            
+            <div className="pt-6">
             <button
               onClick={() => setShowNewPayeeForm(!showNewPayeeForm)}
               className="px-4 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-700 dark:text-gray-300"
@@ -287,6 +372,26 @@ const CheckPayeeAssignment = ({ onAssignmentComplete }) => {
           </button>
         </div>
       </div>
+      ) : (
+        /* Unassign Section */
+        <div className="bg-gray-50 dark:bg-gray-900 p-4 rounded-lg">
+          <div className="flex justify-between items-center">
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Select transactions to remove their payee assignment
+            </p>
+            <button
+              onClick={handleUnassignPayee}
+              disabled={unassignPayeeMutation.isPending || selectedTransactions.size === 0}
+              className="px-6 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {unassignPayeeMutation.isPending 
+                ? 'Removing...' 
+                : `Remove Payee from ${selectedTransactions.size} Transaction${selectedTransactions.size !== 1 ? 's' : ''}`
+              }
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Transactions Table */}
       <div className="overflow-hidden shadow ring-1 ring-black ring-opacity-5 rounded-lg">
@@ -362,7 +467,7 @@ const CheckPayeeAssignment = ({ onAssignmentComplete }) => {
       <div className="bg-gray-50 dark:bg-gray-900 p-4 rounded-lg">
         <div className="text-sm text-gray-600 dark:text-gray-400">
           <strong>Total Amount:</strong> {formatCurrency(
-            transactions.reduce((sum, t) => sum + t.amount, 0)
+            transactions.reduce((sum, t) => sum + (t.amount || 0), 0)
           )}
           {selectedTransactions.size > 0 && (
             <>
@@ -370,12 +475,14 @@ const CheckPayeeAssignment = ({ onAssignmentComplete }) => {
               <strong>Selected Amount:</strong> {formatCurrency(
                 transactions
                   .filter(t => selectedTransactions.has(t.id))
-                  .reduce((sum, t) => sum + t.amount, 0)
+                  .reduce((sum, t) => sum + (t.amount || 0), 0)
               )}
             </>
           )}
         </div>
       </div>
+        </>
+      )}
     </div>
   );
 };

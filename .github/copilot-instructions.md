@@ -177,6 +177,7 @@ server/
 - React Query for data fetching
 - React Hook Form for forms
 - Firebase SDK for auth/database
+- Vitest + React Testing Library for testing
 
 ### Backend
 - Express.js framework
@@ -185,6 +186,7 @@ server/
 - pdfkit for report generation
 - express-validator for validation
 - multer for file uploads
+- Jest for testing
 
 ## Specific Implementation Notes
 

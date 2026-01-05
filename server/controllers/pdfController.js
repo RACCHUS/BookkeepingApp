@@ -3,11 +3,14 @@ import fs from 'fs/promises';
 import path from 'path';
 import { uploadFileToSupabase, deleteFileFromSupabase } from '../services/supabaseService.js';
 import { fileURLToPath } from 'url';
-import firebaseService from '../services/cleanFirebaseService.js';
+import { getDatabaseAdapter } from '../services/adapters/index.js';
 import chasePDFParser from '../services/chasePDFParser.js';
 import { isFirestoreIndexError, getIndexErrorMessage, logIndexError } from '../utils/errorHandler.js';
 import { logger } from '../config/index.js';
 import { asyncHandler } from '../middlewares/index.js';
+
+// Get database adapter (Supabase or Firebase based on DB_PROVIDER)
+const getDb = () => getDatabaseAdapter();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -30,7 +33,8 @@ export const uploadPDF = asyncHandler(async (req, res) => {
     autoProcess = false, 
     name: userProvidedName,
     companyId,
-    companyName
+    companyName,
+    createTransactions = true // When false, PDF is uploaded but no transactions are created
   } = req.body;
 
   logger.info('PDF upload initiated', {
@@ -38,6 +42,7 @@ export const uploadPDF = asyncHandler(async (req, res) => {
     fileName: file?.originalname,
     bankType,
     autoProcess,
+    createTransactions,
     companyId: companyId || null,
     requestId: req.id
   });
@@ -83,14 +88,14 @@ export const uploadPDF = asyncHandler(async (req, res) => {
   const sanitizedOriginalName = sanitizeFilename(file.originalname);
   const fileName = `${userId}/${uploadId}-${sanitizedOriginalName}`;
 
-  // Upload file to Supabase Storage
-  let supabaseUrl;
+  // Upload file to Supabase Storage (with Cloudinary fallback)
+  let storageResult;
   try {
-    supabaseUrl = await uploadFileToSupabase(file.buffer, fileName);
-    console.log(`📄 PDF uploaded to Supabase: ${fileName} (${file.size} bytes)`);
+    storageResult = await uploadFileToSupabase(file.buffer, fileName);
+    console.log(`📄 PDF uploaded to ${storageResult.storageProvider}: ${fileName} (${file.size} bytes)`);
   } catch (err) {
-    logger.error('Supabase upload failed', { error: err.message });
-    return res.status(500).json({ error: 'Failed to upload PDF to Supabase', message: err.message });
+    logger.error('Storage upload failed', { error: err.message });
+    return res.status(500).json({ error: 'Failed to upload PDF', message: err.message });
   }
 
   // Create upload record and persist it to Firestore
@@ -108,12 +113,15 @@ export const uploadPDF = asyncHandler(async (req, res) => {
     processed: false,
     companyId: sanitizedCompanyId,
     companyName: sanitizedCompanyName,
-    supabaseUrl // Store Supabase public URL
+    supabaseUrl: storageResult.url, // URL from either Supabase or Cloudinary
+    storageProvider: storageResult.storageProvider, // 'supabase' or 'cloudinary'
+    cloudinaryPublicId: storageResult.cloudinaryPublicId || null, // For Cloudinary deletion
+    createTransactions: createTransactions !== false && createTransactions !== 'false' // Normalize to boolean
   };
     
     // Save upload record to Firestore
     try {
-      await firebaseService.createUploadRecord(userId, uploadRecord);
+      await getDb().createUploadRecord(userId, uploadRecord);
       console.log(`✅ Upload record saved to Firestore: ${uploadId}`);
     } catch (error) {
       console.error('Failed to save upload record to Firestore:', error);
@@ -175,7 +183,7 @@ export const uploadPDF = asyncHandler(async (req, res) => {
  */
 export const processPDF = asyncHandler(async (req, res) => {
   const { fileId } = req.params;
-  const { autoSave = true, classification = 'auto' } = req.body;
+  const { autoSave = true, classification = 'auto', createTransactions = true } = req.body;
   const { uid: userId } = req.user;
 
   logger.info('PDF processing initiated', {
@@ -183,6 +191,7 @@ export const processPDF = asyncHandler(async (req, res) => {
     userId,
     autoSave,
     classification,
+    createTransactions,
     requestId: req.id
   });
 
@@ -191,7 +200,7 @@ export const processPDF = asyncHandler(async (req, res) => {
     // Get upload record from Firestore to find Supabase file name
     let uploadRecord;
     try {
-      uploadRecord = await firebaseService.getUploadById(userId, fileId);
+      uploadRecord = await getDb().getUploadById(userId, fileId);
       if (!uploadRecord || !uploadRecord.fileName) {
         return res.status(404).json({
           error: 'File not found',
@@ -217,7 +226,9 @@ export const processPDF = asyncHandler(async (req, res) => {
     });
 
     // Process in background and return immediately
-    processUploadedFile(fileId, fileName, userId, 'chase', processId, autoSave)
+    // Check if upload record has createTransactions flag, otherwise use request body
+    const shouldCreateTransactions = uploadRecord.createTransactions !== false && createTransactions !== false && createTransactions !== 'false';
+    processUploadedFile(fileId, fileName, userId, 'chase', processId, autoSave && shouldCreateTransactions)
       .catch(error => {
         console.error('Processing error:', error);
         processingStatus.set(processId, {
@@ -250,14 +261,30 @@ async function processUploadedFile(fileId, filePath, userId, bankType, processId
     let companyInfo = { companyId: null, companyName: null };
     // Optionally fetch metadata from Firestore if needed
 
-    // Download file from Supabase Storage as a buffer
-    const { createClient } = await import('@supabase/supabase-js');
-    const supabaseUrl = process.env.SUPABASE_URL;
-    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    const supabase = createClient(supabaseUrl, supabaseKey);
-    const { data, error } = await supabase.storage.from('uploads').download(filePath);
-    if (error || !data) throw new Error('Failed to download PDF from Supabase: ' + (error?.message || 'No data'));
-    const pdfBuffer = Buffer.from(await data.arrayBuffer());
+    // Get upload record to determine storage provider
+    const uploadRecord = await getDb().getUploadById(userId, fileId);
+    const storageProvider = uploadRecord?.storageProvider || 'supabase';
+    
+    let pdfBuffer;
+    
+    if (storageProvider === 'cloudinary' && uploadRecord?.supabaseUrl) {
+      // Download from Cloudinary using the URL
+      console.log('📥 Downloading PDF from Cloudinary...');
+      const response = await fetch(uploadRecord.supabaseUrl);
+      if (!response.ok) throw new Error(`Failed to download PDF from Cloudinary: ${response.statusText}`);
+      const arrayBuffer = await response.arrayBuffer();
+      pdfBuffer = Buffer.from(arrayBuffer);
+    } else {
+      // Download file from Supabase Storage as a buffer
+      const { createClient } = await import('@supabase/supabase-js');
+      const supabaseUrl = process.env.SUPABASE_URL;
+      const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+      const supabase = createClient(supabaseUrl, supabaseKey);
+      const { data, error } = await supabase.storage.from('uploads').download(filePath);
+      if (error || !data) throw new Error('Failed to download PDF from Supabase: ' + (error?.message || 'No data'));
+      pdfBuffer = Buffer.from(await data.arrayBuffer());
+    }
+    
     console.log('🔍 PDF buffer size:', pdfBuffer.length, 'Type:', typeof pdfBuffer, 'First 16 bytes:', pdfBuffer.slice(0, 16));
 
     // Write buffer to a temp file for parsing
@@ -318,7 +345,7 @@ async function processUploadedFile(fileId, filePath, userId, bankType, processId
             for (const tx of parseResult.transactions) {
               // Attach statementId/uploadId to each transaction
               const txWithStatementId = { ...tx, statementId: fileId };
-              const result = await firebaseService.createTransaction(userId, txWithStatementId);
+              const result = await getDb().createTransaction(userId, txWithStatementId);
               savedTransactionIds.push(result.id);
             }
             console.log(`[PDFController] ✅ Saved ${savedTransactionIds.length} transactions for upload ${fileId}`);
@@ -335,7 +362,7 @@ async function processUploadedFile(fileId, filePath, userId, bankType, processId
 
     // Update Firestore upload record to mark as processed
     try {
-      await firebaseService.updateUpload(userId, fileId, {
+      await getDb().updateUpload(userId, fileId, {
         processed: true,
         status: 'processed',
         updatedAt: new Date().toISOString(),
@@ -346,12 +373,16 @@ async function processUploadedFile(fileId, filePath, userId, bankType, processId
       console.error('❌ Failed to update upload record:', updateErr);
     }
 
-    // Delete file from Supabase Storage after everything is saved
+    // Delete file from storage after everything is saved
     try {
-      await deleteFileFromSupabase(filePath);
-      console.log('🗑️ Deleted PDF from Supabase Storage:', filePath);
+      // Get upload record to determine storage provider
+      const uploadRecordForDelete = await getDb().getUploadById(userId, fileId);
+      const provider = uploadRecordForDelete?.storageProvider || 'supabase';
+      const cloudinaryId = uploadRecordForDelete?.cloudinaryPublicId || null;
+      await deleteFileFromSupabase(filePath, provider, cloudinaryId);
+      console.log(`🗑️ Deleted PDF from ${provider}:`, filePath);
     } catch (deleteErr) {
-      console.warn('Failed to delete PDF from Supabase Storage:', deleteErr.message);
+      console.warn('Failed to delete PDF from storage:', deleteErr.message);
     }
 
     // Update final status
@@ -448,7 +479,7 @@ export const getUserUploads = async (req, res) => {
     
     try {
       // Get uploads from Firestore
-      let uploads = await firebaseService.getUploads(userId, filters);
+      let uploads = await getDb().getUploads(userId, filters);
       
       // Apply search filter (client-side for now, could be optimized with Firestore text search)
       if (search && search.trim()) {
@@ -470,7 +501,7 @@ export const getUserUploads = async (req, res) => {
       const enhancedUploads = await Promise.all(paginatedUploads.map(async (upload) => {
         try {
           // Get transaction count for this upload
-          const transactions = await firebaseService.getTransactionsByUploadId(userId, upload.id);
+          const transactions = await getDb().getTransactionsByUploadId(userId, upload.id);
           const transactionCount = transactions.length;
           
           // Calculate date range from transactions
@@ -688,7 +719,7 @@ export const getUploadDetails = async (req, res) => {
 
     try {
       // Get upload details from Firestore
-      const upload = await firebaseService.getUploadById(userId, uploadId);
+      const upload = await getDb().getUploadById(userId, uploadId);
       
       if (!upload) {
         return res.status(404).json({
@@ -702,7 +733,7 @@ export const getUploadDetails = async (req, res) => {
       let indexError = null;
       
       try {
-        transactions = await firebaseService.getTransactionsByUploadId(userId, uploadId);
+        transactions = await getDb().getTransactionsByUploadId(userId, uploadId);
       } catch (transactionError) {
         console.error('Error fetching transactions:', transactionError);
         
@@ -773,7 +804,7 @@ export const getUploadDetails = async (req, res) => {
       // Try to get transactions from Firestore, fallback to empty array
       let transactions = [];
       try {
-        transactions = await firebaseService.getTransactionsByUploadId(userId, uploadId);
+        transactions = await getDb().getTransactionsByUploadId(userId, uploadId);
       } catch (e) {
         console.error('Failed to get transactions:', e);
       }
@@ -866,7 +897,7 @@ export const renameUpload = async (req, res) => {
 
     // Also update the Firestore record if it exists
     try {
-      await firebaseService.updateUpload(userId, uploadId, {
+      await getDb().updateUpload(userId, uploadId, {
         name: name.trim(),
         originalName: name.trim(), // Update both name and originalName
         updatedAt: new Date().toISOString()
@@ -895,11 +926,13 @@ export const renameUpload = async (req, res) => {
   }
 };
 
-// Delete an upload and associated transactions
+// Delete an upload with optional transaction deletion
 export const deleteUpload = async (req, res) => {
   try {
     const { uid: userId } = req.user;
     const { uploadId } = req.params;
+    // deleteTransactions defaults to true for backward compatibility
+    const deleteTransactions = req.query.deleteTransactions !== 'false';
 
     if (!userId) {
       return res.status(401).json({
@@ -908,10 +941,10 @@ export const deleteUpload = async (req, res) => {
       });
     }
 
-    // Get upload record from Firestore to find Supabase file name
+    // Get upload record from Firestore to find storage info
     let uploadRecord;
     try {
-      uploadRecord = await firebaseService.getUploadById(userId, uploadId);
+      uploadRecord = await getDb().getUploadById(userId, uploadId);
     } catch (err) {
       return res.status(404).json({
         error: 'Upload not found',
@@ -919,27 +952,50 @@ export const deleteUpload = async (req, res) => {
       });
     }
 
-    // Delete associated transactions from Firestore
-    const deletedCount = await firebaseService.deleteTransactionsByUploadId(userId, uploadId);
+    let deletedTransactionCount = 0;
+    let unlinkedTransactionCount = 0;
+
+    if (deleteTransactions) {
+      // Delete associated transactions from Firestore
+      deletedTransactionCount = await getDb().deleteTransactionsByUploadId(userId, uploadId);
+    } else {
+      // Just unlink transactions (remove statementId but keep them)
+      unlinkedTransactionCount = await getDb().unlinkTransactionsByUploadId(userId, uploadId);
+    }
+
+    // Record the deleted upload ID for reference (useful for audit trail)
+    await getDb().recordDeletedUploadId(userId, {
+      uploadId,
+      uploadName: uploadRecord?.name || uploadRecord?.originalName || 'Unknown',
+      deletedAt: new Date().toISOString(),
+      transactionsDeleted: deleteTransactions,
+      transactionCount: deleteTransactions ? deletedTransactionCount : unlinkedTransactionCount
+    });
 
     // Delete the upload record from Firestore
-    await firebaseService.deleteUpload(userId, uploadId);
+    await getDb().deleteUpload(userId, uploadId);
 
-    // Delete the PDF file from Supabase Storage
+    // Delete the PDF file from storage (Supabase or Cloudinary)
     if (uploadRecord && uploadRecord.fileName) {
       try {
-        await deleteFileFromSupabase(uploadRecord.fileName);
-        console.log('🗑️ Deleted PDF from Supabase Storage:', uploadRecord.fileName);
+        const provider = uploadRecord.storageProvider || 'supabase';
+        const cloudinaryId = uploadRecord.cloudinaryPublicId || null;
+        await deleteFileFromSupabase(uploadRecord.fileName, provider, cloudinaryId);
+        console.log(`🗑️ Deleted PDF from ${provider}:`, uploadRecord.fileName);
       } catch (deleteErr) {
-        console.warn('Failed to delete PDF from Supabase Storage:', deleteErr.message);
+        console.warn('Failed to delete PDF from storage:', deleteErr.message);
       }
     }
 
     res.json({
       success: true,
-      message: 'Upload and associated transactions deleted successfully',
+      message: deleteTransactions 
+        ? 'Upload and associated transactions deleted successfully'
+        : 'Upload deleted, transactions preserved',
       data: {
-        deletedTransactions: deletedCount
+        deletedTransactions: deletedTransactionCount,
+        unlinkedTransactions: unlinkedTransactionCount,
+        transactionsDeleted: deleteTransactions
       }
     });
 
@@ -947,6 +1003,120 @@ export const deleteUpload = async (req, res) => {
     console.error('Error deleting upload:', error);
     res.status(500).json({
       error: 'Failed to delete upload',
+      message: error.message
+    });
+  }
+};
+
+/**
+ * Batch delete multiple uploads
+ * @route POST /api/pdf/uploads/batch-delete
+ * @access Private
+ */
+export const batchDeleteUploads = async (req, res) => {
+  try {
+    const { uid: userId } = req.user;
+    const { uploadIds, deleteTransactions = false } = req.body;
+
+    if (!userId) {
+      return res.status(401).json({
+        error: 'Authentication required',
+        message: 'User must be authenticated to delete uploads'
+      });
+    }
+
+    if (!Array.isArray(uploadIds) || uploadIds.length === 0) {
+      return res.status(400).json({
+        error: 'Invalid request',
+        message: 'uploadIds must be a non-empty array'
+      });
+    }
+
+    console.log(`🗑️ Batch deleting ${uploadIds.length} uploads for user ${userId}`);
+
+    const results = {
+      successful: [],
+      failed: [],
+      totalTransactionsDeleted: 0,
+      totalTransactionsUnlinked: 0
+    };
+
+    // Process each upload
+    for (const uploadId of uploadIds) {
+      try {
+        // Get upload record from Firestore
+        let uploadRecord;
+        try {
+          uploadRecord = await getDb().getUploadById(userId, uploadId);
+        } catch (err) {
+          results.failed.push({ 
+            uploadId, 
+            error: 'Upload not found' 
+          });
+          continue;
+        }
+
+        let deletedTransactionCount = 0;
+        let unlinkedTransactionCount = 0;
+
+        if (deleteTransactions) {
+          deletedTransactionCount = await getDb().deleteTransactionsByUploadId(userId, uploadId);
+          results.totalTransactionsDeleted += deletedTransactionCount;
+        } else {
+          unlinkedTransactionCount = await getDb().unlinkTransactionsByUploadId(userId, uploadId);
+          results.totalTransactionsUnlinked += unlinkedTransactionCount;
+        }
+
+        // Record the deleted upload ID
+        await getDb().recordDeletedUploadId(userId, {
+          uploadId,
+          uploadName: uploadRecord?.name || uploadRecord?.originalName || 'Unknown',
+          deletedAt: new Date().toISOString(),
+          transactionsDeleted: deleteTransactions,
+          transactionCount: deleteTransactions ? deletedTransactionCount : unlinkedTransactionCount
+        });
+
+        // Delete the upload record from Firestore
+        await getDb().deleteUpload(userId, uploadId);
+
+        // Delete the PDF file from storage
+        if (uploadRecord && uploadRecord.fileName) {
+          try {
+            const provider = uploadRecord.storageProvider || 'supabase';
+            const cloudinaryId = uploadRecord.cloudinaryPublicId || null;
+            await deleteFileFromSupabase(uploadRecord.fileName, provider, cloudinaryId);
+          } catch (deleteErr) {
+            console.warn(`Failed to delete PDF from storage for ${uploadId}:`, deleteErr.message);
+          }
+        }
+
+        results.successful.push({
+          uploadId,
+          name: uploadRecord?.name || uploadRecord?.originalName,
+          deletedTransactions: deletedTransactionCount,
+          unlinkedTransactions: unlinkedTransactionCount
+        });
+      } catch (err) {
+        console.error(`Error deleting upload ${uploadId}:`, err);
+        results.failed.push({ 
+          uploadId, 
+          error: err.message 
+        });
+      }
+    }
+
+    console.log(`✅ Batch delete complete: ${results.successful.length} succeeded, ${results.failed.length} failed`);
+
+    res.json({
+      success: true,
+      message: `Deleted ${results.successful.length} of ${uploadIds.length} uploads`,
+      data: results
+    });
+
+  } catch (error) {
+    console.error('Error in batch delete uploads:', error);
+    res.status(500).json({
+      error: 'Failed to batch delete uploads',
       message: error.message
     });
   }
@@ -1007,7 +1177,7 @@ export const updateUploadCompany = async (req, res) => {
 
     // Also update the Firestore record if it exists
     try {
-      await firebaseService.updateUpload(userId, uploadId, {
+      await getDb().updateUpload(userId, uploadId, {
         companyId: sanitizedCompanyId,
         companyName: sanitizedCompanyName,
         updatedAt: new Date().toISOString()
@@ -1036,3 +1206,101 @@ export const updateUploadCompany = async (req, res) => {
     });
   }
 };
+
+/**
+ * Link existing transactions to an upload
+ * @route POST /api/pdf/uploads/:uploadId/link-transactions
+ * @access Private - Requires authentication
+ */
+export const linkTransactionsToUpload = asyncHandler(async (req, res) => {
+  const { uploadId } = req.params;
+  const { transactionIds } = req.body;
+  const { uid: userId } = req.user;
+
+  logger.info('Link transactions to upload', {
+    uploadId,
+    transactionCount: transactionIds?.length,
+    userId,
+    requestId: req.id
+  });
+
+  if (!transactionIds || !Array.isArray(transactionIds) || transactionIds.length === 0) {
+    return res.status(400).json({
+      error: 'Invalid request',
+      message: 'transactionIds must be a non-empty array'
+    });
+  }
+
+  // Verify the upload exists and belongs to the user
+  try {
+    const upload = await getDb().getUploadById(userId, uploadId);
+    if (!upload) {
+      return res.status(404).json({
+        error: 'Upload not found',
+        message: 'The specified upload does not exist'
+      });
+    }
+  } catch (error) {
+    return res.status(404).json({
+      error: 'Upload not found',
+      message: 'The specified upload does not exist'
+    });
+  }
+
+  const result = await getDb().linkTransactionsToUpload(userId, uploadId, transactionIds);
+
+  // Update the upload record with transaction count
+  try {
+    const linkedTransactions = await getDb().getTransactionsByUploadId(userId, uploadId);
+    await getDb().updateUpload(userId, uploadId, {
+      transactionCount: linkedTransactions.length,
+      updatedAt: new Date().toISOString()
+    });
+  } catch (updateError) {
+    logger.warn('Failed to update upload transaction count', { error: updateError.message });
+  }
+
+  res.json({
+    success: true,
+    message: `Linked ${result.linkedCount} transactions to upload`,
+    data: {
+      uploadId,
+      linkedCount: result.linkedCount,
+      errors: result.errors
+    }
+  });
+});
+
+/**
+ * Unlink transactions from their uploads
+ * @route POST /api/pdf/uploads/unlink-transactions
+ * @access Private - Requires authentication
+ */
+export const unlinkTransactionsFromUpload = asyncHandler(async (req, res) => {
+  const { transactionIds } = req.body;
+  const { uid: userId } = req.user;
+
+  logger.info('Unlink transactions from uploads', {
+    transactionCount: transactionIds?.length,
+    userId,
+    requestId: req.id
+  });
+
+  if (!transactionIds || !Array.isArray(transactionIds) || transactionIds.length === 0) {
+    return res.status(400).json({
+      error: 'Invalid request',
+      message: 'transactionIds must be a non-empty array'
+    });
+  }
+
+  const result = await getDb().unlinkTransactionsFromUpload(userId, transactionIds);
+
+  res.json({
+    success: true,
+    message: `Unlinked ${result.unlinkedCount} transactions`,
+    data: {
+      unlinkedCount: result.unlinkedCount,
+      errors: result.errors
+    }
+  });
+});

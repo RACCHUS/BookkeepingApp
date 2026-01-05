@@ -4,15 +4,17 @@ import { toast } from 'react-hot-toast';
 import { apiClient } from '../../services/api.js';
 import CompanyForm from './CompanyForm.jsx';
 import CompanyList from './CompanyList.jsx';
+import TransactionCompanyAssignment from './TransactionCompanyAssignment.jsx';
 
 const CompanyManagement = () => {
+  const [activeTab, setActiveTab] = useState('companies');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedCompany, setSelectedCompany] = useState(null);
   const [modalMode, setModalMode] = useState('create'); // 'create' or 'edit'
   const queryClient = useQueryClient();
 
   // Fetch companies
-  const { data: companiesResponse, isLoading, error } = useQuery({
+  const { data: companiesResponse, isLoading, error, refetch } = useQuery({
     queryKey: ['companies'],
     queryFn: apiClient.companies.getAll,
     staleTime: 5 * 60 * 1000, // 5 minutes
@@ -20,7 +22,17 @@ const CompanyManagement = () => {
     retryDelay: 1000, // Wait 1 second between retries
   });
 
-  const companies = companiesResponse?.data || [];
+  // Fetch unassigned transactions count
+  const { data: unassignedData, refetch: refetchUnassigned } = useQuery({
+    queryKey: ['unassigned-company-transactions'],
+    queryFn: apiClient.companies.getTransactionsWithoutCompany,
+    staleTime: 60 * 1000, // 1 minute
+  });
+
+  const companiesRaw = companiesResponse?.data;
+  const companies = Array.isArray(companiesRaw) ? companiesRaw : [];
+  const unassignedTxns = unassignedData?.transactions;
+  const unassignedCount = Array.isArray(unassignedTxns) ? unassignedTxns.length : 0;
 
   // Create company mutation
   const createMutation = useMutation({
@@ -186,6 +198,11 @@ const CompanyManagement = () => {
     );
   }
 
+  const tabs = [
+    { key: 'companies', label: 'Companies', icon: '🏢' },
+    { key: 'assignment', label: `Transaction Assignment ${unassignedCount > 0 ? `(${unassignedCount})` : ''}`, icon: '📝', badge: unassignedCount }
+  ];
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -195,49 +212,86 @@ const CompanyManagement = () => {
             Manage your business entities ({companies.length} {companies.length === 1 ? 'company' : 'companies'})
           </p>
         </div>
-        <button
-          onClick={handleCreateCompany}
-          className="btn btn-primary"
-          disabled={createMutation.isLoading}
-        >
-          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          Add Company
-        </button>
+        {activeTab === 'companies' && (
+          <button
+            onClick={handleCreateCompany}
+            className="btn btn-primary"
+            disabled={createMutation.isLoading}
+          >
+            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            Add Company
+          </button>
+        )}
       </div>
 
-      <div className="card">
-        <div className="card-body">
-          {companies.length === 0 ? (
-            <div className="text-center py-12">
-              <div className="text-gray-400 dark:text-gray-500">
-                <svg className="w-16 h-16 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                </svg>
-                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No companies yet</h3>
-                <p className="text-gray-500 dark:text-gray-400 mb-4">
-                  Get started by creating your first company or business entity.
-                </p>
-                <button
-                  onClick={handleCreateCompany}
-                  className="btn btn-primary"
-                >
-                  Create Your First Company
-                </button>
+      {/* Tabs */}
+      <div className="border-b border-gray-200 dark:border-gray-700">
+        <nav className="-mb-px flex space-x-8">
+          {tabs.map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={`py-2 px-1 border-b-2 font-medium text-sm whitespace-nowrap flex items-center gap-2 ${
+                activeTab === tab.key
+                  ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
+              }`}
+            >
+              <span>{tab.icon}</span>
+              {tab.label}
+              {tab.badge > 0 && (
+                <span className="bg-red-100 text-red-800 text-xs px-2 py-1 rounded-full">
+                  {tab.badge}
+                </span>
+              )}
+            </button>
+          ))}
+        </nav>
+      </div>
+
+      {/* Content */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow">
+        {activeTab === 'assignment' ? (
+          <TransactionCompanyAssignment 
+            onAssignmentComplete={() => {
+              refetchUnassigned();
+              refetch();
+            }}
+          />
+        ) : (
+          <div className="card-body">
+            {companies.length === 0 ? (
+              <div className="text-center py-12">
+                <div className="text-gray-400 dark:text-gray-500">
+                  <svg className="w-16 h-16 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                  </svg>
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No companies yet</h3>
+                  <p className="text-gray-500 dark:text-gray-400 mb-4">
+                    Get started by creating your first company or business entity.
+                  </p>
+                  <button
+                    onClick={handleCreateCompany}
+                    className="btn btn-primary"
+                  >
+                    Create Your First Company
+                  </button>
+                </div>
               </div>
-            </div>
-          ) : (
-            <CompanyList
-              companies={companies}
-              onEdit={handleEditCompany}
-              onDelete={handleDeleteCompany}
-              onSetDefault={handleSetDefault}
-              isDeleting={deleteMutation.isLoading}
-              isSettingDefault={setDefaultMutation.isLoading}
-            />
-          )}
-        </div>
+            ) : (
+              <CompanyList
+                companies={companies}
+                onEdit={handleEditCompany}
+                onDelete={handleDeleteCompany}
+                onSetDefault={handleSetDefault}
+                isDeleting={deleteMutation.isLoading}
+                isSettingDefault={setDefaultMutation.isLoading}
+              />
+            )}
+          </div>
+        )}
       </div>
 
       {isModalOpen && (

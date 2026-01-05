@@ -22,6 +22,8 @@ import payeeRoutes from './payeeRoutes.js';
 import reportRoutes from './reportRoutes.js';
 import classificationRoutes from './classificationRoutes.js';
 import pdfRoutes from './pdfRoutes.js';
+import receiptRoutes from './receiptRoutes.js';
+import checkRoutes from './checkRoutes.js';
 
 // Export all routes for easy importing
 export {
@@ -30,7 +32,9 @@ export {
   payeeRoutes,
   reportRoutes,
   classificationRoutes,
-  pdfRoutes
+  pdfRoutes,
+  receiptRoutes,
+  checkRoutes
 };
 
 /**
@@ -43,7 +47,9 @@ export default {
   '/api/payees': payeeRoutes,
   '/api/reports': reportRoutes,
   '/api/classification': classificationRoutes,
-  '/api/pdf': pdfRoutes
+  '/api/pdf': pdfRoutes,
+  '/api/receipts': receiptRoutes,
+  '/api/checks': checkRoutes
 };
 
 /**

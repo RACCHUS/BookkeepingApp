@@ -357,7 +357,9 @@ describe('Date Utils', () => {
 
   describe('getRelativeDate', () => {
     it('should return "today" for current date', () => {
+      // Create date at midnight to avoid time-of-day issues
       const today = new Date();
+      today.setHours(0, 0, 0, 0);
       expect(getRelativeDate(today)).toBe('today');
     });
 

@@ -1,0 +1,251 @@
+{
+  "deductibleTransactions": [
+    {
+      "id": "tax-001",
+      "userId": "test-user",
+      "type": "expense",
+      "amount": -500,
+      "category": "Advertising",
+      "description": "Facebook Ads Campaign",
+      "date": "2025-01-15T12:00:00.000Z",
+      "payee": "Meta Platforms",
+      "quarterlyPeriod": "Q1",
+      "scheduleCLine": "8"
+    },
+    {
+      "id": "tax-002",
+      "userId": "test-user",
+      "type": "expense",
+      "amount": -800,
+      "category": "Contract Labor",
+      "description": "Freelance Developer Payment",
+      "date": "2025-02-20T12:00:00.000Z",
+      "payee": "John Developer",
+      "quarterlyPeriod": "Q1",
+      "isContractorPayment": true,
+      "scheduleCLine": "11"
+    },
+    {
+      "id": "tax-003",
+      "userId": "test-user",
+      "type": "expense",
+      "amount": -150,
+      "category": "Office Expenses",
+      "description": "Printer Paper and Ink",
+      "date": "2025-03-10T12:00:00.000Z",
+      "payee": "Office Depot",
+      "quarterlyPeriod": "Q1",
+      "scheduleCLine": "18"
+    },
+    {
+      "id": "tax-004",
+      "userId": "test-user",
+      "type": "expense",
+      "amount": -3000,
+      "category": "Wages (Less Employment Credits)",
+      "description": "Employee Monthly Salary",
+      "date": "2025-04-01T12:00:00.000Z",
+      "payee": "Jane Employee",
+      "quarterlyPeriod": "Q2",
+      "scheduleCLine": "26"
+    },
+    {
+      "id": "tax-005",
+      "userId": "test-user",
+      "type": "expense",
+      "amount": -75,
+      "category": "Car and Truck Expenses",
+      "description": "Gas Station",
+      "date": "2025-01-25T12:00:00.000Z",
+      "payee": "Chevron",
+      "quarterlyPeriod": "Q1",
+      "scheduleCLine": "9"
+    },
+    {
+      "id": "tax-006",
+      "userId": "test-user",
+      "type": "expense",
+      "amount": -200,
+      "category": "Utilities",
+      "description": "Electric Bill",
+      "date": "2025-02-15T12:00:00.000Z",
+      "payee": "Edison Electric",
+      "quarterlyPeriod": "Q1",
+      "scheduleCLine": "25"
+    },
+    {
+      "id": "tax-007",
+      "userId": "test-user",
+      "type": "expense",
+      "amount": -1200,
+      "category": "Rent or Lease (Other Business Property)",
+      "description": "Office Rent",
+      "date": "2025-03-01T12:00:00.000Z",
+      "payee": "ABC Properties",
+      "quarterlyPeriod": "Q1",
+      "scheduleCLine": "20b"
+    },
+    {
+      "id": "tax-008",
+      "userId": "test-user",
+      "type": "expense",
+      "amount": -350,
+      "category": "Legal and Professional Services",
+      "description": "Accounting Services",
+      "date": "2025-04-15T12:00:00.000Z",
+      "payee": "Smith CPA",
+      "quarterlyPeriod": "Q2",
+      "scheduleCLine": "17"
+    },
+    {
+      "id": "tax-009",
+      "userId": "test-user",
+      "type": "expense",
+      "amount": -99,
+      "category": "Software Subscriptions",
+      "description": "Adobe Creative Cloud",
+      "date": "2025-05-01T12:00:00.000Z",
+      "payee": "Adobe Inc",
+      "quarterlyPeriod": "Q2",
+      "scheduleCLine": "27a"
+    },
+    {
+      "id": "tax-010",
+      "userId": "test-user",
+      "type": "expense",
+      "amount": -45,
+      "category": "Bank Fees",
+      "description": "Monthly Account Fee",
+      "date": "2025-06-01T12:00:00.000Z",
+      "payee": "Chase Bank",
+      "quarterlyPeriod": "Q2",
+      "scheduleCLine": "27a"
+    }
+  ],
+  "nonDeductibleTransactions": [
+    {
+      "id": "tax-nd-001",
+      "userId": "test-user",
+      "type": "expense",
+      "amount": -150,
+      "category": "Groceries",
+      "description": "Personal groceries",
+      "date": "2025-01-10T12:00:00.000Z",
+      "payee": "Whole Foods"
+    },
+    {
+      "id": "tax-nd-002",
+      "userId": "test-user",
+      "type": "expense",
+      "amount": -80,
+      "category": "Personal Care",
+      "description": "Personal items",
+      "date": "2025-02-14T12:00:00.000Z",
+      "payee": "Target"
+    }
+  ],
+  "incomeTransactions": [
+    {
+      "id": "tax-inc-001",
+      "userId": "test-user",
+      "type": "income",
+      "amount": 5000,
+      "category": "Gross Receipts or Sales",
+      "description": "Client Invoice #1001",
+      "date": "2025-01-20T12:00:00.000Z",
+      "payee": "Client Inc",
+      "quarterlyPeriod": "Q1",
+      "scheduleCLine": "1a"
+    },
+    {
+      "id": "tax-inc-002",
+      "userId": "test-user",
+      "type": "income",
+      "amount": 3500,
+      "category": "Gross Receipts or Sales",
+      "description": "Client Invoice #1002",
+      "date": "2025-04-15T12:00:00.000Z",
+      "payee": "Another Client LLC",
+      "quarterlyPeriod": "Q2",
+      "scheduleCLine": "1a"
+    }
+  ],
+  "contractorPayments": [
+    {
+      "payee": "John Developer",
+      "taxId": "XXX-XX-1234",
+      "payments": [
+        { "date": "2025-02-20", "amount": 800 },
+        { "date": "2025-05-15", "amount": 600 },
+        { "date": "2025-08-10", "amount": 700 }
+      ],
+      "totalPaid": 2100,
+      "requires1099": true
+    },
+    {
+      "payee": "Jane Designer",
+      "taxId": "XXX-XX-5678",
+      "payments": [
+        { "date": "2025-03-01", "amount": 450 }
+      ],
+      "totalPaid": 450,
+      "requires1099": false
+    },
+    {
+      "payee": "Bob Consultant",
+      "taxId": "XXX-XX-9012",
+      "payments": [
+        { "date": "2025-04-01", "amount": 300 },
+        { "date": "2025-07-01", "amount": 300 }
+      ],
+      "totalPaid": 600,
+      "requires1099": true
+    }
+  ],
+  "employeePayments": [
+    {
+      "payee": "Jane Employee",
+      "payments": [
+        { "date": "2025-04-01", "amount": 3000 },
+        { "date": "2025-05-01", "amount": 3000 },
+        { "date": "2025-06-01", "amount": 3000 }
+      ],
+      "totalPaid": 9000,
+      "requiresW2": true
+    },
+    {
+      "payee": "Mike Assistant",
+      "payments": [
+        { "date": "2025-04-15", "amount": 1500 },
+        { "date": "2025-05-15", "amount": 1500 }
+      ],
+      "totalPaid": 3000,
+      "requiresW2": true
+    }
+  ],
+  "expectedTotals": {
+    "totalDeductibleExpenses": 6419,
+    "totalIncome": 8500,
+    "netProfit": 2081,
+    "quarterlyBreakdown": {
+      "Q1": 2925,
+      "Q2": 3494,
+      "Q3": 0,
+      "Q4": 0
+    },
+    "contractorPaymentsTotal": 3150,
+    "wagePaymentsTotal": 12000,
+    "contractorsRequiring1099": 2
+  },
+  "scheduleCLineMapping": {
+    "8": { "category": "Advertising", "expectedTotal": 500 },
+    "9": { "category": "Car and Truck Expenses", "expectedTotal": 75 },
+    "11": { "category": "Contract Labor", "expectedTotal": 800 },
+    "17": { "category": "Legal and Professional Services", "expectedTotal": 350 },
+    "18": { "category": "Office Expenses", "expectedTotal": 150 },
+    "20b": { "category": "Rent or Lease (Other Business Property)", "expectedTotal": 1200 },
+    "25": { "category": "Utilities", "expectedTotal": 200 },
+    "26": { "category": "Wages (Less Employment Credits)", "expectedTotal": 3000 },
+    "27a": { "categories": ["Software Subscriptions", "Bank Fees"], "expectedTotal": 144 }
+  }
+}

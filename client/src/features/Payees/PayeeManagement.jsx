@@ -31,8 +31,10 @@ const PayeeManagement = () => {
     queryFn: () => apiClient.payees.getTransactionsWithoutPayees({ sectionCode: 'checks' })
   });
 
-  const payees = payeesData?.payees || payeesData?.employees || payeesData?.vendors || [];
-  const unassignedCheckCount = unassignedChecks?.transactions?.length || 0;
+  const payeesRaw = payeesData?.payees || payeesData?.employees || payeesData?.vendors;
+  const payees = Array.isArray(payeesRaw) ? payeesRaw : [];
+  const unassignedTxns = unassignedChecks?.transactions;
+  const unassignedCheckCount = Array.isArray(unassignedTxns) ? unassignedTxns.length : 0;
 
   const handleCreatePayee = () => {
     setEditingPayee(null);
@@ -67,7 +69,6 @@ const PayeeManagement = () => {
 
   const tabs = [
     { key: 'employees', label: 'Employees', icon: '👥' },
-    { key: 'vendors', label: 'Vendors', icon: '🏢' },
     { key: 'assignment', label: `Check Assignment ${unassignedCheckCount > 0 ? `(${unassignedCheckCount})` : ''}`, icon: '📝', badge: unassignedCheckCount }
   ];
 
@@ -85,7 +86,7 @@ const PayeeManagement = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-          Employee & Vendor Management
+          Employee Management
         </h1>
         {activeTab !== 'assignment' && (
           <button
@@ -95,7 +96,7 @@ const PayeeManagement = () => {
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
             </svg>
-            Add {activeTab === 'employees' ? 'Employee' : 'Vendor'}
+            Add Employee
           </button>
         )}
       </div>

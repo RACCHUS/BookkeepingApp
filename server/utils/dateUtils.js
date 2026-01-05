@@ -270,6 +270,11 @@ export function isToday(date) {
 export function getRelativeDate(date) {
   const dateObj = new Date(date);
   const now = new Date();
+  
+  // Normalize both dates to midnight for accurate day comparison
+  dateObj.setHours(0, 0, 0, 0);
+  now.setHours(0, 0, 0, 0);
+  
   const diffInDays = daysBetween(dateObj, now);
   
   if (diffInDays === 0) return RELATIVE_DATES.TODAY;

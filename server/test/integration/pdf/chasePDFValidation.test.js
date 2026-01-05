@@ -1,7 +1,7 @@
 /**
  * @fileoverview Chase PDF Parsing Validation Tests
  * @description Tests to validate PDF parsing accuracy against expected transaction counts
- * @version 1.0.0
+ * @version 2.0.0
  */
 
 import { jest } from '@jest/globals';
@@ -15,8 +15,53 @@ const __dirname = path.dirname(__filename);
 // Import the PDF parser
 import chasePDFParser from '../../../services/chasePDFParser.js';
 
-// Test data directory - corrected path
+// Test data directory
 const CHASE_PDF_DIR = path.join(__dirname, '../../data/pdfs/chase');
+
+/**
+ * Load expected transaction counts from JSON file
+ */
+async function loadExpectedCounts() {
+  try {
+    const filePath = path.join(CHASE_PDF_DIR, 'expected-transaction-counts.json');
+    const data = await fs.readFile(filePath, 'utf-8');
+    return JSON.parse(data);
+  } catch (error) {
+    console.warn('Could not load expected transaction counts:', error.message);
+    return [];
+  }
+}
+
+/**
+ * Count transactions by section code
+ */
+function countTransactionsBySection(transactions) {
+  const counts = {
+    deposits: 0,
+    checks: 0,
+    card: 0,
+    electronic: 0,
+    other: 0
+  };
+
+  transactions.forEach(tx => {
+    const section = tx.sectionCode || tx.section || 'other';
+    
+    if (section === 'DEP' || section === 'deposits') {
+      counts.deposits++;
+    } else if (section === 'CHK' || section === 'checks') {
+      counts.checks++;
+    } else if (section === 'CARD' || section === 'card') {
+      counts.card++;
+    } else if (section === 'ELEC' || section === 'electronic') {
+      counts.electronic++;
+    } else {
+      counts.other++;
+    }
+  });
+
+  return counts;
+}
 
 describe('Chase PDF Parsing Validation', () => {
   let expectedCounts;
@@ -49,10 +94,75 @@ describe('Chase PDF Parsing Validation', () => {
         return;
       }
       
-      // This test will verify that we have expected counts for each PDF (optional)
-      // If expectedCounts is empty, test passes (data not yet populated)
-      expect(true).toBe(true);
+      expect(expectedCounts.length).toBeGreaterThan(0);
+      console.log(`Loaded expected counts for ${expectedCounts.length} PDFs`);
     });
+  });
+
+  describe('Transaction Count Validation - All PDFs', () => {
+    // This will create a test for each PDF file with expected counts
+    if (expectedCounts && expectedCounts.length > 0) {
+      expectedCounts.forEach((expected) => {
+      it(`should parse ${expected.filename} with correct transaction counts`, async () => {
+        const pdfPath = path.join(CHASE_PDF_DIR, expected.filename);
+        
+        // Check if file exists
+        try {
+          await fs.access(pdfPath);
+        } catch (error) {
+          console.warn(`PDF file not found: ${expected.filename}`);
+          return; // Skip if file doesn't exist
+        }
+
+        // Parse the PDF
+        const result = await chasePDFParser.parsePDF(pdfPath, 'test-user');
+        
+        expect(result.success).toBe(true);
+        expect(result.transactions).toBeDefined();
+        expect(Array.isArray(result.transactions)).toBe(true);
+
+        // Count transactions by section
+        const actualCounts = countTransactionsBySection(result.transactions);
+
+        // Log for debugging
+        console.log(`\n${expected.filename}:`);
+        console.log(`  Expected - Deposits: ${expected.deposits}, Checks: ${expected.checks}, Card: ${expected.card}, Electronic: ${expected.electronic}`);
+        console.log(`  Actual   - Deposits: ${actualCounts.deposits}, Checks: ${actualCounts.checks}, Card: ${actualCounts.card}, Electronic: ${actualCounts.electronic}`);
+        
+        // Validate counts (allow small variance for parser improvements)
+        const tolerance = 1; // Allow 1 transaction difference
+
+        expect(Math.abs(actualCounts.deposits - expected.deposits)).toBeLessThanOrEqual(tolerance);
+        expect(Math.abs(actualCounts.checks - expected.checks)).toBeLessThanOrEqual(tolerance);
+        expect(Math.abs(actualCounts.card - expected.card)).toBeLessThanOrEqual(tolerance);
+        expect(Math.abs(actualCounts.electronic - expected.electronic)).toBeLessThanOrEqual(tolerance);
+      }, 30000); // 30 second timeout for PDF parsing
+    });
+
+    it('should have consistent total transaction counts', async () => {
+      if (!availablePDFs || availablePDFs.length === 0) {
+        expect(true).toBe(true);
+        return;
+      }
+
+      const samplePDF = availablePDFs[0];
+      const pdfPath = path.join(CHASE_PDF_DIR, samplePDF);
+      
+      const result = await chasePDFParser.parsePDF(pdfPath, 'test-user');
+      
+      if (result.success) {
+        const actualCounts = countTransactionsBySection(result.transactions);
+        const total = actualCounts.deposits + actualCounts.checks + actualCounts.card + actualCounts.electronic + actualCounts.other;
+        
+        expect(total).toBe(result.transactions.length);
+      }
+    }, 30000);
+    } else {
+      it('should skip validation when expected counts not available', () => {
+        console.warn('Expected counts file not found, skipping validation tests');
+        expect(true).toBe(true);
+      });
+    }
   });
 
   describe('Transaction Count Validation', () => {
@@ -155,67 +265,3 @@ describe('Chase PDF Parsing Validation', () => {
     });
   });
 });
-
-/**
- * Load expected transaction counts from the filled-in data
- * TODO: Implement this function to parse EXPECTED_TRANSACTION_COUNTS.md
- * or create a JSON version of the expected data
- */
-async function loadExpectedCounts() {
-  // Placeholder implementation
-  // In a real implementation, this would parse the markdown file
-  // or load from a JSON file with the expected counts
-  
-  return [
-    // Example structure - replace with actual data once filled
-    {
-      filename: '20240131-statements-5697-.pdf.pdf',
-      period: 'January 2024',
-      grandTotal: 0, // TO_FILL
-      checkingTotal: 0, // TO_FILL
-      savingsTotal: 0, // TO_FILL
-      creditCardTotal: 0, // TO_FILL
-      depositCount: 0, // TO_FILL
-      withdrawalCount: 0, // TO_FILL
-      purchaseCount: 0 // TO_FILL
-    }
-    // Add more entries for other PDFs
-  ];
-}
-
-/**
- * Helper function to create JSON version of expected counts
- * Can be used to convert markdown data to structured format
- */
-export async function createExpectedCountsJSON() {
-  // This function can be used to help convert the filled markdown
-  // into a structured JSON format for easier testing
-  
-  const expectedCounts = [
-    // Structure will be filled based on EXPECTED_TRANSACTION_COUNTS.md
-  ];
-  
-  const outputPath = path.join(__dirname, '../data/chase-expected-counts.json');
-  await fs.writeFile(outputPath, JSON.stringify(expectedCounts, null, 2));
-  
-  console.log(`Expected counts JSON created at: ${outputPath}`);
-}
-
-/**
- * Utility function to run validation report
- * Generates a detailed report of parsing accuracy
- */
-export async function generateValidationReport() {
-  const results = {
-    totalPDFs: availablePDFs.length,
-    successfulParses: 0,
-    failedParses: 0,
-    accuracyByPDF: [],
-    overallAccuracy: 0
-  };
-  
-  // Implementation would compare actual vs expected for each PDF
-  // and generate a comprehensive validation report
-  
-  return results;
-}

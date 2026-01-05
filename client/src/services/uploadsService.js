@@ -39,9 +39,28 @@ export async function renameUpload(uploadId, name) {
 /**
  * Delete an upload
  * @param {string} uploadId
+ * @param {object} options - { deleteTransactions: boolean }
  */
-export async function deleteUpload(uploadId) {
-  // Calls DELETE /api/pdf/uploads/:id
-  const response = await api.delete(`/pdf/uploads/${uploadId}`);
+export async function deleteUpload(uploadId, options = {}) {
+  // Calls DELETE /api/pdf/uploads/:id with optional deleteTransactions param
+  const params = {};
+  if (options.deleteTransactions !== undefined) {
+    params.deleteTransactions = options.deleteTransactions;
+  }
+  const response = await api.delete(`/pdf/uploads/${uploadId}`, { params });
+  return response.data;
+}
+
+/**
+ * Batch delete multiple uploads
+ * @param {string[]} uploadIds - Array of upload IDs to delete
+ * @param {object} options - { deleteTransactions: boolean }
+ * @returns {Promise<{ successful: Array, failed: Array }>}
+ */
+export async function batchDeleteUploads(uploadIds, options = {}) {
+  const response = await api.post('/pdf/uploads/batch-delete', {
+    uploadIds,
+    deleteTransactions: options.deleteTransactions || false
+  });
   return response.data;
 }

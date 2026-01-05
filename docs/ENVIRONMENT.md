@@ -66,6 +66,11 @@ FIREBASE_USE_EMULATOR=true
 FIRESTORE_EMULATOR_HOST=localhost:8080
 FIREBASE_AUTH_EMULATOR_HOST=localhost:9099
 
+# Cloudinary Configuration (Optional - backup storage when Firebase > 80%)
+CLOUDINARY_CLOUD_NAME=your_cloud_name
+CLOUDINARY_API_KEY=your_api_key
+CLOUDINARY_API_SECRET=your_api_secret
+
 # CORS Configuration
 CORS_ORIGIN=http://localhost:5173
 
@@ -88,6 +93,11 @@ NODE_ENV=production
 FIREBASE_PROJECT_ID=your-project
 FIREBASE_CLIENT_EMAIL=firebase-adminsdk-xxxxx@your-project.iam.gserviceaccount.com
 FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
+
+# Cloudinary Configuration (Optional - backup storage when Firebase > 80%)
+CLOUDINARY_CLOUD_NAME=your_cloud_name
+CLOUDINARY_API_KEY=your_api_key
+CLOUDINARY_API_SECRET=your_api_secret
 
 # CORS Configuration
 CORS_ORIGIN=https://your-project.firebaseapp.com
@@ -414,6 +424,104 @@ firebase deploy --only firestore:indexes --project development
 firebase deploy --only firestore:indexes --project production
 ```
 
+## Storage Configuration
+
+The application uses multiple storage services for different file types:
+
+### Receipt/Image Storage (StorageService)
+
+The `StorageService` (`server/services/storageService.js`) manages receipt and image uploads:
+- **Primary**: Firebase Storage (5GB free tier)
+- **Fallback**: Cloudinary (when Firebase > 80% usage)
+- **Automatic failover**: If Firebase upload fails, automatically retries with Cloudinary
+
+### PDF Bank Statement Storage (SupabaseService)
+
+The `SupabaseService` (`server/services/supabaseService.js`) manages PDF bank statement uploads:
+- **Primary**: Supabase Storage
+- **Fallback**: Cloudinary (when Supabase fails or reaches quota)
+- **Automatic failover**: If Supabase upload fails, automatically retries with Cloudinary
+
+```javascript
+// PDF upload response format
+{
+  url: 'https://xxx.supabase.co/...',      // or Cloudinary URL
+  storageProvider: 'supabase',              // or 'cloudinary'
+  cloudinaryPublicId: null                  // Set when using Cloudinary
+}
+```
+
+### Cloudinary Environment Variables
+
+Add these to your `server/.env` file (optional - needed for backup storage):
+
+```env
+# Cloudinary Configuration (Optional - backup storage)
+# Get these from https://cloudinary.com/console
+CLOUDINARY_CLOUD_NAME=your_cloud_name
+CLOUDINARY_API_KEY=your_api_key
+CLOUDINARY_API_SECRET=your_api_secret
+
+# Supabase Configuration (for PDF storage)
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+```
+
+**Getting Cloudinary Credentials:**
+1. Sign up at [cloudinary.com](https://cloudinary.com/)
+2. Go to Dashboard → Settings → Access Keys
+3. Copy your Cloud Name, API Key, and API Secret
+
+### Storage Provider Selection Logic
+
+```javascript
+// Simplified logic from StorageService
+async shouldUseFirebase() {
+  // If Cloudinary not configured, always use Firebase
+  if (!this.cloudinaryConfigured) return true;
+  
+  // Check estimated usage (80% threshold)
+  const usageRatio = this.estimatedFirebaseUsage / FIREBASE_FREE_TIER_BYTES;
+  return usageRatio < 0.8;
+}
+```
+
+### Storage Features by Provider
+
+| Feature | Firebase Storage | Cloudinary |
+|---------|-----------------|------------|
+| Image optimization | ❌ | ✅ Auto quality/format |
+| Thumbnail generation | ❌ | ✅ Automatic |
+| Free tier | 5GB | 25GB (credits) |
+| CDN | ✅ | ✅ |
+| PDF support | ✅ | ✅ |
+
+### File Upload Response
+
+```javascript
+{
+  url: 'https://storage.googleapis.com/...',  // or Cloudinary URL
+  fileId: 'users/uid/receipts/uuid.pdf',      // or Cloudinary public_id
+  storageProvider: 'firebase',                 // or 'cloudinary'
+  thumbnailUrl: null                           // Cloudinary provides this for images
+}
+```
+
+### Storage Statistics API
+
+```javascript
+// Get current storage stats
+const stats = storageService.getStorageStats();
+// Returns:
+// {
+//   firebaseEnabled: true,
+//   cloudinaryEnabled: true,
+//   estimatedFirebaseUsage: 1073741824,  // bytes
+//   firebaseUsagePercent: 20,
+//   usingCloudinaryFallback: false
+// }
+```
+
 ## Security Configuration
 
 ### 1. CORS Configuration
@@ -473,48 +581,41 @@ module.exports = isProduction ? [helmet(), securityMiddleware] : [securityMiddle
 
 ### 1. Test Environment Configuration
 
-**Jest Configuration** (`client/jest.config.js`):
+**Vitest Configuration** (`client/vitest.config.js`):
 ```javascript
-export default {
-  testEnvironment: 'jsdom',
-  setupFilesAfterEnv: ['<rootDir>/src/test/setup.js'],
-  moduleNameMapping: {
-    '^@/(.*)$': '<rootDir>/src/$1'
+import { defineConfig } from 'vitest/config';
+import react from '@vitejs/plugin-react';
+import path from 'path';
+
+export default defineConfig({
+  plugins: [react()],
+  test: {
+    environment: 'jsdom',
+    setupFiles: ['./src/__tests__/setupTests.js'],
+    globals: true,
+    include: ['src/**/*.{test,spec}.{js,jsx,ts,tsx}'],
   },
-  testMatch: [
-    '<rootDir>/src/**/__tests__/**/*.{js,jsx,ts,tsx}',
-    '<rootDir>/src/**/*.{test,spec}.{js,jsx,ts,tsx}'
-  ],
-  collectCoverageFrom: [
-    'src/**/*.{js,jsx}',
-    '!src/main.jsx',
-    '!src/**/*.stories.js'
-  ]
-};
+  resolve: {
+    alias: {
+      '@shared': path.resolve(__dirname, '../shared'),
+    },
+  },
+});
 ```
 
-**Test Setup** (`client/src/test/setup.js`):
+**Test Setup** (`client/src/__tests__/setupTests.js`):
 ```javascript
 import '@testing-library/jest-dom';
-
-// Mock environment variables for tests
-Object.defineProperty(import.meta, 'env', {
-  value: {
-    VITE_FIREBASE_API_KEY: 'test-api-key',
-    VITE_FIREBASE_PROJECT_ID: 'test-project',
-    VITE_USE_EMULATOR: 'true',
-    VITE_DEBUG_MODE: 'true'
-  }
-});
+import { vi } from 'vitest';
 
 // Mock Firebase
-jest.mock('firebase/app', () => ({
-  initializeApp: jest.fn()
+vi.mock('firebase/app', () => ({
+  initializeApp: vi.fn()
 }));
 
-jest.mock('firebase/auth', () => ({
-  getAuth: jest.fn(),
-  connectAuthEmulator: jest.fn()
+vi.mock('firebase/auth', () => ({
+  getAuth: vi.fn(),
+  connectAuthEmulator: vi.fn()
 }));
 ```
 

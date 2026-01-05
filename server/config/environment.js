@@ -70,6 +70,22 @@ export const FIREBASE_CONFIG = {
   ADMIN_CLIENT_X509_CERT_URL: process.env.FIREBASE_ADMIN_CLIENT_X509_CERT_URL
 };
 
+// Supabase Configuration (Primary database provider)
+export const SUPABASE_CONFIG = {
+  URL: process.env.SUPABASE_URL,
+  ANON_KEY: process.env.SUPABASE_ANON_KEY,
+  SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
+  JWT_SECRET: process.env.SUPABASE_JWT_SECRET
+};
+
+// Database Provider Configuration
+export const DB_PROVIDER_CONFIG = {
+  // 'supabase' (default) or 'firebase'
+  PROVIDER: process.env.DB_PROVIDER || 'supabase',
+  // Override auth provider separately if needed (defaults to DB_PROVIDER)
+  AUTH_PROVIDER: process.env.AUTH_PROVIDER
+};
+
 // Server Configuration
 export const SERVER_CONFIG = {
   PORT: parseInteger(process.env.PORT, 5000),

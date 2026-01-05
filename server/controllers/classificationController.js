@@ -1,5 +1,9 @@
 import transactionClassifierService from '../services/transactionClassifierService.js';
-import firebaseService from '../services/cleanFirebaseService.js';
+import { getDatabaseAdapter } from '../services/adapters/index.js';
+import { logger } from '../config/index.js';
+
+// Get database adapter (Supabase or Firebase based on DB_PROVIDER)
+const getDb = () => getDatabaseAdapter();
 
 // Classify a transaction using rule-based logic only
 export const classifyTransaction = async (req, res) => {
@@ -22,8 +26,9 @@ export const classifyTransaction = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Classification error:', error);
+    logger.error('Classification error:', error);
     res.status(500).json({
+      success: false,
       error: 'Classification failed',
       message: error.message
     });
@@ -36,11 +41,12 @@ export const classifyTransaction = async (req, res) => {
 export const getClassificationRules = async (req, res) => {
   try {
     const { uid: userId } = req.user;
-    const rules = await firebaseService.getClassificationRules(userId);
+    const rules = await getDb().getClassificationRules(userId);
     res.json({ rules });
   } catch (error) {
-    console.error('Get classification rules error:', error);
+    logger.error('Get classification rules error:', error);
     res.status(500).json({
+      success: false,
       error: 'Failed to get classification rules',
       message: error.message
     });
@@ -52,7 +58,10 @@ export const createClassificationRule = async (req, res) => {
     const { uid: userId } = req.user;
     const ruleData = req.body;
 
-    const ruleId = await firebaseService.createClassificationRule(userId, ruleData);
+    const ruleId = await getDb().createClassificationRule(userId, ruleData);
+
+    // Clear the rule cache for this user since rules changed
+    transactionClassifierService.clearCache(userId);
 
     res.status(201).json({
       success: true,
@@ -61,8 +70,9 @@ export const createClassificationRule = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Create classification rule error:', error);
+    logger.error('Create classification rule error:', error);
     res.status(500).json({
+      success: false,
       error: 'Failed to create classification rule',
       message: error.message
     });
@@ -75,7 +85,10 @@ export const updateClassificationRule = async (req, res) => {
     const { id: ruleId } = req.params;
     const updateData = req.body;
 
-    const updatedRule = await firebaseService.updateClassificationRule(userId, ruleId, updateData);
+    const updatedRule = await getDb().updateClassificationRule(userId, ruleId, updateData);
+
+    // Clear the rule cache for this user since rules changed
+    transactionClassifierService.clearCache(userId);
 
     res.json({
       success: true,
@@ -84,8 +97,9 @@ export const updateClassificationRule = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Update classification rule error:', error);
+    logger.error('Update classification rule error:', error);
     res.status(500).json({
+      success: false,
       error: 'Failed to update classification rule',
       message: error.message
     });
@@ -97,7 +111,10 @@ export const deleteClassificationRule = async (req, res) => {
     const { uid: userId } = req.user;
     const { id: ruleId } = req.params;
 
-    await firebaseService.deleteClassificationRule(userId, ruleId);
+    await getDb().deleteClassificationRule(userId, ruleId);
+
+    // Clear the rule cache for this user since rules changed
+    transactionClassifierService.clearCache(userId);
 
     res.json({
       success: true,
@@ -105,8 +122,9 @@ export const deleteClassificationRule = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Delete classification rule error:', error);
+    logger.error('Delete classification rule error:', error);
     res.status(500).json({
+      success: false,
       error: 'Failed to delete classification rule',
       message: error.message
     });
@@ -147,8 +165,9 @@ export const testClassification = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Test classification error:', error);
+    logger.error('Test classification error:', error);
     res.status(500).json({
+      success: false,
       error: 'Classification test failed',
       message: error.message
     });
@@ -161,7 +180,7 @@ export const bulkReclassify = async (req, res) => {
     const { filters } = req.body;
 
     // Get transactions based on filters
-    const transactions = await firebaseService.getTransactions(userId, {
+    const transactions = await getDb().getTransactions(userId, {
       ...filters,
       limit: 1000 // Limit bulk operations to prevent timeouts
     });
@@ -198,7 +217,7 @@ export const bulkReclassify = async (req, res) => {
           processedCount++;
         }
       } catch (error) {
-        console.error(`Error classifying transaction ${transaction.id}:`, error);
+        logger.error(`Error classifying transaction ${transaction.id}:`, error);
       }
     }
 
@@ -209,7 +228,7 @@ export const bulkReclassify = async (req, res) => {
         const batch = updates.slice(i, i + batchSize);
         await Promise.all(
           batch.map(update => 
-            firebaseService.updateTransaction(userId, update.id, {
+            getDb().updateTransaction(userId, update.id, {
               category: update.category,
               classificationInfo: update.classificationInfo
             })
@@ -226,8 +245,9 @@ export const bulkReclassify = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Bulk reclassify error:', error);
+    logger.error('Bulk reclassify error:', error);
     res.status(500).json({
+      success: false,
       error: 'Bulk reclassification failed',
       message: error.message
     });
@@ -239,11 +259,11 @@ export const getClassificationStats = async (req, res) => {
     const { uid: userId } = req.user;
 
     // Get classification rules count
-    const rules = await firebaseService.getClassificationRules(userId);
+    const rules = await getDb().getClassificationRules(userId);
     const totalRules = rules ? rules.length : 0;
 
     // Get all transactions for stats
-    const transactions = await firebaseService.getTransactions(userId, { limit: 10000 });
+    const transactions = await getDb().getTransactions(userId, { limit: 10000 });
     
     if (!transactions || transactions.length === 0) {
       return res.json({
@@ -292,8 +312,9 @@ export const getClassificationStats = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Get classification stats error:', error);
+    logger.error('Get classification stats error:', error);
     res.status(500).json({
+      success: false,
       error: 'Failed to get classification stats',
       message: error.message
     });
@@ -305,7 +326,7 @@ export const getUncategorizedTransactions = async (req, res) => {
     const { uid: userId } = req.user;
     const limit = parseInt(req.query.limit) || 50;
 
-    const uncategorizedTransactions = await firebaseService.getUncategorizedTransactions(userId, limit);
+    const uncategorizedTransactions = await getDb().getUncategorizedTransactions(userId, limit);
 
     res.json({
       success: true,
@@ -313,8 +334,9 @@ export const getUncategorizedTransactions = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Get uncategorized transactions error:', error);
+    logger.error('Get uncategorized transactions error:', error);
     res.status(500).json({
+      success: false,
       error: 'Failed to get uncategorized transactions',
       message: error.message
     });

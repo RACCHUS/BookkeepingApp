@@ -15,10 +15,18 @@ export const TransactionSchema = {
   type: TRANSACTION_TYPES.EXPENSE, // income, expense, transfer
   
   // Payee/Source information
-  payee: '', // Who was paid or who paid
+  payee: '', // Who was paid or who paid (text description)
+  payeeId: '', // Link to PayeeSchema record (for 1099/tax tracking)
   payeeAddress: '', // Optional address
   payeePhone: '', // Optional phone
   payeeEmail: '', // Optional email
+  
+  // Vendor information
+  vendorId: '', // Link to vendor record (business you purchase from)
+  vendorName: '', // Vendor business name for display
+  
+  // Contractor/1099 tracking
+  isContractorPayment: false, // Flag for 1099-NEC tracking
   
   // Payment information
   paymentMethod: PAYMENT_METHODS.OTHER,

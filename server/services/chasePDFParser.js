@@ -485,6 +485,7 @@ class ChasePDFParser {
   generateSummary(transactions) {
     const summary = {
       totalTransactions: transactions.length,
+      transactionCount: transactions.length,
       totalIncome: 0,
       totalExpenses: 0,
       netIncome: 0,
