@@ -33,20 +33,35 @@ A full-featured bookkeeping application for managing transactions, tracking expe
 | Layer | Technologies |
 |-------|--------------|
 | **Frontend** | React 18, Vite, TailwindCSS, React Query, React Hook Form |
-| **Backend** | Node.js, Express.js, PDFKit |
+| **Backend** | Supabase Edge Functions (Deno) |
 | **Database** | Supabase (PostgreSQL), Row Level Security |
-| **Auth** | Supabase Auth (Email/Password, Google) |
-| **Storage** | Supabase Storage (Cloudinary fallback) |
+| **Auth** | Firebase Auth (Email/Password, Google) |
+| **Storage** | Supabase Storage |
+| **Hosting** | Firebase Hosting |
 | **Testing** | Vitest (client), Jest (server), React Testing Library |
+
+## Architecture
+
+The app uses a **serverless architecture**:
+
+- **Frontend** → Firebase Hosting (https://bookkeeping-app-12583.web.app)
+- **Database** → Supabase PostgreSQL (direct client access)
+- **PDF Parsing** → Supabase Edge Function (`parse-pdf`)
+- **Reports** → Supabase Edge Function (`generate-report`)
+- **CSV Import** → Client-side parsing (PapaParse)
+- **File Storage** → Supabase Storage
+
+No Express server required for production!
 
 ## Project Structure
 
 ```
 BookkeepingApp/
 ├── client/          # React frontend (Vite)
-├── server/          # Express.js backend
+├── server/          # Express.js backend (for local dev only)
 ├── shared/          # Shared constants and utilities
-├── supabase/        # Database migrations
+├── supabase/        # Database migrations & Edge Functions
+│   └── functions/   # Deno Edge Functions (parse-pdf, generate-report)
 ├── docs/            # Documentation
 ├── scripts/         # Automation scripts
 └── reports/         # Report templates and output
@@ -71,20 +86,13 @@ See [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md) for details.
 
 2. **Configure Environment**
    
-   Root `.env`:
-   ```env
-   SUPABASE_URL=https://your-project.supabase.co
-   SUPABASE_ANON_KEY=your_anon_key
-   SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
-   PORT=5000
-   CORS_ORIGIN=http://localhost:3000
-   ```
-
-   `client/.env.local`:
+   `client/.env`:
    ```env
    VITE_SUPABASE_URL=https://your-project.supabase.co
    VITE_SUPABASE_ANON_KEY=your_anon_key
-   VITE_API_URL=http://localhost:5000/api
+   VITE_FIREBASE_API_KEY=your_firebase_api_key
+   VITE_FIREBASE_AUTH_DOMAIN=your-project.firebaseapp.com
+   VITE_FIREBASE_PROJECT_ID=your-project-id
    ```
 
 3. **Supabase Setup**

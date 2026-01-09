@@ -45,24 +45,21 @@ const CSVUpload = () => {
 
   const banks = banksData?.data || [];
 
-  // Upload mutation
+  // Upload mutation - now uses client-side parsing
   const uploadMutation = useMutation({
     mutationFn: (file) => {
-      const formData = new FormData();
-      formData.append('csv', file);
-      formData.append('bankFormat', selectedBank);
-      if (selectedCompany) {
-        formData.append('companyId', selectedCompany);
-        formData.append('companyName', selectedCompanyData?.name || '');
-      }
-      return apiClient.csv.upload(formData);
+      return apiClient.csv.upload(file, {
+        bankFormat: selectedBank,
+        companyId: selectedCompany,
+        companyName: selectedCompanyData?.name || '',
+      });
     },
     onSuccess: (response) => {
       if (response.success) {
         setPreviewData(response.data);
         setUploadState('preview');
         
-        if (response.data.detectedBank && response.data.detectedBank !== 'auto') {
+        if (response.data.detectedBank && response.data.detectedBank !== 'auto' && response.data.detectedBank !== 'generic') {
           toast.success(`Detected ${response.data.detectedBankName} format`);
         } else if (response.data.requiresMapping) {
           toast.info('Bank format not detected. Please review the column mapping.');
@@ -74,30 +71,28 @@ const CSVUpload = () => {
     },
     onError: (error) => {
       setUploadState('error');
-      toast.error(error.response?.data?.message || 'Failed to upload CSV');
+      toast.error(error.message || 'Failed to parse CSV');
     },
   });
 
-  // Confirm import mutation
+  // Confirm import mutation - now inserts directly to Supabase
   const confirmMutation = useMutation({
     mutationFn: () => {
-      return apiClient.csv.confirm(previewData.uploadId, {
-        companyId: selectedCompany,
-        companyName: selectedCompanyData?.name,
+      return apiClient.csv.confirmImport(previewData.transactions, {
         skipDuplicates,
+        companyId: selectedCompany,
+        fileName: previewData.fileName || 'import.csv',
+        bankFormat: previewData.detectedBank || 'auto',
       });
     },
     onSuccess: (response) => {
       if (response.success) {
         setUploadState('success');
         
-        const { savedCount, duplicateCount, errorCount } = response.data;
-        let message = `Successfully imported ${savedCount} transactions`;
-        if (duplicateCount > 0) {
-          message += ` (${duplicateCount} duplicates skipped)`;
-        }
-        if (errorCount > 0) {
-          message += ` (${errorCount} errors)`;
+        const { imported, duplicates } = response.data;
+        let message = `Successfully imported ${imported} transactions`;
+        if (duplicates > 0) {
+          message += ` (${duplicates} duplicates skipped)`;
         }
         toast.success(message);
         
@@ -110,13 +105,13 @@ const CSVUpload = () => {
       }
     },
     onError: (error) => {
-      toast.error(error.response?.data?.message || 'Failed to import transactions');
+      toast.error(error.message || 'Failed to import transactions');
     },
   });
 
-  // Cancel mutation
+  // Cancel mutation - just reset state (no server call needed)
   const cancelMutation = useMutation({
-    mutationFn: () => apiClient.csv.cancel(previewData.uploadId),
+    mutationFn: () => Promise.resolve(),
     onSuccess: () => {
       resetState();
       toast.info('Import cancelled');

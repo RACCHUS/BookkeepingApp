@@ -7,6 +7,7 @@
 
 import { supabase } from './supabase';
 import { auth } from './firebase';
+import { parseCSVFile, getSupportedBanks } from './csvParser';
 
 /**
  * Get the current user's Firebase UID
@@ -803,6 +804,468 @@ export const supabaseClient = {
       if (error) throw error;
 
       return { success: true };
+    },
+  },
+
+  // CSV methods (client-side parsing)
+  csv: {
+    getBanks: async () => {
+      return {
+        success: true,
+        data: getSupportedBanks(),
+      };
+    },
+
+    upload: async (file, options = {}) => {
+      // Parse CSV entirely client-side
+      const result = await parseCSVFile(file, options);
+      
+      if (!result.success) {
+        throw new Error(result.error);
+      }
+
+      return {
+        success: true,
+        data: {
+          transactions: result.transactions,
+          detectedBank: result.detectedBank,
+          detectedBankName: result.detectedBankName,
+          headers: result.headers,
+          sampleRows: result.sampleRows,
+          totalRows: result.totalRows,
+          parsedCount: result.parsedCount,
+          errors: result.errors,
+          requiresMapping: !result.detectedBank || result.detectedBank === 'generic',
+        },
+      };
+    },
+
+    confirmImport: async (transactions, options = {}) => {
+      const userId = await getUserId();
+      const { skipDuplicates = true, companyId = null } = options;
+
+      // Create a CSV import record
+      const { data: importRecord, error: importError } = await supabase
+        .from('csv_imports')
+        .insert({
+          user_id: userId,
+          company_id: companyId,
+          file_name: options.fileName || 'import.csv',
+          bank_format: options.bankFormat || 'auto',
+          total_rows: transactions.length,
+          status: 'processing',
+        })
+        .select()
+        .single();
+
+      if (importError) throw importError;
+
+      // Check for duplicates if needed
+      let toInsert = transactions;
+      let duplicateCount = 0;
+
+      if (skipDuplicates) {
+        // Get existing transactions to check for duplicates
+        const { data: existing } = await supabase
+          .from('transactions')
+          .select('date, description, amount')
+          .eq('user_id', userId);
+
+        const existingSet = new Set(
+          (existing || []).map(t => `${t.date}|${t.description}|${t.amount}`)
+        );
+
+        toInsert = transactions.filter(t => {
+          const key = `${t.date}|${t.description}|${t.amount}`;
+          if (existingSet.has(key)) {
+            duplicateCount++;
+            return false;
+          }
+          return true;
+        });
+      }
+
+      // Insert transactions
+      const transactionsToInsert = toInsert.map(t => ({
+        user_id: userId,
+        date: t.date,
+        description: t.description,
+        amount: t.amount,
+        type: t.type,
+        category: t.category || null,
+        company_id: companyId || t.companyId || null,
+        source: 'csv',
+        source_file: options.fileName || 'import.csv',
+        csv_import_id: importRecord.id,
+        bank_name: t.bankName || null,
+        check_number: t.checkNumber || null,
+        reference_number: t.referenceNumber || null,
+        original_description: t.originalDescription || t.description,
+        created_by: userId,
+        last_modified_by: userId,
+      }));
+
+      if (transactionsToInsert.length > 0) {
+        const { error: insertError } = await supabase
+          .from('transactions')
+          .insert(transactionsToInsert);
+
+        if (insertError) throw insertError;
+      }
+
+      // Update import record
+      await supabase
+        .from('csv_imports')
+        .update({
+          status: 'completed',
+          imported_count: transactionsToInsert.length,
+          duplicate_count: duplicateCount,
+        })
+        .eq('id', importRecord.id);
+
+      return {
+        success: true,
+        data: {
+          importId: importRecord.id,
+          imported: transactionsToInsert.length,
+          duplicates: duplicateCount,
+          total: transactions.length,
+        },
+      };
+    },
+
+    getImports: async (params = {}) => {
+      const userId = await getUserId();
+      
+      let query = supabase
+        .from('csv_imports')
+        .select('*', { count: 'exact' })
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
+
+      const limit = params.limit || 20;
+      const offset = params.offset || 0;
+      query = query.range(offset, offset + limit - 1);
+
+      const { data, error, count } = await query;
+      if (error) throw error;
+
+      return {
+        success: true,
+        data: {
+          imports: (data || []).map(row => ({
+            id: row.id,
+            fileName: row.file_name,
+            bankFormat: row.bank_format,
+            totalRows: row.total_rows,
+            importedCount: row.imported_count,
+            duplicateCount: row.duplicate_count,
+            status: row.status,
+            createdAt: row.created_at,
+          })),
+          total: count || 0,
+        },
+      };
+    },
+
+    deleteImport: async (importId) => {
+      const userId = await getUserId();
+      
+      // Delete associated transactions first
+      await supabase
+        .from('transactions')
+        .delete()
+        .eq('csv_import_id', importId)
+        .eq('user_id', userId);
+
+      // Delete the import record
+      const { error } = await supabase
+        .from('csv_imports')
+        .delete()
+        .eq('id', importId)
+        .eq('user_id', userId);
+
+      if (error) throw error;
+
+      return { success: true };
+    },
+  },
+
+  // ===== PDF Operations (via Supabase Edge Functions) =====
+  pdf: {
+    /**
+     * Upload and parse a PDF bank statement
+     * Uses Supabase Edge Function
+     */
+    upload: async (file, companyId = null) => {
+      const userId = await getUserId();
+      
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('userId', userId);
+      if (companyId) formData.append('companyId', companyId);
+
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+      const response = await fetch(
+        `${supabaseUrl}/functions/v1/parse-pdf`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${supabaseKey}`,
+          },
+          body: formData,
+        }
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to parse PDF');
+      }
+
+      const result = await response.json();
+      
+      // Transform transactions to frontend format
+      return {
+        success: true,
+        data: {
+          transactions: result.transactions?.map(t => ({
+            date: t.date,
+            description: t.description,
+            amount: t.amount,
+            type: t.type,
+            checkNumber: t.checkNumber,
+          })) || [],
+          bank: result.bank,
+          uploadId: result.uploadId,
+          parsedCount: result.transactions?.length || 0,
+        },
+      };
+    },
+
+    /**
+     * Confirm and import parsed PDF transactions
+     */
+    confirmImport: async (transactions, companyId = null) => {
+      const userId = await getUserId();
+
+      // Insert transactions directly to Supabase
+      const transactionsToInsert = transactions.map(t => ({
+        user_id: userId,
+        company_id: companyId || null,
+        date: t.date,
+        description: t.description,
+        amount: t.amount,
+        type: t.type || 'expense',
+        category: t.category || null,
+        payee: t.payee || t.description?.substring(0, 50) || null,
+        source: 'pdf_import',
+        check_number: t.checkNumber || null,
+      }));
+
+      const { error } = await supabase
+        .from('transactions')
+        .insert(transactionsToInsert);
+
+      if (error) throw error;
+
+      return {
+        success: true,
+        data: {
+          imported: transactionsToInsert.length,
+        },
+      };
+    },
+
+    /**
+     * Get PDF upload history
+     */
+    getUploads: async (params = {}) => {
+      const userId = await getUserId();
+
+      let query = supabase
+        .from('pdf_uploads')
+        .select('*', { count: 'exact' })
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
+
+      if (params.companyId) {
+        query = query.eq('company_id', params.companyId);
+      }
+
+      const limit = params.limit || 20;
+      const offset = params.offset || 0;
+      query = query.range(offset, offset + limit - 1);
+
+      const { data, error, count } = await query;
+      if (error) throw error;
+
+      return {
+        success: true,
+        data: {
+          uploads: (data || []).map(row => ({
+            id: row.id,
+            fileName: row.file_name,
+            fileSize: row.file_size,
+            bankDetected: row.bank_detected,
+            transactionCount: row.transaction_count,
+            status: row.status,
+            createdAt: row.created_at,
+          })),
+          total: count || 0,
+        },
+      };
+    },
+  },
+
+  // ===== Reports (via Supabase Edge Functions) =====
+  reports: {
+    /**
+     * Generate a report via Edge Function
+     */
+    generate: async (type, params = {}) => {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+      const response = await fetch(
+        `${supabaseUrl}/functions/v1/generate-report`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${supabaseKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            type,
+            ...params,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to generate report');
+      }
+
+      return response.json();
+    },
+
+    /**
+     * Get Profit & Loss report
+     */
+    profitLoss: async (params = {}) => {
+      const result = await supabaseClient.reports.generate('profit-loss', params);
+      return { success: true, data: result.report };
+    },
+
+    /**
+     * Get Tax Summary report
+     */
+    taxSummary: async (params = {}) => {
+      const result = await supabaseClient.reports.generate('tax-summary', params);
+      return { success: true, data: result.report };
+    },
+
+    /**
+     * Get Expense Summary report
+     */
+    expenseSummary: async (params = {}) => {
+      const result = await supabaseClient.reports.generate('expense', params);
+      return { success: true, data: result.report };
+    },
+
+    /**
+     * Get Income report
+     */
+    incomeSummary: async (params = {}) => {
+      const result = await supabaseClient.reports.generate('income', params);
+      return { success: true, data: result.report };
+    },
+
+    /**
+     * Download report as CSV
+     */
+    downloadCSV: async (type, params = {}) => {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+      const response = await fetch(
+        `${supabaseUrl}/functions/v1/generate-report`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${supabaseKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            type,
+            format: 'csv',
+            ...params,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to download report');
+      }
+
+      // Return as blob for download
+      return response.blob();
+    },
+
+    /**
+     * Client-side report generation (for simple reports without Edge Function)
+     * Generate P&L directly from Supabase data
+     */
+    generateProfitLossLocal: async (params = {}) => {
+      const userId = await getUserId();
+      
+      let query = supabase
+        .from('transactions')
+        .select('*')
+        .eq('user_id', userId);
+
+      if (params.startDate) query = query.gte('date', params.startDate);
+      if (params.endDate) query = query.lte('date', params.endDate);
+      if (params.companyId) query = query.eq('company_id', params.companyId);
+
+      const { data: transactions, error } = await query;
+      if (error) throw error;
+
+      // Calculate totals
+      const incomeByCategory = {};
+      const expenseByCategory = {};
+      let totalIncome = 0;
+      let totalExpenses = 0;
+
+      for (const tx of transactions || []) {
+        const category = tx.category || 'Uncategorized';
+        
+        if (tx.type === 'income') {
+          incomeByCategory[category] = (incomeByCategory[category] || 0) + parseFloat(tx.amount);
+          totalIncome += parseFloat(tx.amount);
+        } else {
+          expenseByCategory[category] = (expenseByCategory[category] || 0) + parseFloat(tx.amount);
+          totalExpenses += parseFloat(tx.amount);
+        }
+      }
+
+      return {
+        success: true,
+        data: {
+          reportType: 'Profit & Loss',
+          period: { 
+            startDate: params.startDate || 'All time', 
+            endDate: params.endDate || 'Present' 
+          },
+          income: { byCategory: incomeByCategory, total: totalIncome },
+          expenses: { byCategory: expenseByCategory, total: totalExpenses },
+          netIncome: totalIncome - totalExpenses,
+          transactionCount: transactions?.length || 0,
+          generatedAt: new Date().toISOString(),
+        },
+      };
     },
   },
 };

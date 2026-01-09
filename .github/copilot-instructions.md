@@ -42,12 +42,11 @@ Full-stack bookkeeping application built with React (frontend) and Node.js/Expre
 - Loading states and error boundaries required
 - Vitest + React Testing Library for tests
 
-### Backend (Node.js/Express)
-- Controller → Service → Database pattern
-- express-validator for input validation
-- Supabase client for database operations
-- Centralized error middleware
-- Jest for testing
+### Backend (Supabase Edge Functions)
+- Deno runtime for Edge Functions
+- Direct Supabase client access from frontend
+- Edge Functions for PDF parsing and report generation
+- No Express server in production
 
 ### Database (Supabase/PostgreSQL)
 - Use snake_case for column names
@@ -62,22 +61,23 @@ client/src/
 ├── components/       # Reusable UI components
 ├── features/         # Feature modules (Auth, Dashboard, Transactions, etc.)
 ├── context/          # React contexts
-├── services/         # API client functions
+├── services/         # API client functions (supabaseClient.js for direct access)
 ├── hooks/            # Custom React hooks
 └── utils/            # Helper functions
 
-server/
+supabase/
+├── functions/        # Edge Functions (Deno)
+│   ├── parse-pdf/    # PDF bank statement parsing
+│   └── generate-report/  # Report generation
+├── migrations/       # SQL migrations
+└── config.toml       # Supabase config
+
+server/               # Express.js (local development only)
 ├── config/           # Configuration (supabase.js, environment.js)
 ├── controllers/      # Route handlers
 ├── middlewares/      # Auth, validation, error handling
 ├── routes/           # Express route definitions
 ├── services/         # Business logic
-│   ├── supabaseService.js    # Storage operations
-│   ├── companyService.js     # Company CRUD
-│   ├── payeeService.js       # Payee/vendor CRUD
-│   ├── chasePDFParser.js     # PDF parsing
-│   └── reports/              # Report generators
-├── utils/            # Shared utilities
 └── test/             # Unit and integration tests
 
 supabase/
