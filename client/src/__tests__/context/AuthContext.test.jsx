@@ -37,12 +37,29 @@ const TestConsumer = ({ onMount }) => {
   React.useEffect(() => {
     if (onMount) onMount(auth);
   }, [auth, onMount]);
+  
+  const handleLogin = async () => {
+    try {
+      await auth.signInWithGoogle();
+    } catch {
+      // Error is handled by AuthContext (shows toast)
+    }
+  };
+  
+  const handleLogout = async () => {
+    try {
+      await auth.logout();
+    } catch {
+      // Error is handled by AuthContext (shows toast)
+    }
+  };
+  
   return (
     <div>
       <span data-testid="loading">{auth.loading.toString()}</span>
       <span data-testid="user">{auth.user ? auth.user.email : 'null'}</span>
-      <button data-testid="login" onClick={auth.signInWithGoogle}>Login</button>
-      <button data-testid="logout" onClick={auth.logout}>Logout</button>
+      <button data-testid="login" onClick={handleLogin}>Login</button>
+      <button data-testid="logout" onClick={handleLogout}>Logout</button>
     </div>
   );
 };

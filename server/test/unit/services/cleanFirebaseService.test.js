@@ -14,6 +14,7 @@ import admin from 'firebase-admin';
 
 // Import service
 import cleanFirebaseService from '../../../services/cleanFirebaseService.js';
+import cache from '../../../utils/serverCache.js';
 
 // Mock Firebase Admin
 jest.mock('firebase-admin', () => {
@@ -298,6 +299,9 @@ describe('CleanFirebaseService - Transactions', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     
+    // Clear cache to prevent test interference
+    cache.clearAll();
+    
     mockDb = {
       collection: jest.fn()
     };
@@ -488,6 +492,15 @@ describe('CleanFirebaseService - Transactions', () => {
               amount: 100,
               userId: 'user123'
             })
+          },
+          {
+            id: 'txn2',
+            data: () => ({
+              date: admin.firestore.Timestamp.fromDate(new Date('2024-02-15')),
+              description: 'Another Purchase',
+              amount: 200,
+              userId: 'user123'
+            })
           }
         ],
         forEach: function(callback) {
@@ -503,13 +516,15 @@ describe('CleanFirebaseService - Transactions', () => {
 
       mockDb.collection.mockReturnValue(mockQuery);
 
-      await cleanFirebaseService.getTransactions('user123', {
+      const result = await cleanFirebaseService.getTransactions('user123', {
         startDate: '2024-01-01',
         endDate: '2024-01-31'
       });
 
-      // Should apply date filters
-      expect(mockQuery.where).toHaveBeenCalled();
+      // Should filter in memory - only txn1 is within date range
+      expect(result.transactions).toBeDefined();
+      expect(result.transactions.length).toBe(1);
+      expect(result.transactions[0].id).toBe('txn1');
     });
 
     it('should filter by category', async () => {

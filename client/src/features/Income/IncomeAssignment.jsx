@@ -7,10 +7,13 @@ import {
   XMarkIcon,
   CurrencyDollarIcon,
   ChevronDownIcon,
-  ChevronUpIcon
+  ChevronUpIcon,
+  PencilIcon
 } from '@heroicons/react/24/outline';
 import api from '../../services/api';
+import { apiClient } from '../../services/api';
 import { toast } from 'react-hot-toast';
+import { TransactionModal } from '../../components/forms';
 
 // React Query cache settings to prevent excessive Firestore reads
 const QUERY_CONFIG = {
@@ -34,6 +37,10 @@ const IncomeAssignment = ({ sources: sourcesProp = [] }) => {
   const [selectedSource, setSelectedSource] = useState('');
   const [isAssigning, setIsAssigning] = useState(false);
   const [expandedRows, setExpandedRows] = useState(new Set());
+  
+  // Transaction edit modal state
+  const [editingTransaction, setEditingTransaction] = useState(null);
+  const [isTransactionModalOpen, setIsTransactionModalOpen] = useState(false);
 
   // Income categories from IRS Schedule C
   const incomeCategories = [
@@ -68,8 +75,8 @@ const IncomeAssignment = ({ sources: sourcesProp = [] }) => {
       }
     }
     
-    // Check section code for deposits
-    if (tx.sectionCode === 'deposits') return true;
+    // Positive amounts typically indicate income
+    if (tx.amount > 0) return true;
     
     return false;
   };
@@ -169,6 +176,30 @@ const IncomeAssignment = ({ sources: sourcesProp = [] }) => {
       }
       return next;
     });
+  };
+
+  // Transaction edit handlers
+  const handleEditTransaction = (transaction) => {
+    setEditingTransaction(transaction);
+    setIsTransactionModalOpen(true);
+  };
+
+  const handleCloseTransactionModal = () => {
+    setEditingTransaction(null);
+    setIsTransactionModalOpen(false);
+  };
+
+  const handleSaveTransaction = async (transactionData) => {
+    try {
+      await apiClient.transactions.update(editingTransaction.id, transactionData);
+      toast.success('Transaction updated successfully');
+      refetchTransactions();
+      handleCloseTransactionModal();
+    } catch (error) {
+      console.error('Failed to update transaction:', error);
+      toast.error(error.message || 'Failed to update transaction');
+      throw error;
+    }
   };
 
   const handleBulkAssign = async () => {
@@ -337,8 +368,8 @@ const IncomeAssignment = ({ sources: sourcesProp = [] }) => {
       ) : (
         <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
           {/* Header */}
-          <div className="grid grid-cols-12 gap-4 px-4 py-3 bg-gray-100 dark:bg-gray-700 text-sm font-medium text-gray-700 dark:text-gray-300">
-            <div className="col-span-1">
+          <div className="grid grid-cols-[auto_100px_1fr_100px_180px_60px] gap-2 px-4 py-3 bg-gray-100 dark:bg-gray-700 text-sm font-medium text-gray-700 dark:text-gray-300">
+            <div className="w-6">
               <input
                 type="checkbox"
                 checked={selectedTransactions.length === filteredTransactions.length && filteredTransactions.length > 0}
@@ -346,21 +377,22 @@ const IncomeAssignment = ({ sources: sourcesProp = [] }) => {
                 className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
               />
             </div>
-            <div className="col-span-2">Date</div>
-            <div className="col-span-4">Description</div>
-            <div className="col-span-2 text-right">Amount</div>
-            <div className="col-span-3">Income Source</div>
+            <div>Date</div>
+            <div>Description</div>
+            <div className="text-right">Amount</div>
+            <div>Income Source</div>
+            <div className="text-center">Actions</div>
           </div>
 
           {/* Rows */}
           {filteredTransactions.map(tx => (
             <div key={tx.id}>
               <div 
-                className={`grid grid-cols-12 gap-4 px-4 py-3 border-t border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 ${
+                className={`grid grid-cols-[auto_100px_1fr_100px_180px_60px] gap-2 px-4 py-3 border-t border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 ${
                   selectedTransactions.includes(tx.id) ? 'bg-blue-50 dark:bg-blue-900/20' : ''
                 }`}
               >
-                <div className="col-span-1 flex items-center">
+                <div className="w-6 flex items-center">
                   <input
                     type="checkbox"
                     checked={selectedTransactions.includes(tx.id)}
@@ -368,13 +400,13 @@ const IncomeAssignment = ({ sources: sourcesProp = [] }) => {
                     className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                   />
                 </div>
-                <div className="col-span-2 flex items-center text-gray-600 dark:text-gray-400">
+                <div className="flex items-center text-gray-600 dark:text-gray-400">
                   {formatDate(tx.date)}
                 </div>
-                <div className="col-span-4 flex items-center">
+                <div className="flex items-center min-w-0">
                   <button 
                     onClick={() => toggleExpand(tx.id)}
-                    className="flex items-center text-left text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400"
+                    className="flex items-center text-left text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 min-w-0"
                   >
                     {expandedRows.has(tx.id) ? (
                       <ChevronUpIcon className="h-4 w-4 mr-2 flex-shrink-0" />
@@ -384,16 +416,16 @@ const IncomeAssignment = ({ sources: sourcesProp = [] }) => {
                     <span className="truncate">{tx.description || tx.payee || 'No description'}</span>
                   </button>
                 </div>
-                <div className="col-span-2 flex items-center justify-end font-medium text-green-600 dark:text-green-400">
+                <div className="flex items-center justify-end font-medium text-green-600 dark:text-green-400">
                   {formatCurrency(tx.amount)}
                 </div>
-                <div className="col-span-3 flex items-center gap-2">
+                <div className="flex items-center gap-2 min-w-0">
                   {tx.incomeSourceId ? (
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-gray-700 dark:text-gray-300">{getSourceName(tx.incomeSourceId)}</span>
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="text-sm text-gray-700 dark:text-gray-300 truncate">{getSourceName(tx.incomeSourceId)}</span>
                       <button
                         onClick={() => handleUnassign(tx.id)}
-                        className="p-1 text-gray-400 hover:text-red-500"
+                        className="p-1 text-gray-400 hover:text-red-500 flex-shrink-0"
                         title="Remove assignment"
                       >
                         <XMarkIcon className="h-4 w-4" />
@@ -411,6 +443,15 @@ const IncomeAssignment = ({ sources: sourcesProp = [] }) => {
                       ))}
                     </select>
                   )}
+                </div>
+                <div className="flex items-center justify-center">
+                  <button
+                    onClick={() => handleEditTransaction(tx)}
+                    className="p-1 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                    title="Edit transaction"
+                  >
+                    <PencilIcon className="h-4 w-4" />
+                  </button>
                 </div>
               </div>
 
@@ -441,6 +482,15 @@ const IncomeAssignment = ({ sources: sourcesProp = [] }) => {
           ))}
         </div>
       )}
+
+      {/* Transaction Edit Modal */}
+      <TransactionModal
+        transaction={editingTransaction}
+        isOpen={isTransactionModalOpen}
+        onClose={handleCloseTransactionModal}
+        onSave={handleSaveTransaction}
+        mode="edit"
+      />
     </div>
   );
 };

@@ -60,7 +60,7 @@ export const getTransactions = asyncHandler(async (req, res) => {
     category,
     type,
     payee,
-    sectionCode,
+    paymentMethod,
     uploadId,
     companyId,
     orderBy = 'date',
@@ -94,8 +94,8 @@ export const getTransactions = asyncHandler(async (req, res) => {
       filters.type = type;
     }
 
-    if (sectionCode) {
-      filters.sectionCode = sectionCode;
+    if (paymentMethod) {
+      filters.paymentMethod = paymentMethod;
     }
 
     if (uploadId) {
@@ -127,9 +127,9 @@ export const getTransactions = asyncHandler(async (req, res) => {
       );
     }
 
-    if (sectionCode) {
+    if (paymentMethod) {
       filteredTransactions = filteredTransactions.filter(t => 
-        t.sectionCode === sectionCode
+        t.paymentMethod === paymentMethod
       );
     }
 
@@ -169,9 +169,8 @@ export const getTransactionById = async (req, res) => {
     const { id } = req.params;
     const { uid: userId } = req.user;
 
-    // Get single transaction by ID
-    const transactions = await getDb().getTransactions(userId);
-    const transaction = transactions.find(t => t.id === id);
+    // Get single transaction by ID directly from database
+    const transaction = await getDb().getTransactionById(userId, id);
 
     if (!transaction) {
       return res.status(404).json({

@@ -1,0 +1,2597 @@
+﻿
+[1m[46m RUN [49m[22m [36mv4.0.16 [39m[90mC:/Users/richa/Documents/Code/BookkeepingApp/client[39m
+
+ [2m[90mΓåô[39m[22m src/__tests__/context/AuthContext.test.jsx[2m > [22mAuthContext[2m > [22museAuth hook[2m > [22mshould throw error when used outside AuthProvider
+ [32mΓ£ô[39m src/__tests__/context/AuthContext.test.jsx[2m > [22mAuthContext[2m > [22museAuth hook[2m > [22mshould provide auth context when used inside AuthProvider[32m 53[2mms[22m[39m
+ [32mΓ£ô[39m src/__tests__/context/AuthContext.test.jsx[2m > [22mAuthContext[2m > [22mInitial State[2m > [22mshould start with loading=true then become false after auth check[32m 29[2mms[22m[39m
+ [32mΓ£ô[39m src/components/common/__tests__/CompanySelector.test.jsx[2m > [22mCompanySelector[2m > [22mrenders without crashing[32m 69[2mms[22m[39m
+ [32mΓ£ô[39m src/components/common/__tests__/CompanySelector.test.jsx[2m > [22mCompanySelector[2m > [22mrenders with custom placeholder[32m 24[2mms[22m[39m
+node.exe : Error: Test error message
+At C:\Program Files\nodejs\npx.ps1:29 char:3
++   & $NODE_EXE $NPX_CLI_JS $args
++   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Erro 
+   r: Test error message:String) [], RemoteExcep  
+  tion
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+    at ThrowError (C:/Users/richa/Documents/Code/B
+ookkeepingApp/client/src/components/__tests__/Erro
+rBoundary.test.jsx:11:11)
+    at renderWithHooks (C:\Users\richa\Documents\C
+ode\BookkeepingApp\client\node_modules\react-dom\c
+js\react-dom.development.js:15486:18)
+    at mountIndeterminateComponent (C:\Users\richa
+\Documents\Code\BookkeepingApp\client\node_modules
+\react-dom\cjs\react-dom.development.js:20103:13)
+    at beginWork (C:\Users\richa\Documents\Code\Bo
+okkeepingApp\client\node_modules\react-dom\cjs\rea
+ct-dom.development.js:21626:16)
+    at HTMLUnknownElement.callCallback (C:\Users\r
+icha\Documents\Code\BookkeepingApp\client\node_mod
+ules\react-dom\cjs\react-dom.development.js:4164:1
+4)
+    at 
+HTMLUnknownElement.callTheUserObjectsOperation (C:
+\Users\richa\Documents\Code\BookkeepingApp\client\
+node_modules\jsdom\lib\jsdom\living\generated\Even
+tListener.js:26:30)
+    at innerInvokeEventListeners (C:\Users\richa\D
+ocuments\Code\BookkeepingApp\client\node_modules\j
+sdom\lib\jsdom\living\events\EventTarget-impl.js:3
+60:16)
+    at invokeEventListeners (C:\Users\richa\Docume
+nts\Code\BookkeepingApp\client\node_modules\jsdom\
+lib\jsdom\living\events\EventTarget-impl.js:296:3)
+    at HTMLUnknownElementImpl._dispatch (C:\Users\
+richa\Documents\Code\BookkeepingApp\client\node_mo
+dules\jsdom\lib\jsdom\living\events\EventTarget-im
+pl.js:243:9)
+    at HTMLUnknownElementImpl.dispatchEvent (C:\Us
+ers\richa\Documents\Code\BookkeepingApp\client\nod
+e_modules\jsdom\lib\jsdom\living\events\EventTarge
+t-impl.js:114:17)
+Error: Test error message
+    at ThrowError (C:/Users/richa/Documents/Code/B
+ookkeepingApp/client/src/components/__tests__/Erro
+rBoundary.test.jsx:11:11)
+    at renderWithHooks (C:\Users\richa\Documents\C
+ode\BookkeepingApp\client\node_modules\react-dom\c
+js\react-dom.development.js:15486:18)
+    at mountIndeterminateComponent (C:\Users\richa
+\Documents\Code\BookkeepingApp\client\node_modules
+\react-dom\cjs\react-dom.development.js:20103:13)
+    at beginWork (C:\Users\richa\Documents\Code\Bo
+okkeepingApp\client\node_modules\react-dom\cjs\rea
+ct-dom.development.js:21626:16)
+    at HTMLUnknownElement.callCallback (C:\Users\r
+icha\Documents\Code\BookkeepingApp\client\node_mod
+ules\react-dom\cjs\react-dom.development.js:4164:1
+4)
+    at 
+HTMLUnknownElement.callTheUserObjectsOperation (C:
+\Users\richa\Documents\Code\BookkeepingApp\client\
+node_modules\jsdom\lib\jsdom\living\generated\Even
+tListener.js:26:30)
+    at innerInvokeEventListeners (C:\Users\richa\D
+ocuments\Code\BookkeepingApp\client\node_modules\j
+sdom\lib\jsdom\living\events\EventTarget-impl.js:3
+60:16)
+    at invokeEventListeners (C:\Users\richa\Docume
+nts\Code\BookkeepingApp\client\node_modules\jsdom\
+lib\jsdom\living\events\EventTarget-impl.js:296:3)
+    at HTMLUnknownElementImpl._dispatch (C:\Users\
+richa\Documents\Code\BookkeepingApp\client\node_mo
+dules\jsdom\lib\jsdom\living\events\EventTarget-im
+pl.js:243:9)
+    at HTMLUnknownElementImpl.dispatchEvent (C:\Us
+ers\richa\Documents\Code\BookkeepingApp\client\nod
+e_modules\jsdom\lib\jsdom\living\events\EventTarge
+t-impl.js:114:17)
+Error: Test error message
+    at ThrowError (C:/Users/richa/Documents/Code/B
+ookkeepingApp/client/src/components/__tests__/Erro
+rBoundary.test.jsx:11:11)
+    at renderWithHooks (C:\Users\richa\Documents\C
+ode\BookkeepingApp\client\node_modules\react-dom\c
+js\react-dom.development.js:15486:18)
+    at mountIndeterminateComponent (C:\Users\richa
+\Documents\Code\BookkeepingApp\client\node_modules
+\react-dom\cjs\react-dom.development.js:20103:13)
+    at beginWork (C:\Users\richa\Documents\Code\Bo
+okkeepingApp\client\node_modules\react-dom\cjs\rea
+ct-dom.development.js:21626:16)
+    at HTMLUnknownElement.callCallback (C:\Users\r
+icha\Documents\Code\BookkeepingApp\client\node_mod
+ules\react-dom\cjs\react-dom.development.js:4164:1
+4)
+    at 
+HTMLUnknownElement.callTheUserObjectsOperation (C:
+\Users\richa\Documents\Code\BookkeepingApp\client\
+node_modules\jsdom\lib\jsdom\living\generated\Even
+tListener.js:26:30)
+    at innerInvokeEventListeners (C:\Users\richa\D
+ocuments\Code\BookkeepingApp\client\node_modules\j
+sdom\lib\jsdom\living\events\EventTarget-impl.js:3
+60:16)
+    at invokeEventListeners (C:\Users\richa\Docume
+nts\Code\BookkeepingApp\client\node_modules\jsdom\
+lib\jsdom\living\events\EventTarget-impl.js:296:3)
+    at HTMLUnknownElementImpl._dispatch (C:\Users\
+richa\Documents\Code\BookkeepingApp\client\node_mo
+dules\jsdom\lib\jsdom\living\events\EventTarget-im
+pl.js:243:9)
+    at HTMLUnknownElementImpl.dispatchEvent (C:\Us
+ers\richa\Documents\Code\BookkeepingApp\client\nod
+e_modules\jsdom\lib\jsdom\living\events\EventTarge
+t-impl.js:114:17)
+Error: Test error message
+    at ThrowError (C:/Users/richa/Documents/Code/B
+ookkeepingApp/client/src/components/__tests__/Erro
+rBoundary.test.jsx:11:11)
+    at renderWithHooks (C:\Users\richa\Documents\C
+ode\BookkeepingApp\client\node_modules\react-dom\c
+js\react-dom.development.js:15486:18)
+    at mountIndeterminateComponent (C:\Users\richa
+\Documents\Code\BookkeepingApp\client\node_modules
+\react-dom\cjs\react-dom.development.js:20103:13)
+    at beginWork (C:\Users\richa\Documents\Code\Bo
+okkeepingApp\client\node_modules\react-dom\cjs\rea
+ct-dom.development.js:21626:16)
+    at HTMLUnknownElement.callCallback (C:\Users\r
+icha\Documents\Code\BookkeepingApp\client\node_mod
+ules\react-dom\cjs\react-dom.development.js:4164:1
+4)
+    at 
+HTMLUnknownElement.callTheUserObjectsOperation (C:
+\Users\richa\Documents\Code\BookkeepingApp\client\
+node_modules\jsdom\lib\jsdom\living\generated\Even
+tListener.js:26:30)
+    at innerInvokeEventListeners (C:\Users\richa\D
+ocuments\Code\BookkeepingApp\client\node_modules\j
+sdom\lib\jsdom\living\events\EventTarget-impl.js:3
+60:16)
+    at invokeEventListeners (C:\Users\richa\Docume
+nts\Code\BookkeepingApp\client\node_modules\jsdom\
+lib\jsdom\living\events\EventTarget-impl.js:296:3)
+    at HTMLUnknownElementImpl._dispatch (C:\Users\
+richa\Documents\Code\BookkeepingApp\client\node_mo
+dules\jsdom\lib\jsdom\living\events\EventTarget-im
+pl.js:243:9)
+    at HTMLUnknownElementImpl.dispatchEvent (C:\Us
+ers\richa\Documents\Code\BookkeepingApp\client\nod
+e_modules\jsdom\lib\jsdom\living\events\EventTarge
+t-impl.js:114:17)
+ [32mΓ£ô[39m src/components/__tests__/ErrorBoundary.test.jsx[2m > [22mErrorBoundary[2m > [22mrenders children when there is no error[32m 43[2mms[22m[39m
+ [32mΓ£ô[39m src/components/__tests__/ErrorBoundary.test.jsx[2m > [22mErrorBoundary[2m > [22mrenders error fallback when child component throws[32m 41[2mms[22m[39m
+Error: Test error message
+    at ThrowError (C:/Users/richa/Documents/Code/B
+ookkeepingApp/client/src/components/__tests__/Erro
+rBoundary.test.jsx:11:11)
+    at renderWithHooks (C:\Users\richa\Documents\C
+ode\BookkeepingApp\client\node_modules\react-dom\c
+js\react-dom.development.js:15486:18)
+    at mountIndeterminateComponent (C:\Users\richa
+\Documents\Code\BookkeepingApp\client\node_modules
+\react-dom\cjs\react-dom.development.js:20103:13)
+    at beginWork (C:\Users\richa\Documents\Code\Bo
+okkeepingApp\client\node_modules\react-dom\cjs\rea
+ct-dom.development.js:21626:16)
+    at HTMLUnknownElement.callCallback (C:\Users\r
+icha\Documents\Code\BookkeepingApp\client\node_mod
+ules\react-dom\cjs\react-dom.development.js:4164:1
+4)
+    at 
+HTMLUnknownElement.callTheUserObjectsOperation (C:
+\Users\richa\Documents\Code\BookkeepingApp\client\
+node_modules\jsdom\lib\jsdom\living\generated\Even
+tListener.js:26:30)
+    at innerInvokeEventListeners (C:\Users\richa\D
+ocuments\Code\BookkeepingApp\client\node_modules\j
+sdom\lib\jsdom\living\events\EventTarget-impl.js:3
+60:16)
+    at invokeEventListeners (C:\Users\richa\Docume
+nts\Code\BookkeepingApp\client\node_modules\jsdom\
+lib\jsdom\living\events\EventTarget-impl.js:296:3)
+    at HTMLUnknownElementImpl._dispatch (C:\Users\
+richa\Documents\Code\BookkeepingApp\client\node_mo
+dules\jsdom\lib\jsdom\living\events\EventTarget-im
+pl.js:243:9)
+    at HTMLUnknownElementImpl.dispatchEvent (C:\Us
+ers\richa\Documents\Code\BookkeepingApp\client\nod
+e_modules\jsdom\lib\jsdom\living\events\EventTarge
+t-impl.js:114:17)
+Error: Test error message
+    at ThrowError (C:/Users/richa/Documents/Code/B
+ookkeepingApp/client/src/components/__tests__/Erro
+rBoundary.test.jsx:11:11)
+    at renderWithHooks (C:\Users\richa\Documents\C
+ode\BookkeepingApp\client\node_modules\react-dom\c
+js\react-dom.development.js:15486:18)
+    at mountIndeterminateComponent (C:\Users\richa
+\Documents\Code\BookkeepingApp\client\node_modules
+\react-dom\cjs\react-dom.development.js:20103:13)
+    at beginWork (C:\Users\richa\Documents\Code\Bo
+okkeepingApp\client\node_modules\react-dom\cjs\rea
+ct-dom.development.js:21626:16)
+    at HTMLUnknownElement.callCallback (C:\Users\r
+icha\Documents\Code\BookkeepingApp\client\node_mod
+ules\react-dom\cjs\react-dom.development.js:4164:1
+4)
+    at 
+HTMLUnknownElement.callTheUserObjectsOperation (C:
+\Users\richa\Documents\Code\BookkeepingApp\client\
+node_modules\jsdom\lib\jsdom\living\generated\Even
+tListener.js:26:30)
+    at innerInvokeEventListeners (C:\Users\richa\D
+ocuments\Code\BookkeepingApp\client\node_modules\j
+sdom\lib\jsdom\living\events\EventTarget-impl.js:3
+60:16)
+    at invokeEventListeners (C:\Users\richa\Docume
+nts\Code\BookkeepingApp\client\node_modules\jsdom\
+lib\jsdom\living\events\EventTarget-impl.js:296:3)
+    at HTMLUnknownElementImpl._dispatch (C:\Users\
+richa\Documents\Code\BookkeepingApp\client\node_mo
+dules\jsdom\lib\jsdom\living\events\EventTarget-im
+pl.js:243:9)
+    at HTMLUnknownElementImpl.dispatchEvent (C:\Us
+ers\richa\Documents\Code\BookkeepingApp\client\nod
+e_modules\jsdom\lib\jsdom\living\events\EventTarge
+t-impl.js:114:17)
+Error: Test error message
+    at ThrowError (C:/Users/richa/Documents/Code/B
+ookkeepingApp/client/src/components/__tests__/Erro
+rBoundary.test.jsx:11:11)
+    at renderWithHooks (C:\Users\richa\Documents\C
+ode\BookkeepingApp\client\node_modules\react-dom\c
+js\react-dom.development.js:15486:18)
+    at mountIndeterminateComponent (C:\Users\richa
+\Documents\Code\BookkeepingApp\client\node_modules
+\react-dom\cjs\react-dom.development.js:20103:13)
+    at beginWork (C:\Users\richa\Documents\Code\Bo
+okkeepingApp\client\node_modules\react-dom\cjs\rea
+ct-dom.development.js:21626:16)
+    at HTMLUnknownElement.callCallback (C:\Users\r
+icha\Documents\Code\BookkeepingApp\client\node_mod
+ules\react-dom\cjs\react-dom.development.js:4164:1
+4)
+    at 
+HTMLUnknownElement.callTheUserObjectsOperation (C:
+\Users\richa\Documents\Code\BookkeepingApp\client\
+node_modules\jsdom\lib\jsdom\living\generated\Even
+tListener.js:26:30)
+    at innerInvokeEventListeners (C:\Users\richa\D
+ocuments\Code\BookkeepingApp\client\node_modules\j
+sdom\lib\jsdom\living\events\EventTarget-impl.js:3
+60:16)
+    at invokeEventListeners (C:\Users\richa\Docume
+nts\Code\BookkeepingApp\client\node_modules\jsdom\
+lib\jsdom\living\events\EventTarget-impl.js:296:3)
+    at HTMLUnknownElementImpl._dispatch (C:\Users\
+richa\Documents\Code\BookkeepingApp\client\node_mo
+dules\jsdom\lib\jsdom\living\events\EventTarget-im
+pl.js:243:9)
+    at HTMLUnknownElementImpl.dispatchEvent (C:\Us
+ers\richa\Documents\Code\BookkeepingApp\client\nod
+e_modules\jsdom\lib\jsdom\living\events\EventTarge
+t-impl.js:114:17)
+Error: Test error message
+    at ThrowError (C:/Users/richa/Documents/Code/B
+ookkeepingApp/client/src/components/__tests__/Erro
+rBoundary.test.jsx:11:11)
+    at renderWithHooks (C:\Users\richa\Documents\C
+ode\BookkeepingApp\client\node_modules\react-dom\c
+js\react-dom.development.js:15486:18)
+    at mountIndeterminateComponent (C:\Users\richa
+\Documents\Code\BookkeepingApp\client\node_modules
+\react-dom\cjs\react-dom.development.js:20103:13)
+    at beginWork (C:\Users\richa\Documents\Code\Bo
+okkeepingApp\client\node_modules\react-dom\cjs\rea
+ct-dom.development.js:21626:16)
+    at HTMLUnknownElement.callCallback (C:\Users\r
+icha\Documents\Code\BookkeepingApp\client\node_mod
+ules\react-dom\cjs\react-dom.development.js:4164:1
+4)
+    at 
+HTMLUnknownElement.callTheUserObjectsOperation (C:
+\Users\richa\Documents\Code\BookkeepingApp\client\
+node_modules\jsdom\lib\jsdom\living\generated\Even
+tListener.js:26:30)
+    at innerInvokeEventListeners (C:\Users\richa\D
+ocuments\Code\BookkeepingApp\client\node_modules\j
+sdom\lib\jsdom\living\events\EventTarget-impl.js:3
+60:16)
+    at invokeEventListeners (C:\Users\richa\Docume
+nts\Code\BookkeepingApp\client\node_modules\jsdom\
+lib\jsdom\living\events\EventTarget-impl.js:296:3)
+    at HTMLUnknownElementImpl._dispatch (C:\Users\
+richa\Documents\Code\BookkeepingApp\client\node_mo
+dules\jsdom\lib\jsdom\living\events\EventTarget-im
+pl.js:243:9)
+    at HTMLUnknownElementImpl.dispatchEvent (C:\Us
+ers\richa\Documents\Code\BookkeepingApp\client\nod
+e_modules\jsdom\lib\jsdom\living\events\EventTarge
+t-impl.js:114:17)
+Error: Test error message
+    at ThrowError (C:/Users/richa/Documents/Code/B
+ookkeepingApp/client/src/components/__tests__/Erro
+rBoundary.test.jsx:11:11)
+    at renderWithHooks (C:\Users\richa\Documents\C
+ode\BookkeepingApp\client\node_modules\react-dom\c
+js\react-dom.development.js:15486:18)
+    at mountIndeterminateComponent (C:\Users\richa
+\Documents\Code\BookkeepingApp\client\node_modules
+\react-dom\cjs\react-dom.development.js:20103:13)
+    at beginWork (C:\Users\richa\Documents\Code\Bo
+okkeepingApp\client\node_modules\react-dom\cjs\rea
+ct-dom.development.js:21626:16)
+    at HTMLUnknownElement.callCallback (C:\Users\r
+icha\Documents\Code\BookkeepingApp\client\node_mod
+ules\react-dom\cjs\react-dom.development.js:4164:1
+4)
+    at 
+HTMLUnknownElement.callTheUserObjectsOperation (C:
+\Users\richa\Documents\Code\BookkeepingApp\client\
+node_modules\jsdom\lib\jsdom\living\generated\Even
+tListener.js:26:30)
+    at innerInvokeEventListeners (C:\Users\richa\D
+ocuments\Code\BookkeepingApp\client\node_modules\j
+sdom\lib\jsdom\living\events\EventTarget-impl.js:3
+60:16)
+    at invokeEventListeners (C:\Users\richa\Docume
+nts\Code\BookkeepingApp\client\node_modules\jsdom\
+lib\jsdom\living\events\EventTarget-impl.js:296:3)
+    at HTMLUnknownElementImpl._dispatch (C:\Users\
+richa\Documents\Code\BookkeepingApp\client\node_mo
+dules\jsdom\lib\jsdom\living\events\EventTarget-im
+pl.js:243:9)
+    at HTMLUnknownElementImpl.dispatchEvent (C:\Us
+ers\richa\Documents\Code\BookkeepingApp\client\nod
+e_modules\jsdom\lib\jsdom\living\events\EventTarge
+t-impl.js:114:17)
+Error: Test error message
+    at ThrowError (C:/Users/richa/Documents/Code/B
+ookkeepingApp/client/src/components/__tests__/Erro
+rBoundary.test.jsx:11:11)
+    at renderWithHooks (C:\Users\richa\Documents\C
+ode\BookkeepingApp\client\node_modules\react-dom\c
+js\react-dom.development.js:15486:18)
+    at mountIndeterminateComponent (C:\Users\richa
+\Documents\Code\BookkeepingApp\client\node_modules
+\react-dom\cjs\react-dom.development.js:20103:13)
+    at beginWork (C:\Users\richa\Documents\Code\Bo
+okkeepingApp\client\node_modules\react-dom\cjs\rea
+ct-dom.development.js:21626:16)
+    at HTMLUnknownElement.callCallback (C:\Users\r
+icha\Documents\Code\BookkeepingApp\client\node_mod
+ules\react-dom\cjs\react-dom.development.js:4164:1
+4)
+    at 
+HTMLUnknownElement.callTheUserObjectsOperation (C:
+\Users\richa\Documents\Code\BookkeepingApp\client\
+node_modules\jsdom\lib\jsdom\living\generated\Even
+tListener.js:26:30)
+    at innerInvokeEventListeners (C:\Users\richa\D
+ocuments\Code\BookkeepingApp\client\node_modules\j
+sdom\lib\jsdom\living\events\EventTarget-impl.js:3
+60:16)
+    at invokeEventListeners (C:\Users\richa\Docume
+nts\Code\BookkeepingApp\client\node_modules\jsdom\
+lib\jsdom\living\events\EventTarget-impl.js:296:3)
+    at HTMLUnknownElementImpl._dispatch (C:\Users\
+richa\Documents\Code\BookkeepingApp\client\node_mo
+dules\jsdom\lib\jsdom\living\events\EventTarget-im
+pl.js:243:9)
+    at HTMLUnknownElementImpl.dispatchEvent (C:\Us
+ers\richa\Documents\Code\BookkeepingApp\client\nod
+e_modules\jsdom\lib\jsdom\living\events\EventTarge
+t-impl.js:114:17)
+ [32mΓ£ô[39m src/components/common/__tests__/CompanySelector.test.jsx[2m > [22mCompanySelector[2m > [22mopens dropdown when clicked[32m 54[2mms[22m[39m
+ [32mΓ£ô[39m src/components/common/__tests__/CompanySelector.test.jsx[2m > [22mCompanySelector[2m > [22mdisplays selected company[32m 31[2mms[22m[39m
+ [32mΓ£ô[39m src/components/common/__tests__/CompanySelector.test.jsx[2m > [22mCompanySelector[2m > [22mshows All Companies option when allowAll is true[32m 52[2mms[22m[39m
+Error: Test error message
+    at ThrowError (C:/Users/richa/Documents/Code/B
+ookkeepingApp/client/src/components/__tests__/Erro
+rBoundary.test.jsx:11:11)
+    at renderWithHooks (C:\Users\richa\Documents\C
+ode\BookkeepingApp\client\node_modules\react-dom\c
+js\react-dom.development.js:15486:18)
+    at mountIndeterminateComponent (C:\Users\richa
+\Documents\Code\BookkeepingApp\client\node_modules
+\react-dom\cjs\react-dom.development.js:20103:13)
+    at beginWork (C:\Users\richa\Documents\Code\Bo
+okkeepingApp\client\node_modules\react-dom\cjs\rea
+ct-dom.development.js:21626:16)
+    at HTMLUnknownElement.callCallback (C:\Users\r
+icha\Documents\Code\BookkeepingApp\client\node_mod
+ules\react-dom\cjs\react-dom.development.js:4164:1
+4)
+    at 
+HTMLUnknownElement.callTheUserObjectsOperation (C:
+\Users\richa\Documents\Code\BookkeepingApp\client\
+node_modules\jsdom\lib\jsdom\living\generated\Even
+tListener.js:26:30)
+    at innerInvokeEventListeners (C:\Users\richa\D
+ocuments\Code\BookkeepingApp\client\node_modules\j
+sdom\lib\jsdom\living\events\EventTarget-impl.js:3
+60:16)
+    at invokeEventListeners (C:\Users\richa\Docume
+nts\Code\BookkeepingApp\client\node_modules\jsdom\
+lib\jsdom\living\events\EventTarget-impl.js:296:3)
+    at HTMLUnknownElementImpl._dispatch (C:\Users\
+richa\Documents\Code\BookkeepingApp\client\node_mo
+dules\jsdom\lib\jsdom\living\events\EventTarget-im
+pl.js:243:9)
+    at HTMLUnknownElementImpl.dispatchEvent (C:\Us
+ers\richa\Documents\Code\BookkeepingApp\client\nod
+e_modules\jsdom\lib\jsdom\living\events\EventTarge
+t-impl.js:114:17)
+Error: Test error message
+    at ThrowError (C:/Users/richa/Documents/Code/B
+ookkeepingApp/client/src/components/__tests__/Erro
+rBoundary.test.jsx:11:11)
+    at renderWithHooks (C:\Users\richa\Documents\C
+ode\BookkeepingApp\client\node_modules\react-dom\c
+js\react-dom.development.js:15486:18)
+    at mountIndeterminateComponent (C:\Users\richa
+\Documents\Code\BookkeepingApp\client\node_modules
+\react-dom\cjs\react-dom.development.js:20103:13)
+    at beginWork (C:\Users\richa\Documents\Code\Bo
+okkeepingApp\client\node_modules\react-dom\cjs\rea
+ct-dom.development.js:21626:16)
+    at HTMLUnknownElement.callCallback (C:\Users\r
+icha\Documents\Code\BookkeepingApp\client\node_mod
+ules\react-dom\cjs\react-dom.development.js:4164:1
+4)
+    at 
+HTMLUnknownElement.callTheUserObjectsOperation (C:
+\Users\richa\Documents\Code\BookkeepingApp\client\
+node_modules\jsdom\lib\jsdom\living\generated\Even
+tListener.js:26:30)
+    at innerInvokeEventListeners (C:\Users\richa\D
+ocuments\Code\BookkeepingApp\client\node_modules\j
+sdom\lib\jsdom\living\events\EventTarget-impl.js:3
+60:16)
+    at invokeEventListeners (C:\Users\richa\Docume
+nts\Code\BookkeepingApp\client\node_modules\jsdom\
+lib\jsdom\living\events\EventTarget-impl.js:296:3)
+    at HTMLUnknownElementImpl._dispatch (C:\Users\
+richa\Documents\Code\BookkeepingApp\client\node_mo
+dules\jsdom\lib\jsdom\living\events\EventTarget-im
+pl.js:243:9)
+    at HTMLUnknownElementImpl.dispatchEvent (C:\Us
+ers\richa\Documents\Code\BookkeepingApp\client\nod
+e_modules\jsdom\lib\jsdom\living\events\EventTarge
+t-impl.js:114:17)
+Error: Test error message
+    at ThrowError (C:/Users/richa/Documents/Code/B
+ookkeepingApp/client/src/components/__tests__/Erro
+rBoundary.test.jsx:11:11)
+    at renderWithHooks (C:\Users\richa\Documents\C
+ode\BookkeepingApp\client\node_modules\react-dom\c
+js\react-dom.development.js:15486:18)
+    at mountIndeterminateComponent (C:\Users\richa
+\Documents\Code\BookkeepingApp\client\node_modules
+\react-dom\cjs\react-dom.development.js:20103:13)
+    at beginWork (C:\Users\richa\Documents\Code\Bo
+okkeepingApp\client\node_modules\react-dom\cjs\rea
+ct-dom.development.js:21626:16)
+    at HTMLUnknownElement.callCallback (C:\Users\r
+icha\Documents\Code\BookkeepingApp\client\node_mod
+ules\react-dom\cjs\react-dom.development.js:4164:1
+4)
+    at 
+HTMLUnknownElement.callTheUserObjectsOperation (C:
+\Users\richa\Documents\Code\BookkeepingApp\client\
+node_modules\jsdom\lib\jsdom\living\generated\Even
+tListener.js:26:30)
+    at innerInvokeEventListeners (C:\Users\richa\D
+ocuments\Code\BookkeepingApp\client\node_modules\j
+sdom\lib\jsdom\living\events\EventTarget-impl.js:3
+60:16)
+    at invokeEventListeners (C:\Users\richa\Docume
+nts\Code\BookkeepingApp\client\node_modules\jsdom\
+lib\jsdom\living\events\EventTarget-impl.js:296:3)
+    at HTMLUnknownElementImpl._dispatch (C:\Users\
+richa\Documents\Code\BookkeepingApp\client\node_mo
+dules\jsdom\lib\jsdom\living\events\EventTarget-im
+pl.js:243:9)
+    at HTMLUnknownElementImpl.dispatchEvent (C:\Us
+ers\richa\Documents\Code\BookkeepingApp\client\nod
+e_modules\jsdom\lib\jsdom\living\events\EventTarge
+t-impl.js:114:17)
+Error: Test error message
+    at ThrowError (C:/Users/richa/Documents/Code/B
+ookkeepingApp/client/src/components/__tests__/Erro
+rBoundary.test.jsx:11:11)
+    at renderWithHooks (C:\Users\richa\Documents\C
+ode\BookkeepingApp\client\node_modules\react-dom\c
+js\react-dom.development.js:15486:18)
+    at mountIndeterminateComponent (C:\Users\richa
+\Documents\Code\BookkeepingApp\client\node_modules
+\react-dom\cjs\react-dom.development.js:20103:13)
+    at beginWork (C:\Users\richa\Documents\Code\Bo
+okkeepingApp\client\node_modules\react-dom\cjs\rea
+ct-dom.development.js:21626:16)
+    at HTMLUnknownElement.callCallback (C:\Users\r
+icha\Documents\Code\BookkeepingApp\client\node_mod
+ules\react-dom\cjs\react-dom.development.js:4164:1
+4)
+    at 
+HTMLUnknownElement.callTheUserObjectsOperation (C:
+\Users\richa\Documents\Code\BookkeepingApp\client\
+node_modules\jsdom\lib\jsdom\living\generated\Even
+tListener.js:26:30)
+    at innerInvokeEventListeners (C:\Users\richa\D
+ocuments\Code\BookkeepingApp\client\node_modules\j
+sdom\lib\jsdom\living\events\EventTarget-impl.js:3
+60:16)
+    at invokeEventListeners (C:\Users\richa\Docume
+nts\Code\BookkeepingApp\client\node_modules\jsdom\
+lib\jsdom\living\events\EventTarget-impl.js:296:3)
+    at HTMLUnknownElementImpl._dispatch (C:\Users\
+richa\Documents\Code\BookkeepingApp\client\node_mo
+dules\jsdom\lib\jsdom\living\events\EventTarget-im
+pl.js:243:9)
+    at HTMLUnknownElementImpl.dispatchEvent (C:\Us
+ers\richa\Documents\Code\BookkeepingApp\client\nod
+e_modules\jsdom\lib\jsdom\living\events\EventTarge
+t-impl.js:114:17)
+Error: Test error message
+    at ThrowError (C:/Users/richa/Documents/Code/B
+ookkeepingApp/client/src/components/__tests__/Erro
+rBoundary.test.jsx:11:11)
+    at renderWithHooks (C:\Users\richa\Documents\C
+ode\BookkeepingApp\client\node_modules\react-dom\c
+js\react-dom.development.js:15486:18)
+    at mountIndeterminateComponent (C:\Users\richa
+\Documents\Code\BookkeepingApp\client\node_modules
+\react-dom\cjs\react-dom.development.js:20103:13)
+    at beginWork (C:\Users\richa\Documents\Code\Bo
+okkeepingApp\client\node_modules\react-dom\cjs\rea
+ct-dom.development.js:21626:16)
+    at HTMLUnknownElement.callCallback (C:\Users\r
+icha\Documents\Code\BookkeepingApp\client\node_mod
+ules\react-dom\cjs\react-dom.development.js:4164:1
+4)
+    at 
+HTMLUnknownElement.callTheUserObjectsOperation (C:
+\Users\richa\Documents\Code\BookkeepingApp\client\
+node_modules\jsdom\lib\jsdom\living\generated\Even
+tListener.js:26:30)
+    at innerInvokeEventListeners (C:\Users\richa\D
+ocuments\Code\BookkeepingApp\client\node_modules\j
+sdom\lib\jsdom\living\events\EventTarget-impl.js:3
+60:16)
+    at invokeEventListeners (C:\Users\richa\Docume
+nts\Code\BookkeepingApp\client\node_modules\jsdom\
+lib\jsdom\living\events\EventTarget-impl.js:296:3)
+    at HTMLUnknownElementImpl._dispatch (C:\Users\
+richa\Documents\Code\BookkeepingApp\client\node_mo
+dules\jsdom\lib\jsdom\living\events\EventTarget-im
+pl.js:243:9)
+    at HTMLUnknownElementImpl.dispatchEvent (C:\Us
+ers\richa\Documents\Code\BookkeepingApp\client\nod
+e_modules\jsdom\lib\jsdom\living\events\EventTarge
+t-impl.js:114:17)
+Error: Test error message
+    at ThrowError (C:/Users/richa/Documents/Code/B
+ookkeepingApp/client/src/components/__tests__/Erro
+rBoundary.test.jsx:11:11)
+    at renderWithHooks (C:\Users\richa\Documents\C
+ode\BookkeepingApp\client\node_modules\react-dom\c
+js\react-dom.development.js:15486:18)
+    at mountIndeterminateComponent (C:\Users\richa
+\Documents\Code\BookkeepingApp\client\node_modules
+\react-dom\cjs\react-dom.development.js:20103:13)
+    at beginWork (C:\Users\richa\Documents\Code\Bo
+okkeepingApp\client\node_modules\react-dom\cjs\rea
+ct-dom.development.js:21626:16)
+    at HTMLUnknownElement.callCallback (C:\Users\r
+icha\Documents\Code\BookkeepingApp\client\node_mod
+ules\react-dom\cjs\react-dom.development.js:4164:1
+4)
+    at 
+HTMLUnknownElement.callTheUserObjectsOperation (C:
+\Users\richa\Documents\Code\BookkeepingApp\client\
+node_modules\jsdom\lib\jsdom\living\generated\Even
+tListener.js:26:30)
+    at innerInvokeEventListeners (C:\Users\richa\D
+ocuments\Code\BookkeepingApp\client\node_modules\j
+sdom\lib\jsdom\living\events\EventTarget-impl.js:3
+60:16)
+    at invokeEventListeners (C:\Users\richa\Docume
+nts\Code\BookkeepingApp\client\node_modules\jsdom\
+lib\jsdom\living\events\EventTarget-impl.js:296:3)
+    at HTMLUnknownElementImpl._dispatch (C:\Users\
+richa\Documents\Code\BookkeepingApp\client\node_mo
+dules\jsdom\lib\jsdom\living\events\EventTarget-im
+pl.js:243:9)
+    at HTMLUnknownElementImpl.dispatchEvent (C:\Us
+ers\richa\Documents\Code\BookkeepingApp\client\nod
+e_modules\jsdom\lib\jsdom\living\events\EventTarge
+t-impl.js:114:17)
+ [32mΓ£ô[39m src/components/__tests__/ErrorBoundary.test.jsx[2m > [22mErrorBoundary[2m > [22mdisplays error message in details section[32m 22[2mms[22m[39m
+ [32mΓ£ô[39m src/components/__tests__/ErrorBoundary.test.jsx[2m > [22mErrorBoundary[2m > [22mrenders Try Again button[32m 20[2mms[22m[39m
+ [32mΓ£ô[39m src/components/__tests__/ErrorBoundary.test.jsx[2m > [22mErrorBoundary[2m > [22mrenders Go to Dashboard button[32m 25[2mms[22m[39m
+ [32mΓ£ô[39m src/components/__tests__/ErrorBoundary.test.jsx[2m > [22mErrorBoundary[2m > [22mrecovers when Try Again is clicked and error is fixed[32m 30[2mms[22m[39m
+ [32mΓ£ô[39m src/components/__tests__/ErrorBoundary.test.jsx[2m > [22mErrorBoundary[2m > [22mnavigates to dashboard when Go to Dashboard is clicked[32m 11[2mms[22m[39m
+Error: Test error message
+    at ThrowError (C:/Users/richa/Documents/Code/B
+ookkeepingApp/client/src/components/__tests__/Erro
+rBoundary.test.jsx:11:11)
+    at renderWithHooks (C:\Users\richa\Documents\C
+ode\BookkeepingApp\client\node_modules\react-dom\c
+js\react-dom.development.js:15486:18)
+    at mountIndeterminateComponent (C:\Users\richa
+\Documents\Code\BookkeepingApp\client\node_modules
+\react-dom\cjs\react-dom.development.js:20103:13)
+    at beginWork (C:\Users\richa\Documents\Code\Bo
+okkeepingApp\client\node_modules\react-dom\cjs\rea
+ct-dom.development.js:21626:16)
+    at HTMLUnknownElement.callCallback (C:\Users\r
+icha\Documents\Code\BookkeepingApp\client\node_mod
+ules\react-dom\cjs\react-dom.development.js:4164:1
+4)
+    at 
+HTMLUnknownElement.callTheUserObjectsOperation (C:
+\Users\richa\Documents\Code\BookkeepingApp\client\
+node_modules\jsdom\lib\jsdom\living\generated\Even
+tListener.js:26:30)
+    at innerInvokeEventListeners (C:\Users\richa\D
+ocuments\Code\BookkeepingApp\client\node_modules\j
+sdom\lib\jsdom\living\events\EventTarget-impl.js:3
+60:16)
+    at invokeEventListeners (C:\Users\richa\Docume
+nts\Code\BookkeepingApp\client\node_modules\jsdom\
+lib\jsdom\living\events\EventTarget-impl.js:296:3)
+    at HTMLUnknownElementImpl._dispatch (C:\Users\
+richa\Documents\Code\BookkeepingApp\client\node_mo
+dules\jsdom\lib\jsdom\living\events\EventTarget-im
+pl.js:243:9)
+    at HTMLUnknownElementImpl.dispatchEvent (C:\Us
+ers\richa\Documents\Code\BookkeepingApp\client\nod
+e_modules\jsdom\lib\jsdom\living\events\EventTarge
+t-impl.js:114:17)
+Error: Test error message
+    at ThrowError (C:/Users/richa/Documents/Code/B
+ookkeepingApp/client/src/components/__tests__/Erro
+rBoundary.test.jsx:11:11)
+    at renderWithHooks (C:\Users\richa\Documents\C
+ode\BookkeepingApp\client\node_modules\react-dom\c
+js\react-dom.development.js:15486:18)
+    at mountIndeterminateComponent (C:\Users\richa
+\Documents\Code\BookkeepingApp\client\node_modules
+\react-dom\cjs\react-dom.development.js:20103:13)
+    at beginWork (C:\Users\richa\Documents\Code\Bo
+okkeepingApp\client\node_modules\react-dom\cjs\rea
+ct-dom.development.js:21626:16)
+    at HTMLUnknownElement.callCallback (C:\Users\r
+icha\Documents\Code\BookkeepingApp\client\node_mod
+ules\react-dom\cjs\react-dom.development.js:4164:1
+4)
+    at 
+HTMLUnknownElement.callTheUserObjectsOperation (C:
+\Users\richa\Documents\Code\BookkeepingApp\client\
+node_modules\jsdom\lib\jsdom\living\generated\Even
+tListener.js:26:30)
+    at innerInvokeEventListeners (C:\Users\richa\D
+ocuments\Code\BookkeepingApp\client\node_modules\j
+sdom\lib\jsdom\living\events\EventTarget-impl.js:3
+60:16)
+    at invokeEventListeners (C:\Users\richa\Docume
+nts\Code\BookkeepingApp\client\node_modules\jsdom\
+lib\jsdom\living\events\EventTarget-impl.js:296:3)
+    at HTMLUnknownElementImpl._dispatch (C:\Users\
+richa\Documents\Code\BookkeepingApp\client\node_mo
+dules\jsdom\lib\jsdom\living\events\EventTarget-im
+pl.js:243:9)
+    at HTMLUnknownElementImpl.dispatchEvent (C:\Us
+ers\richa\Documents\Code\BookkeepingApp\client\nod
+e_modules\jsdom\lib\jsdom\living\events\EventTarge
+t-impl.js:114:17)
+ [32mΓ£ô[39m src/components/__tests__/ErrorBoundary.test.jsx[2m > [22mErrorBoundary[2m > [22mhandles nested error boundaries[32m 15[2mms[22m[39m
+ [32mΓ£ô[39m src/components/__tests__/ErrorBoundary.test.jsx[2m > [22mErrorBoundary[2m > [22mrenders helpful error message text[32m 22[2mms[22m[39m
+ [32mΓ£ô[39m src/components/common/__tests__/CompanySelector.test.jsx[2m > [22mCompanySelector[2m > [22mcalls onChange when company is selected[32m 64[2mms[22m[39m
+ [32mΓ£ô[39m src/components/common/__tests__/CompanySelector.test.jsx[2m > [22mCompanySelector[2m > [22mfilters companies by search term[32m 40[2mms[22m[39m
+ [32mΓ£ô[39m src/components/common/__tests__/CompanySelector.test.jsx[2m > [22mCompanySelector[2m > [22mshows error styling when error prop is provided[32m 11[2mms[22m[39m
+ [32mΓ£ô[39m src/components/common/__tests__/CompanySelector.test.jsx[2m > [22mCompanySelector[2m > [22mshows create new option when allowCreate is true[32m 41[2mms[22m[39m
+ [32mΓ£ô[39m src/__tests__/context/AuthContext.test.jsx[2m > [22mAuthContext[2m > [22mInitial State[2m > [22mshould set user to null when no user is authenticated[32m 23[2mms[22m[39m
+ [32mΓ£ô[39m src/__tests__/context/AuthContext.test.jsx[2m > [22mAuthContext[2m > [22mInitial State[2m > [22mshould set user when onAuthStateChanged fires with a user[32m 6[2mms[22m[39m
+ [32mΓ£ô[39m src/components/__tests__/CompactTransactionRow.test.jsx[2m > [22mCompactTransactionRow[2m > [22mrenders without crashing[32m 172[2mms[22m[39m
+ [32mΓ£ô[39m src/components/__tests__/CompactTransactionRow.test.jsx[2m > [22mCompactTransactionRow[2m > [22mdisplays transaction description[32m 11[2mms[22m[39m
+ [31m├ù[39m src/components/__tests__/CompactTransactionRow.test.jsx[2m > [22mCompactTransactionRow[2m > [22mdisplays formatted amount[32m 30[2mms[22m[39m
+[31m   ΓåÆ Found multiple elements with the text: /-?\$?151?/
+
+Here are the matching elements:
+
+Ignored nodes: comments, script, style
+[36m<div[31m
+  [33mclass[31m=[32m"w-16 flex-shrink-0 text-xs text-gray-500 dark:text-gray-400"[31m
+[36m>[31m
+  [0mJan 15[0m
+[36m</div>[31m
+
+Ignored nodes: comments, script, style
+[36m<div[31m
+  [33mclass[31m=[32m"w-24 flex-shrink-0 text-right text-sm font-medium text-red-600 dark:text-red-400"[31m
+[36m>[31m
+  [0m-[0m
+  [0m$151[0m
+[36m</div>[31m
+
+(If this is intentional, then use the `*AllBy*` variant of the query (like `queryAllByText`, `getAllByText`, or `findAllByText`)).
+
+Ignored nodes: comments, script, style
+[36m<body>[31m
+  [36m<div>[31m
+    [36m<li[31m
+      [33mclass[31m=[32m"border-b border-gray-100 dark:border-gray-700 last:border-b-0"[31m
+    [36m>[31m
+      [36m<div[31m
+        [33mclass[31m=[32m"flex items-center px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors "[31m
+      [36m>[31m
+        [36m<button[31m
+          [33mclass[31m=[32m"p-1 mr-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors flex-shrink-0"[31m
+          [33mtitle[31m=[32m"Show details"[31m
+        [36m>[31m
+          [36m<svg[31m
+            [33maria-hidden[31m=[32m"true"[31m
+            [33mclass[31m=[32m"w-4 h-4"[31m
+            [33mdata-slot[31m=[32m"icon"[31m
+            [33mfill[31m=[32m"none"[31m
+            [33mstroke[31m=[32m"currentColor"[31m
+            [33mstroke-width[31m=[32m"1.5"[31m
+            [33mviewBox[31m=[32m"0 0 24 24"[31m
+            [33mxmlns[31m=[32m"http://www.w3.org/2000/svg"[31m
+          [36m>[31m
+            [36m<path[31m
+              [33md[31m=[32m"m8.25 4.5 7.5 7.5-7.5 7.5"[31m
+              [33mstroke-linecap[31m=[32m"round"[31m
+              [33mstroke-linejoin[31m=[32m"round"[31m
+            [36m/>[31m
+          [36m</svg>[31m
+        [36m</button>[31m
+        [36m<div[31m
+          [33mclass[31m=[32m"w-16 flex-shrink-0 text-xs text-gray-500 dark:text-gray-400"[31m
+        [36m>[31m
+          [0mJan 15[0m
+        [36m</div>[31m
+        [36m<div[31m
+          [33mclass[31m=[32m"w-16 flex-shrink-0 text-center text-xs font-medium px-1.5 py-0.5 rounded text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/30"[31m
+        [36m>[31m
+          [0mExpense[0m
+        [36m</div>[31m
+        [36m<div[31m
+          [33mclass[31m=[32m"flex-1 min-w-0 mx-3"[31m
+        [36m>[31m
+          [36m<p[31m
+            [33mclass[31m=[32m"text-sm text-gray-900 dark:text-white truncate"[31m
+            [33mtitle[31m=[32m"Office Supplies Purchase"[31m
+          [36m>[31m
+            [0mOffice Supplies Purchase[0m
+          [36m</p>[31m
+        [36m</div>[31m
+        [36m<div[31m
+          [33mclass[31m=[32m"flex items-center gap-1.5 flex-shrink-0 mr-3"[31m
+        [36m/>[31m
+        [36m<div[31m
+          [33mclass[31m=[32m"w-24 flex-shrink-0 text-right text-sm font-medium text-red-600 dark:text-red-400"[31m
+        [36m>[31m
+          [0m-[0m
+          [0m$151[0m
+        [36m</div>[31m
+        [36m<div[31m
+          [33mclass[31m=[32m"flex items-center gap-1 ml-2 flex-shrink-0"[31m
+        [36m>[31m
+          [36m<button[31m
+            [33mclass[31m=[32m"p-1.5 text-gray-400 hover:text-blue-500 dark:hover:text-blue-400 transition-colors"[31m
+            [33mtitle[31m=[32m"Edit"[31m
+          [36m>[31m
+            [36m<svg[31m
+              [33maria-hidden[31m=[32m"true"[31m
+              [33mclass[31m=[32m"h-4 w-4"[31m
+              [33mdata-slot[31m=[32m"icon"[31m
+              [33mfill[31m=[32m"none"[31m
+              [33mstroke[31m=[32m"currentColor"[31m
+              [33mstroke-width[31m=[32m"1.5"[31m
+              [33mviewBox[31m=[32m"0 0 24 24"[31m
+              [33mxmlns[31m=[32m"http://www.w3.org/2000/svg"[31m
+            [36m>[31m
+              [36m<path[31m
+                [33md[31m=[32m"m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.832 19.82a4.5 4.5 0 0 1-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 0 1 1.13-1.897L16.863 4.487Zm0 0L19.5 7.125"[31m
+                [33mstroke-linecap[31m=[32m"round"[31m
+                [33mstroke-linejoin[31m=[32m"round"[31m
+              [36m/>[31m
+            [36m</svg>[31m
+          [36m</button>[31m
+          [36m<button[31m
+            [33mclass[31m=[32m"p-1.5 text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors disabled:opacity-50"[31m
+            [33mtitle[31m=[32m"Delete"[31m
+          [36m>[31m
+            [36m<svg[31m
+              [33maria-hidden[31m=[32m"true"[31m
+              [33mclass[31m=[32m"h-4 w-4"[31m
+              [33mdata-slot[31m=[32m"icon"[31m
+              [33mfill[31m=[32m"none"[31m
+              [33mstroke[31m=[32m"currentColor"[31m
+              [33mstroke-width[31m=[32m"1.5"[31m
+              [33mviewBox[31m=[32m"0 0 24 24"[31m
+              [33mxmlns[31m=[32m"http://www.w3.org/2000/svg"[31m
+            [36m>[31m
+              [36m<path[31m
+                [33md[31m=[32m"m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"[31m
+                [33mstroke-linecap[31m=[32m"round"[31m
+                [33mstroke-linejoin[31m=[32m"round"[31m
+              [36m/>[31m
+            [36m</svg>[31m
+          [36m</button>[31m
+        [36m</div>[31m
+      [36m</div>[31m
+    [36m</li>[31m
+  [36m</div>[31m
+[36m</body>[31m[39m
+ [32mΓ£ô[39m src/components/__tests__/CompactTransactionRow.test.jsx[2m > [22mCompactTransactionRow[2m > [22mdisplays transaction type[32m 24[2mms[22m[39m
+ [32mΓ£ô[39m src/components/__tests__/CompactTransactionRow.test.jsx[2m > [22mCompactTransactionRow[2m > [22mshows expand arrow button[32m 14[2mms[22m[39m
+[90mstderr[2m | 
+src/__tests__/context/AuthContext.test.jsx[2m > 
+[22m[2mAuthContext[2m > 
+[22m[2msignInWithGoogle[2m > [22m[2mshould 
+show error toast on sign in failure
+[22m[39mGoogle sign in error: Error: Popup 
+blocked
+    at C:/Users/richa/Documents/Code/BookkeepingAp
+p/client/src/__tests__/context/AuthContext.test.js
+x:189:45
+    at [90mfile:///C:/Users/richa/Documents/Code/
+BookkeepingApp/client/[39mnode_modules/[4m@vites
+t[24m/runner/dist/index.js:145:11
+    at [90mfile:///C:/Users/richa/Documents/Code/
+BookkeepingApp/client/[39mnode_modules/[4m@vites
+t[24m/runner/dist/index.js:915:26
+    at [90mfile:///C:/Users/richa/Documents/Code/
+BookkeepingApp/client/[39mnode_modules/[4m@vites
+t[24m/runner/dist/index.js:1243:20
+    at new Promise (<anonymous>)
+    at runWithTimeout [90m(file:///C:/Users/richa
+/Documents/Code/BookkeepingApp/client/[39mnode_mo
+dules/[4m@vitest[24m/runner/dist/index.js:1209:1
+0[90m)[39m
+    at [90mfile:///C:/Users/richa/Documents/Code/
+BookkeepingApp/client/[39mnode_modules/[4m@vites
+t[24m/runner/dist/index.js:1653:37
+    at Traces.$ [90m(file:///C:/Users/richa/Docum
+ents/Code/BookkeepingApp/client/[39mnode_modules/
+[4mvitest[24m/dist/chunks/traces.U4xDYhzZ.js:115
+:27[90m)[39m
+    at trace [90m(file:///C:/Users/richa/Document
+s/Code/BookkeepingApp/client/[39mnode_modules/[4
+mvitest[24m/dist/chunks/test.B8ej_ZHS.js:239:21[
+90m)[39m
+    at runTest [90m(file:///C:/Users/richa/Docume
+nts/Code/BookkeepingApp/client/[39mnode_modules/
+[4m@vitest[24m/runner/dist/index.js:1653:12[90m)
+[39m
+
+ [32mΓ£ô[39m src/__tests__/context/AuthContext.test.jsx[2m > [22mAuthContext[2m > [22msignInWithGoogle[2m > [22mshould call signInWithPopup and show success toast[33m 399[2mms[22m[39m
+[90mstderr[2m | 
+src/__tests__/context/AuthContext.test.jsx[2m > 
+[22m[2mAuthContext[2m > 
+[22m[2msignInWithGoogle[2m > [22m[2mshould 
+show generic error message when error.message is 
+empty
+[22m[39mGoogle sign in error: Error: 
+    at C:/Users/richa/Documents/Code/BookkeepingAp
+p/client/src/__tests__/context/AuthContext.test.js
+x:206:45
+    at [90mfile:///C:/Users/richa/Documents/Code/
+BookkeepingApp/client/[39mnode_modules/[4m@vites
+t[24m/runner/dist/index.js:145:11
+    at [90mfile:///C:/Users/richa/Documents/Code/
+BookkeepingApp/client/[39mnode_modules/[4m@vites
+t[24m/runner/dist/index.js:915:26
+    at [90mfile:///C:/Users/richa/Documents/Code/
+BookkeepingApp/client/[39mnode_modules/[4m@vites
+t[24m/runner/dist/index.js:1243:20
+    at new Promise (<anonymous>)
+    at runWithTimeout [90m(file:///C:/Users/richa
+/Documents/Code/BookkeepingApp/client/[39mnode_mo
+dules/[4m@vitest[24m/runner/dist/index.js:1209:1
+0[90m)[39m
+    at [90mfile:///C:/Users/richa/Documents/Code/
+BookkeepingApp/client/[39mnode_modules/[4m@vites
+t[24m/runner/dist/index.js:1653:37
+    at Traces.$ [90m(file:///C:/Users/richa/Docum
+ents/Code/BookkeepingApp/client/[39mnode_modules/
+[4mvitest[24m/dist/chunks/traces.U4xDYhzZ.js:115
+:27[90m)[39m
+    at trace [90m(file:///C:/Users/richa/Document
+s/Code/BookkeepingApp/client/[39mnode_modules/[4
+mvitest[24m/dist/chunks/test.B8ej_ZHS.js:239:21[
+90m)[39m
+    at runTest [90m(file:///C:/Users/richa/Docume
+nts/Code/BookkeepingApp/client/[39mnode_modules/
+[4m@vitest[24m/runner/dist/index.js:1653:12[90m)
+[39m
+
+ [32mΓ£ô[39m src/__tests__/context/AuthContext.test.jsx[2m > [22mAuthContext[2m > [22msignInWithGoogle[2m > [22mshould show error toast on sign in failure[32m 110[2mms[22m[39m
+ [32mΓ£ô[39m src/__tests__/context/AuthContext.test.jsx[2m > [22mAuthContext[2m > [22msignInWithGoogle[2m > [22mshould show generic error message when error.message is empty[32m 78[2mms[22m[39m
+[90mstderr[2m | 
+src/__tests__/context/AuthContext.test.jsx[2m > 
+[22m[2mAuthContext[2m > 
+[22m[2msignInWithGoogle[2m > [22m[2mshould 
+re-throw error after showing toast
+[22m[39mGoogle sign in error: Error: Auth error
+    at C:/Users/richa/Documents/Code/BookkeepingAp
+p/client/src/__tests__/context/AuthContext.test.js
+x:223:25
+    at [90mfile:///C:/Users/richa/Documents/Code/
+BookkeepingApp/client/[39mnode_modules/[4m@vites
+t[24m/runner/dist/index.js:145:11
+    at [90mfile:///C:/Users/richa/Documents/Code/
+BookkeepingApp/client/[39mnode_modules/[4m@vites
+t[24m/runner/dist/index.js:915:26
+    at [90mfile:///C:/Users/richa/Documents/Code/
+BookkeepingApp/client/[39mnode_modules/[4m@vites
+t[24m/runner/dist/index.js:1243:20
+    at new Promise (<anonymous>)
+    at runWithTimeout [90m(file:///C:/Users/richa
+/Documents/Code/BookkeepingApp/client/[39mnode_mo
+dules/[4m@vitest[24m/runner/dist/index.js:1209:1
+0[90m)[39m
+    at [90mfile:///C:/Users/richa/Documents/Code/
+BookkeepingApp/client/[39mnode_modules/[4m@vites
+t[24m/runner/dist/index.js:1653:37
+    at Traces.$ [90m(file:///C:/Users/richa/Docum
+ents/Code/BookkeepingApp/client/[39mnode_modules/
+[4mvitest[24m/dist/chunks/traces.U4xDYhzZ.js:115
+:27[90m)[39m
+    at trace [90m(file:///C:/Users/richa/Document
+s/Code/BookkeepingApp/client/[39mnode_modules/[4
+mvitest[24m/dist/chunks/test.B8ej_ZHS.js:239:21[
+90m)[39m
+    at runTest [90m(file:///C:/Users/richa/Docume
+nts/Code/BookkeepingApp/client/[39mnode_modules/
+[4m@vitest[24m/runner/dist/index.js:1653:12[90m)
+[39m
+
+ [32mΓ£ô[39m src/components/__tests__/CompactTransactionRow.test.jsx[2m > [22mCompactTransactionRow[2m > [22mexpands to show details when arrow is clicked[32m 45[2mms[22m[39m
+ [32mΓ£ô[39m src/__tests__/context/AuthContext.test.jsx[2m > [22mAuthContext[2m > [22msignInWithGoogle[2m > [22mshould re-throw error after showing toast[32m 92[2mms[22m[39m
+ [32mΓ£ô[39m src/components/__tests__/CompactTransactionRow.test.jsx[2m > [22mCompactTransactionRow[2m > [22mshows checkbox when in select mode[32m 279[2mms[22m[39m
+ [32mΓ£ô[39m src/components/__tests__/CompactTransactionRow.test.jsx[2m > [22mCompactTransactionRow[2m > [22mcheckbox is checked when isSelected is true[32m 55[2mms[22m[39m
+[90mstderr[2m | src/__tests__/features/ManageCSV
+Imports.test.jsx[2m > 
+[22m[2mManageCSVImports[2m > 
+[22m[2mRendering[2m > [22m[2mshould render 
+the CSV imports list header
+[22m[39mΓÜá∩╕Å React Router Future Flag 
+Warning: React Router will begin wrapping state 
+updates in `React.startTransition` in v7. You can 
+use the `v7_startTransition` future flag to 
+opt-in early. For more information, see https://re
+actrouter.com/v6/upgrading/future#v7_starttransiti
+on.
+ΓÜá∩╕Å React Router Future Flag Warning: Relative 
+route resolution within Splat routes is changing 
+in v7. You can use the `v7_relativeSplatPath` 
+future flag to opt-in early. For more 
+information, see https://reactrouter.com/v6/upgrad
+ing/future#v7_relativesplatpath.
+
+[90mstderr[2m | 
+src/__tests__/context/AuthContext.test.jsx[2m > 
+[22m[2mAuthContext[2m > [22m[2mlogout[2m > 
+[22m[2mshould show error toast on sign out 
+failure
+[22m[39mSign out error: Error: Sign out failed
+    at C:/Users/richa/Documents/Code/BookkeepingAp
+p/client/src/__tests__/context/AuthContext.test.js
+x:274:37
+    at [90mfile:///C:/Users/richa/Documents/Code/
+BookkeepingApp/client/[39mnode_modules/[4m@vites
+t[24m/runner/dist/index.js:145:11
+    at [90mfile:///C:/Users/richa/Documents/Code/
+BookkeepingApp/client/[39mnode_modules/[4m@vites
+t[24m/runner/dist/index.js:915:26
+    at [90mfile:///C:/Users/richa/Documents/Code/
+BookkeepingApp/client/[39mnode_modules/[4m@vites
+t[24m/runner/dist/index.js:1243:20
+    at new Promise (<anonymous>)
+    at runWithTimeout [90m(file:///C:/Users/richa
+/Documents/Code/BookkeepingApp/client/[39mnode_mo
+dules/[4m@vitest[24m/runner/dist/index.js:1209:1
+0[90m)[39m
+    at [90mfile:///C:/Users/richa/Documents/Code/
+BookkeepingApp/client/[39mnode_modules/[4m@vites
+t[24m/runner/dist/index.js:1653:37
+    at Traces.$ [90m(file:///C:/Users/richa/Docum
+ents/Code/BookkeepingApp/client/[39mnode_modules/
+[4mvitest[24m/dist/chunks/traces.U4xDYhzZ.js:115
+:27[90m)[39m
+    at trace [90m(file:///C:/Users/richa/Document
+s/Code/BookkeepingApp/client/[39mnode_modules/[4
+mvitest[24m/dist/chunks/test.B8ej_ZHS.js:239:21[
+90m)[39m
+    at runTest [90m(file:///C:/Users/richa/Docume
+nts/Code/BookkeepingApp/client/[39mnode_modules/
+[4m@vitest[24m/runner/dist/index.js:1653:12[90m)
+[39m
+
+ [32mΓ£ô[39m src/__tests__/context/AuthContext.test.jsx[2m > [22mAuthContext[2m > [22mlogout[2m > [22mshould call signOut and show success toast[32m 99[2mms[22m[39m
+[90mstderr[2m | 
+src/__tests__/features/CSVUpload.test.jsx[2m > 
+[22m[2mCSVUpload[2m > [22m[2mRendering[2m > 
+[22m[2mshould render the CSV upload form
+[22m[39mΓÜá∩╕Å React Router Future Flag 
+Warning: React Router will begin wrapping state 
+updates in `React.startTransition` in v7. You can 
+use the `v7_startTransition` future flag to 
+opt-in early. For more information, see https://re
+actrouter.com/v6/upgrading/future#v7_starttransiti
+on.
+ΓÜá∩╕Å React Router Future Flag Warning: Relative 
+route resolution within Splat routes is changing 
+in v7. You can use the `v7_relativeSplatPath` 
+future flag to opt-in early. For more 
+information, see https://reactrouter.com/v6/upgrad
+ing/future#v7_relativesplatpath.
+
+ [32mΓ£ô[39m src/components/forms/__tests__/TransactionModal.test.jsx[2m > [22mTransactionModal[2m > [22mrenders without crashing when closed[32m 70[2mms[22m[39m
+[90mstderr[2m | 
+src/__tests__/context/AuthContext.test.jsx[2m > 
+[22m[2mAuthContext[2m > [22m[2mlogout[2m > 
+[22m[2mshould re-throw error after showing toast
+[22m[39mSign out error: Error: Logout error
+    at C:/Users/richa/Documents/Code/BookkeepingAp
+p/client/src/__tests__/context/AuthContext.test.js
+x:291:25
+    at [90mfile:///C:/Users/richa/Documents/Code/
+BookkeepingApp/client/[39mnode_modules/[4m@vites
+t[24m/runner/dist/index.js:145:11
+    at [90mfile:///C:/Users/richa/Documents/Code/
+BookkeepingApp/client/[39mnode_modules/[4m@vites
+t[24m/runner/dist/index.js:915:26
+    at [90mfile:///C:/Users/richa/Documents/Code/
+BookkeepingApp/client/[39mnode_modules/[4m@vites
+t[24m/runner/dist/index.js:1243:20
+    at new Promise (<anonymous>)
+    at runWithTimeout [90m(file:///C:/Users/richa
+/Documents/Code/BookkeepingApp/client/[39mnode_mo
+dules/[4m@vitest[24m/runner/dist/index.js:1209:1
+0[90m)[39m
+    at [90mfile:///C:/Users/richa/Documents/Code/
+BookkeepingApp/client/[39mnode_modules/[4m@vites
+t[24m/runner/dist/index.js:1653:37
+    at Traces.$ [90m(file:///C:/Users/richa/Docum
+ents/Code/BookkeepingApp/client/[39mnode_modules/
+[4mvitest[24m/dist/chunks/traces.U4xDYhzZ.js:115
+:27[90m)[39m
+    at trace [90m(file:///C:/Users/richa/Document
+s/Code/BookkeepingApp/client/[39mnode_modules/[4
+mvitest[24m/dist/chunks/test.B8ej_ZHS.js:239:21[
+90m)[39m
+    at runTest [90m(file:///C:/Users/richa/Docume
+nts/Code/BookkeepingApp/client/[39mnode_modules/
+[4m@vitest[24m/runner/dist/index.js:1653:12[90m)
+[39m
+
+ [32mΓ£ô[39m src/components/__tests__/CompactTransactionRow.test.jsx[2m > [22mCompactTransactionRow[2m > [22mcalls onSelect when checkbox is clicked[32m 73[2mms[22m[39m
+ [32mΓ£ô[39m src/components/__tests__/CompactTransactionRow.test.jsx[2m > [22mCompactTransactionRow[2m > [22mcalls onEdit when edit button is clicked[32m 7[2mms[22m[39m
+ [32mΓ£ô[39m src/components/__tests__/CompactTransactionRow.test.jsx[2m > [22mCompactTransactionRow[2m > [22mcalls onDelete when delete button is clicked[32m 17[2mms[22m[39m
+ [32mΓ£ô[39m src/components/__tests__/CompactTransactionRow.test.jsx[2m > [22mCompactTransactionRow[2m > [22mshows dynamic columns based on visibleColumns prop[32m 8[2mms[22m[39m
+ [32mΓ£ô[39m src/components/__tests__/CompactTransactionRow.test.jsx[2m > [22mCompactTransactionRow[2m > [22mdisplays income transaction correctly[32m 8[2mms[22m[39m
+ [32mΓ£ô[39m src/components/__tests__/CompactTransactionRow.test.jsx[2m > [22mCompactTransactionRow[2m > [22mdisplays transfer transaction correctly[32m 5[2mms[22m[39m
+ [32mΓ£ô[39m src/components/__tests__/CompactTransactionRow.test.jsx[2m > [22mCompactTransactionRow[2m > [22mhandles missing description gracefully[32m 10[2mms[22m[39m
+ [32mΓ£ô[39m src/components/__tests__/TransactionRow.test.jsx[2m > [22mTransactionRow[2m > [22mrenders without crashing[32m 125[2mms[22m[39m
+ [32mΓ£ô[39m src/components/__tests__/TransactionRow.test.jsx[2m > [22mTransactionRow[2m > [22mdisplays transaction description[32m 20[2mms[22m[39m
+ [32mΓ£ô[39m src/components/__tests__/TransactionRow.test.jsx[2m > [22mTransactionRow[2m > [22mdisplays formatted currency amount[32m 12[2mms[22m[39m
+ [32mΓ£ô[39m src/components/__tests__/TransactionRow.test.jsx[2m > [22mTransactionRow[2m > [22mdisplays formatted date[32m 11[2mms[22m[39m
+ [32mΓ£ô[39m src/components/__tests__/TransactionRow.test.jsx[2m > [22mTransactionRow[2m > [22mdisplays payee with category[32m 11[2mms[22m[39m
+ [32mΓ£ô[39m src/components/__tests__/TransactionRow.test.jsx[2m > [22mTransactionRow[2m > [22mshows income type styling[32m 27[2mms[22m[39m
+ [32mΓ£ô[39m src/components/__tests__/TransactionRow.test.jsx[2m > [22mTransactionRow[2m > [22mshows expense type styling for expense transactions[32m 8[2mms[22m[39m
+ [32mΓ£ô[39m src/components/__tests__/CompactTransactionRow.test.jsx[2m > [22mCompactTransactionRow[2m > [22mshows category editing in expanded view[32m 79[2mms[22m[39m
+ [32mΓ£ô[39m src/components/__tests__/CompactTransactionRow.test.jsx[2m > [22mCompactTransactionRow[2m > [22mshows statement info when provided[32m 11[2mms[22m[39m
+[90mstderr[2m | 
+src/__tests__/context/AuthContext.test.jsx[2m > 
+[22m[2mAuthContext[2m > 
+[22m[2monAuthStateChanged subscription[2m > 
+[22m[2mshould update user when auth state 
+changes
+[22m[39mWarning: An update to AuthProvider 
+inside a test was not wrapped in act(...).
+
+When testing, code that causes React state 
+updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the 
+user would see in the browser. Learn more at 
+https://reactjs.org/link/wrap-tests-with-act
+    at AuthProvider (C:/Users/richa/Documents/Code
+/BookkeepingApp/client/src/context/AuthContext.jsx
+:21:25)
+Warning: An update to AuthProvider inside a test 
+was not wrapped in act(...).
+
+When testing, code that causes React state 
+updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the 
+user would see in the browser. Learn more at 
+https://reactjs.org/link/wrap-tests-with-act
+    at AuthProvider (C:/Users/richa/Documents/Code
+/BookkeepingApp/client/src/context/AuthContext.jsx
+:21:25)
+
+ [32mΓ£ô[39m src/__tests__/context/AuthContext.test.jsx[2m > [22mAuthContext[2m > [22mlogout[2m > [22mshould show error toast on sign out failure[32m 113[2mms[22m[39m
+ [32mΓ£ô[39m src/__tests__/context/AuthContext.test.jsx[2m > [22mAuthContext[2m > [22mlogout[2m > [22mshould re-throw error after showing toast[32m 83[2mms[22m[39m
+ [32mΓ£ô[39m src/__tests__/context/AuthContext.test.jsx[2m > [22mAuthContext[2m > [22monAuthStateChanged subscription[2m > [22mshould subscribe to auth state changes on mount[32m 3[2mms[22m[39m
+ [32mΓ£ô[39m src/__tests__/context/AuthContext.test.jsx[2m > [22mAuthContext[2m > [22monAuthStateChanged subscription[2m > [22mshould unsubscribe from auth state changes on unmount[32m 10[2mms[22m[39m
+ [32mΓ£ô[39m src/__tests__/context/AuthContext.test.jsx[2m > [22mAuthContext[2m > [22monAuthStateChanged subscription[2m > [22mshould update user when auth state changes[32m 11[2mms[22m[39m
+ [32mΓ£ô[39m src/__tests__/context/AuthContext.test.jsx[2m > [22mAuthContext[2m > [22mContext value[2m > [22mshould provide all required properties[32m 2[2mms[22m[39m
+ [32mΓ£ô[39m src/__tests__/features/ManageCSVImports.test.jsx[2m > [22mManageCSVImports[2m > [22mRendering[2m > [22mshould render the CSV imports list header[32m 191[2mms[22m[39m
+ [32mΓ£ô[39m src/__tests__/features/ManageCSVImports.test.jsx[2m > [22mManageCSVImports[2m > [22mRendering[2m > [22mshould display import records[32m 45[2mms[22m[39m
+ [32mΓ£ô[39m src/components/__tests__/TransactionRow.test.jsx[2m > [22mTransactionRow[2m > [22mshows checkbox in select mode[32m 271[2mms[22m[39m
+ [32mΓ£ô[39m src/components/__tests__/TransactionRow.test.jsx[2m > [22mTransactionRow[2m > [22mcheckbox is checked when isSelected[32m 89[2mms[22m[39m
+ [32mΓ£ô[39m src/__tests__/features/ManageCSVImports.test.jsx[2m > [22mManageCSVImports[2m > [22mRendering[2m > [22mshould show bank names[32m 64[2mms[22m[39m
+ [32mΓ£ô[39m src/__tests__/features/ManageCSVImports.test.jsx[2m > [22mManageCSVImports[2m > [22mRendering[2m > [22mshould display transaction counts[32m 42[2mms[22m[39m
+ [32mΓ£ô[39m src/__tests__/features/ManageCSVImports.test.jsx[2m > [22mManageCSVImports[2m > [22mRendering[2m > [22mshould show empty state when no imports[32m 34[2mms[22m[39m
+ [31m├ù[39m src/components/forms/__tests__/TransactionModal.test.jsx[2m > [22mTransactionModal[2m > [22mrenders create mode when open[32m 191[2mms[22m[39m
+[31m   ΓåÆ Unable to find an element with the text: Add Transaction. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+
+Ignored nodes: comments, script, style
+[36m<body>[31m
+  [36m<div>[31m
+    [36m<div[31m
+      [33mclass[31m=[32m"fixed inset-0 z-50 overflow-y-auto"[31m
+    [36m>[31m
+      [36m<div[31m
+        [33mclass[31m=[32m"flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0"[31m
+      [36m>[31m
+        [36m<div[31m
+          [33mclass[31m=[32m"fixed inset-0 bg-gray-500 dark:bg-gray-900 bg-opacity-75 dark:bg-opacity-75 transition-opacity"[31m
+        [36m/>[31m
+        [36m<div[31m
+          [33mclass[31m=[32m"inline-block align-bottom bg-white dark:bg-gray-800 rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-6"[31m
+        [36m>[31m
+          [36m<div[31m
+            [33mclass[31m=[32m"flex items-center justify-between mb-4"[31m
+          [36m>[31m
+            [36m<h3[31m
+              [33mclass[31m=[32m"text-lg font-medium text-gray-900 dark:text-white"[31m
+            [36m>[31m
+              [0mAdd New Transaction[0m
+            [36m</h3>[31m
+            [36m<button[31m
+              [33mclass[31m=[32m"text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"[31m
+            [36m>[31m
+              [36m<svg[31m
+                [33maria-hidden[31m=[32m"true"[31m
+                [33mclass[31m=[32m"h-6 w-6"[31m
+                [33mdata-slot[31m=[32m"icon"[31m
+                [33mfill[31m=[32m"none"[31m
+                [33mstroke[31m=[32m"currentColor"[31m
+                [33mstroke-width[31m=[32m"1.5"[31m
+                [33mviewBox[31m=[32m"0 0 24 24"[31m
+                [33mxmlns[31m=[32m"http://www.w3.org/2000/svg"[31m
+              [36m>[31m
+                [36m<path[31m
+                  [33md[31m=[32m"M6 18 18 6M6 6l12 12"[31m
+                  [33mstroke-linecap[31m=[32m"round"[31m
+                  [33mstroke-linejoin[31m=[32m"round"[31m
+                [36m/>[31m
+              [36m</svg>[31m
+            [36m</button>[31m
+          [36m</div>[31m
+          [36m<form[31m
+            [33mclass[31m=[32m"space-y-4"[31m
+          [36m>[31m
+            [36m<div[31m
+              [33mclass[31m=[32m"grid grid-cols-2 gap-4"[31m
+            [36m>[31m
+              [36m<div>[31m
+                [36m<label[31m
+                  [33mclass[31m=[32m"form-label"[31m
+                [36m>[31m
+                  [0mDate[0m
+                [36m</label>[31m
+                [36m<input[31m
+                  [33mclass[31m=[32m"form-input"[31m
+                  [33mname[31m=[32m"date"[31m
+                  [33mtype[31m=[32m"date"[31m
+                [36m/>[31m
+              [36m</div>[31m
+              [36m<div>[31m
+                [36m<label[31m
+                  [33mclass[31m=[32m"form-label"[31m
+                [36m>[31m
+                  [0mType[0m
+                [36m</label>[31m
+                [36m<select[31m
+                  [33mclass[31m=[32m"form-input"[31m
+                  [33mname[31m=[32m"type"[31m
+                [36m>[31m
+                  [36m<option[31m
+                    [33mvalue[31m=[32m"expense"[31m
+                  [36m>[31m
+                    [0mExpense[0m
+                  [36m</option>[31m
+                  [36m<option[31m
+                    [33mvalue[31m=[32m"income"[31m
+                  [36m>[31m
+                    [0mIncome[0m
+                  [36m</option>[31m
+                [36m</select>[31m
+              [36m</div>[31m
+            [36m</div>[31m
+            [36m<div>[31m
+              [36m<label[31m
+                [33mclass[31m=[32m"form-label"[31m
+              [36m>[31m
+                [0mAmount ([0m
+                [0mExpense[0m
+                [0m)[0m
+              [36m</label>[31m
+              [36m<div[31m
+                [33mclass[31m=[32m"relative"[31m
+              [36m>[31m
+                [36m<div[31m
+                  [33mclass[31m=[32m"absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"[31m
+                [36m>[31m
+                  [36m<span[31m
+                    [33mclass[31m=[32m"text-gray-500 dark:text-gray-400 sm:text-sm"[31m
+                  [36m>[31m
+                    [0m$[0m
+                  [36m</span>[31m
+                [36m</div>[31m
+                [36m<input[31m
+                  [33mclass[31m=[32m"form-input pl-7"[31m
+                  [33mmin[31m=[32m"0"[31m
+                  [33mname[31m=[32m"amount"[31m
+                  [33mplaceholder[31m=[32m"0.00"[31m
+                  [33mstep[31m=[32m"0.01"[31m
+                  [33mtype[31m=[32m"number"[31m
+                [36m/>[31m
+              [36m</div>[31m
+            [36m</div>[31m
+            [36m<div>[31m
+              [36m<label[31m
+                [33mclass[31m=[32m"form-label"[31m
+              [36m>[31m
+                [0mDescription[0m
+              [36m</label>[31m
+              [36m<input[31m
+                [33mclass[31m=[32m"form-input"[31m
+                [33mname[31m=[32m"description"[31m
+                [33mplaceholder[31m=[32m"Transaction description"[31m
+                [33mtype[31m=[32m"text"[31m
+              [36m/>[31m
+            [36m</div>[31m
+            [36m<div>[31m
+              [36m<label[31m
+                [33mclass[31m=[32m"form-label"[31m
+              [36m>[31m
+                [0mCompany[0m
+              [36m</label>[31m
+              [36m<div[31m
+                [33mclass[31m=[32m"relative company-selector w-full"[31m
+              [36m>[31m
+                [36m<div[31m
+                  [33mclass[31m=[32m"form-input cursor-pointer flex items-center justify-between "[31m
+                [36m>[31m
+                  [36m<span[31m
+                    [33mclass[31m=[32m"text-gray-500 dark:text-gray-400"[31m
+                  [36m>[31m
+                    [0mSelect a company...[0m
+                  [36m</span>[31m
+                  [36m<svg[31m
+                    [33mclass[31m=[32m"w-5 h-5 text-gray-400 transition-transform "[31m
+                    [33mfill[31m=[32m"none"[31m
+                    [33mstroke[31m=[32m"currentColor"[31m
+                    [33mviewBox[31m=[32m"0 0 24 24"[31m
+                  [36m>[31m
+                    [36m<path[31m
+                      [33md[31m=[32m"M19 9l-7 7-7-7"[31m
+                      [33mstroke-linecap[31m=[32m"round"[31m
+                      [33mstroke-linejoin[31m=[32m"round"[31m
+                      [33mstroke-width[31m=[32m"2"[31m
+                    [36m/>[31m
+                  [36m</svg>[31m
+                [36m</div>[31m
+              [36m</div>[31m
+              [36m<p[31m
+                [33mclass[31m=[32m"mt-1 text-xs text-gray-500 dark:t...[39m
+ [32mΓ£ô[39m src/components/forms/__tests__/TransactionModal.test.jsx[2m > [22mTransactionModal[2m > [22mrenders edit mode with transaction data[32m 80[2mms[22m[39m
+[90mstderr[2m | 
+src/__tests__/features/ReceiptList.test.jsx[2m > 
+[22m[2mReceiptList[2m > [22m[2mRendering[2m 
+> [22m[2mshould render loading state initially
+[22m[39mWarning: Failed prop type: The prop 
+`onConfirm` is marked as required in 
+`BatchUpdateModal`, but its value is `undefined`.
+    at BatchUpdateModal (C:/Users/richa/Documents/
+Code/BookkeepingApp/client/src/features/Receipts/B
+atchUpdateModal.jsx:11:3)
+    at ReceiptList (C:/Users/richa/Documents/Code/
+BookkeepingApp/client/src/features/Receipts/Receip
+tList.jsx:27:63)
+    at Router (C:\Users\richa\Documents\Code\Bookk
+eepingApp\client\node_modules\react-router\dist\um
+d\react-router.development.js:1207:17)
+    at BrowserRouter (C:\Users\richa\Documents\Cod
+e\BookkeepingApp\client\node_modules\react-router-
+dom\dist\umd\react-router-dom.development.js:695:7
+)
+    at QueryClientProvider (file:///C:/Users/richa
+/Documents/Code/BookkeepingApp/client/node_modules
+/@tanstack/react-query/build/modern/QueryClientPro
+vider.js:20:3)
+Warning: ReceiptDetailModal: Support for 
+defaultProps will be removed from function 
+components in a future major release. Use 
+JavaScript default parameters instead.
+    at ReceiptDetailModal (C:/Users/richa/Document
+s/Code/BookkeepingApp/client/src/features/Receipts
+/ReceiptDetailModal.jsx:13:3)
+    at div
+    at ReceiptList (C:/Users/richa/Documents/Code/
+BookkeepingApp/client/src/features/Receipts/Receip
+tList.jsx:27:63)
+    at Router (C:\Users\richa\Documents\Code\Bookk
+eepingApp\client\node_modules\react-router\dist\um
+d\react-router.development.js:1207:17)
+    at BrowserRouter (C:\Users\richa\Documents\Cod
+e\BookkeepingApp\client\node_modules\react-router-
+dom\dist\umd\react-router-dom.development.js:695:7
+)
+    at QueryClientProvider (file:///C:/Users/richa
+/Documents/Code/BookkeepingApp/client/node_modules
+/@tanstack/react-query/build/modern/QueryClientPro
+vider.js:20:3)
+Warning: BatchUpdateModal: Support for 
+defaultProps will be removed from function 
+components in a future major release. Use 
+JavaScript default parameters instead.
+    at BatchUpdateModal (C:/Users/richa/Documents/
+Code/BookkeepingApp/client/src/features/Receipts/B
+atchUpdateModal.jsx:11:3)
+    at div
+    at ReceiptList (C:/Users/richa/Documents/Code/
+BookkeepingApp/client/src/features/Receipts/Receip
+tList.jsx:27:63)
+    at Router (C:\Users\richa\Documents\Code\Bookk
+eepingApp\client\node_modules\react-router\dist\um
+d\react-router.development.js:1207:17)
+    at BrowserRouter (C:\Users\richa\Documents\Cod
+e\BookkeepingApp\client\node_modules\react-router-
+dom\dist\umd\react-router-dom.development.js:695:7
+)
+    at QueryClientProvider (file:///C:/Users/richa
+/Documents/Code/BookkeepingApp/client/node_modules
+/@tanstack/react-query/build/modern/QueryClientPro
+vider.js:20:3)
+Warning: BulkAddReceiptsModal: Support for 
+defaultProps will be removed from function 
+components in a future major release. Use 
+JavaScript default parameters instead.
+    at BulkAddReceiptsModal (C:/Users/richa/Docume
+nts/Code/BookkeepingApp/client/src/features/Receip
+ts/BulkAddReceiptsModal.jsx:14:33)
+    at div
+    at ReceiptList (C:/Users/richa/Documents/Code/
+BookkeepingApp/client/src/features/Receipts/Receip
+tList.jsx:27:63)
+    at Router (C:\Users\richa\Documents\Code\Bookk
+eepingApp\client\node_modules\react-router\dist\um
+d\react-router.development.js:1207:17)
+    at BrowserRouter (C:\Users\richa\Documents\Cod
+e\BookkeepingApp\client\node_modules\react-router-
+dom\dist\umd\react-router-dom.development.js:695:7
+)
+    at QueryClientProvider (file:///C:/Users/richa
+/Documents/Code/BookkeepingApp/client/node_modules
+/@tanstack/react-query/build/modern/QueryClientPro
+vider.js:20:3)
+Warning: QuickReceiptEntry: Support for 
+defaultProps will be removed from function 
+components in a future major release. Use 
+JavaScript default parameters instead.
+    at QuickReceiptEntry (C:/Users/richa/Documents
+/Code/BookkeepingApp/client/src/features/Receipts/
+QuickReceiptEntry.jsx:12:30)
+    at div
+    at ReceiptList (C:/Users/richa/Documents/Code/
+BookkeepingApp/client/src/features/Receipts/Receip
+tList.jsx:27:63)
+    at Router (C:\Users\richa\Documents\Code\Bookk
+eepingApp\client\node_modules\react-router\dist\um
+d\react-router.development.js:1207:17)
+    at BrowserRouter (C:\Users\richa\Documents\Cod
+e\BookkeepingApp\client\node_modules\react-router-
+dom\dist\umd\react-router-dom.development.js:695:7
+)
+    at QueryClientProvider (file:///C:/Users/richa
+/Documents/Code/BookkeepingApp/client/node_modules
+/@tanstack/react-query/build/modern/QueryClientPro
+vider.js:20:3)
+ΓÜá∩╕Å React Router Future Flag Warning: React 
+Router will begin wrapping state updates in 
+`React.startTransition` in v7. You can use the 
+`v7_startTransition` future flag to opt-in early. 
+For more information, see https://reactrouter.com/
+v6/upgrading/future#v7_starttransition.
+ΓÜá∩╕Å React Router Future Flag Warning: Relative 
+route resolution within Splat routes is changing 
+in v7. You can use the `v7_relativeSplatPath` 
+future flag to opt-in early. For more 
+information, see https://reactrouter.com/v6/upgrad
+ing/future#v7_relativesplatpath.
+
+[90mstderr[2m | 
+src/__tests__/features/ReceiptForm.test.jsx[2m > 
+[22m[2mReceiptForm[2m > [22m[2mRendering[2m 
+> [22m[2mshould render the form with key 
+elements
+[22m[39mWarning: ReceiptForm: Support for 
+defaultProps will be removed from function 
+components in a future major release. Use 
+JavaScript default parameters instead.
+    at ReceiptForm (C:/Users/richa/Documents/Code/
+BookkeepingApp/client/src/features/Receipts/Receip
+tForm.jsx:13:3)
+
+ [32mΓ£ô[39m src/components/forms/__tests__/TransactionModal.test.jsx[2m > [22mTransactionModal[2m > [22mrenders payment method dropdown with options[32m 132[2mms[22m[39m
+ [31m├ù[39m src/components/forms/__tests__/TransactionModal.test.jsx[2m > [22mTransactionModal[2m > [22mrenders category dropdown with groups[32m 92[2mms[22m[39m
+[31m   ΓåÆ Found a label with the text of: /category/i, however no form control was found associated to that label. Make sure you're using the "for" attribute or "aria-labelledby" attribute correctly.
+
+Ignored nodes: comments, script, style
+[36m<body>[31m
+  [36m<div>[31m
+    [36m<div[31m
+      [33mclass[31m=[32m"fixed inset-0 z-50 overflow-y-auto"[31m
+    [36m>[31m
+      [36m<div[31m
+        [33mclass[31m=[32m"flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0"[31m
+      [36m>[31m
+        [36m<div[31m
+          [33mclass[31m=[32m"fixed inset-0 bg-gray-500 dark:bg-gray-900 bg-opacity-75 dark:bg-opacity-75 transition-opacity"[31m
+        [36m/>[31m
+        [36m<div[31m
+          [33mclass[31m=[32m"inline-block align-bottom bg-white dark:bg-gray-800 rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-6"[31m
+        [36m>[31m
+          [36m<div[31m
+            [33mclass[31m=[32m"flex items-center justify-between mb-4"[31m
+          [36m>[31m
+            [36m<h3[31m
+              [33mclass[31m=[32m"text-lg font-medium text-gray-900 dark:text-white"[31m
+            [36m>[31m
+              [0mAdd New Transaction[0m
+            [36m</h3>[31m
+            [36m<button[31m
+              [33mclass[31m=[32m"text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"[31m
+            [36m>[31m
+              [36m<svg[31m
+                [33maria-hidden[31m=[32m"true"[31m
+                [33mclass[31m=[32m"h-6 w-6"[31m
+                [33mdata-slot[31m=[32m"icon"[31m
+                [33mfill[31m=[32m"none"[31m
+                [33mstroke[31m=[32m"currentColor"[31m
+                [33mstroke-width[31m=[32m"1.5"[31m
+                [33mviewBox[31m=[32m"0 0 24 24"[31m
+                [33mxmlns[31m=[32m"http://www.w3.org/2000/svg"[31m
+              [36m>[31m
+                [36m<path[31m
+                  [33md[31m=[32m"M6 18 18 6M6 6l12 12"[31m
+                  [33mstroke-linecap[31m=[32m"round"[31m
+                  [33mstroke-linejoin[31m=[32m"round"[31m
+                [36m/>[31m
+              [36m</svg>[31m
+            [36m</button>[31m
+          [36m</div>[31m
+          [36m<form[31m
+            [33mclass[31m=[32m"space-y-4"[31m
+          [36m>[31m
+            [36m<div[31m
+              [33mclass[31m=[32m"grid grid-cols-2 gap-4"[31m
+            [36m>[31m
+              [36m<div>[31m
+                [36m<label[31m
+                  [33mclass[31m=[32m"form-label"[31m
+                [36m>[31m
+                  [0mDate[0m
+                [36m</label>[31m
+                [36m<input[31m
+                  [33mclass[31m=[32m"form-input"[31m
+                  [33mname[31m=[32m"date"[31m
+                  [33mtype[31m=[32m"date"[31m
+                [36m/>[31m
+              [36m</div>[31m
+              [36m<div>[31m
+                [36m<label[31m
+                  [33mclass[31m=[32m"form-label"[31m
+                [36m>[31m
+                  [0mType[0m
+                [36m</label>[31m
+                [36m<select[31m
+                  [33mclass[31m=[32m"form-input"[31m
+                  [33mname[31m=[32m"type"[31m
+                [36m>[31m
+                  [36m<option[31m
+                    [33mvalue[31m=[32m"expense"[31m
+                  [36m>[31m
+                    [0mExpense[0m
+                  [36m</option>[31m
+                  [36m<option[31m
+                    [33mvalue[31m=[32m"income"[31m
+                  [36m>[31m
+                    [0mIncome[0m
+                  [36m</option>[31m
+                [36m</select>[31m
+              [36m</div>[31m
+            [36m</div>[31m
+            [36m<div>[31m
+              [36m<label[31m
+                [33mclass[31m=[32m"form-label"[31m
+              [36m>[31m
+                [0mAmount ([0m
+                [0mExpense[0m
+                [0m)[0m
+              [36m</label>[31m
+              [36m<div[31m
+                [33mclass[31m=[32m"relative"[31m
+              [36m>[31m
+                [36m<div[31m
+                  [33mclass[31m=[32m"absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"[31m
+                [36m>[31m
+                  [36m<span[31m
+                    [33mclass[31m=[32m"text-gray-500 dark:text-gray-400 sm:text-sm"[31m
+                  [36m>[31m
+                    [0m$[0m
+                  [36m</span>[31m
+                [36m</div>[31m
+                [36m<input[31m
+                  [33mclass[31m=[32m"form-input pl-7"[31m
+                  [33mmin[31m=[32m"0"[31m
+                  [33mname[31m=[32m"amount"[31m
+                  [33mplaceholder[31m=[32m"0.00"[31m
+                  [33mstep[31m=[32m"0.01"[31m
+                  [33mtype[31m=[32m"number"[31m
+                [36m/>[31m
+              [36m</div>[31m
+            [36m</div>[31m
+            [36m<div>[31m
+              [36m<label[31m
+                [33mclass[31m=[32m"form-label"[31m
+              [36m>[31m
+                [0mDescription[0m
+              [36m</label>[31m
+              [36m<input[31m
+                [33mclass[31m=[32m"form-input"[31m
+                [33mname[31m=[32m"description"[31m
+                [33mplaceholder[31m=[32m"Transaction description"[31m
+                [33mtype[31m=[32m"text"[31m
+              [36m/>[31m
+            [36m</div>[31m
+            [36m<div>[31m
+              [36m<label[31m
+                [33mclass[31m=[32m"form-label"[31m
+              [36m>[31m
+                [0mCompany[0m
+              [36m</label>[31m
+              [36m<div[31m
+                [33mclass[31m=[32m"relative company-selector w-full"[31m
+              [36m>[31m
+                [36m<div[31m
+                  [33mclass[31m=[32m"form-input cursor-pointer flex items-center justify-between "[31m
+                [36m>[31m
+                  [36m<span[31m
+                    [33mclass[31m=[32m"text-gray-500 dark:text-gray-400"[31m
+                  [36m>[31m
+                    [0mSelect a company...[0m
+                  [36m</span>[31m
+                  [36m<svg[31m
+                    [33mclass[31m=[32m"w-5 h-5 text-gray-400 transition-transform "[31m
+                    [33mfill[31m=[32m"none"[31m
+                    [33mstroke[31m=[32m"currentColor"[31m
+                    [33mviewBox[31m=[32m"0 0 24 24"[31m
+                  [36m>[31m
+                    [36m<path[31m
+                      [33md[31m=[32m"M19 9l-7 7-7-7"[31m
+                      [33mstroke-linecap[31m=[32m"round"[31m
+                      [33mstroke-linejoin[31m=[32m"round"[31m
+                      [33mstroke-width[31m=[32m"2"[31m
+                    [36m/>[31m
+                  [36m</svg>[31m
+                [36m</div>[31m
+              [36m</div>[31m
+              [36m<p[31m
+                [33mclass[31m=[32m"mt-1 text-xs text-gray-500 dark:t...[39m
+ [32mΓ£ô[39m src/components/__tests__/TransactionRow.test.jsx[2m > [22mTransactionRow[2m > [22mcalls onSelect when checkbox clicked[32m 84[2mms[22m[39m
+ [32mΓ£ô[39m src/components/__tests__/TransactionRow.test.jsx[2m > [22mTransactionRow[2m > [22mcalls onEdit when edit button clicked[32m 13[2mms[22m[39m
+ [32mΓ£ô[39m src/components/__tests__/TransactionRow.test.jsx[2m > [22mTransactionRow[2m > [22mcalls onDelete when delete button clicked[32m 8[2mms[22m[39m
+ [32mΓ£ô[39m src/components/__tests__/TransactionRow.test.jsx[2m > [22mTransactionRow[2m > [22mdisables delete button when deletingId matches[32m 12[2mms[22m[39m
+ [32mΓ£ô[39m src/__tests__/features/ReceiptList.test.jsx[2m > [22mReceiptList[2m > [22mRendering[2m > [22mshould render loading state initially[32m 127[2mms[22m[39m
+ [32mΓ£ô[39m src/__tests__/features/ReceiptList.test.jsx[2m > [22mReceiptList[2m > [22mRendering[2m > [22mshould fetch receipts on mount[32m 38[2mms[22m[39m
+ [32mΓ£ô[39m src/__tests__/features/CSVUpload.test.jsx[2m > [22mCSVUpload[2m > [22mRendering[2m > [22mshould render the CSV upload form[32m 147[2mms[22m[39m
+ [32mΓ£ô[39m src/__tests__/features/ReceiptList.test.jsx[2m > [22mReceiptList[2m > [22mRendering[2m > [22mshould display receipts after loading[32m 63[2mms[22m[39m
+ [32mΓ£ô[39m src/__tests__/features/ReceiptList.test.jsx[2m > [22mReceiptList[2m > [22mEmpty State[2m > [22mshould handle empty receipts list[32m 23[2mms[22m[39m
+ [32mΓ£ô[39m src/__tests__/features/ReceiptList.test.jsx[2m > [22mReceiptList[2m > [22mError State[2m > [22mshould handle API errors gracefully[32m 19[2mms[22m[39m
+ [32mΓ£ô[39m src/__tests__/features/ReceiptForm.test.jsx[2m > [22mReceiptForm[2m > [22mRendering[2m > [22mshould render the form with key elements[33m 451[2mms[22m[39m
+ [32mΓ£ô[39m src/__tests__/features/ReceiptForm.test.jsx[2m > [22mReceiptForm[2m > [22mRendering[2m > [22mshould show retention policy warning[32m 56[2mms[22m[39m
+ [32mΓ£ô[39m src/components/__tests__/TransactionRow.test.jsx[2m > [22mTransactionRow[2m > [22mshows category editing mode[32m 96[2mms[22m[39m
+ [32mΓ£ô[39m src/components/__tests__/TransactionRow.test.jsx[2m > [22mTransactionRow[2m > [22mshows save and cancel buttons during category edit[32m 32[2mms[22m[39m
+ [32mΓ£ô[39m src/components/__tests__/TransactionRow.test.jsx[2m > [22mTransactionRow[2m > [22mcalls onSaveCategoryEdit when save clicked[32m 26[2mms[22m[39m
+ [32mΓ£ô[39m src/components/__tests__/TransactionRow.test.jsx[2m > [22mTransactionRow[2m > [22mcalls onCancelCategoryEdit when cancel clicked[32m 25[2mms[22m[39m
+ [32mΓ£ô[39m src/components/__tests__/TransactionRow.test.jsx[2m > [22mTransactionRow[2m > [22mdisplays Uncategorized when no category[32m 9[2mms[22m[39m
+ [32mΓ£ô[39m src/components/__tests__/TransactionRow.test.jsx[2m > [22mTransactionRow[2m > [22mhandles null date gracefully[32m 7[2mms[22m[39m
+ [32mΓ£ô[39m src/components/__tests__/TransactionRow.test.jsx[2m > [22mTransactionRow[2m > [22mhandles various date formats[32m 10[2mms[22m[39m
+ [32mΓ£ô[39m src/__tests__/features/CSVUpload.test.jsx[2m > [22mCSVUpload[2m > [22mRendering[2m > [22mshould display bank format options[33m 408[2mms[22m[39m
+ [32mΓ£ô[39m src/__tests__/features/CSVUpload.test.jsx[2m > [22mCSVUpload[2m > [22mRendering[2m > [22mshould show upload area when in idle state[32m 42[2mms[22m[39m
+ [32mΓ£ô[39m src/__tests__/features/ReceiptForm.test.jsx[2m > [22mReceiptForm[2m > [22mRendering[2m > [22mshould show create button for new receipts[32m 73[2mms[22m[39m
+ [32mΓ£ô[39m src/__tests__/features/ReceiptForm.test.jsx[2m > [22mReceiptForm[2m > [22mRendering[2m > [22mshould show update button when editing[32m 62[2mms[22m[39m
+ [32mΓ£ô[39m src/__tests__/features/ReceiptForm.test.jsx[2m > [22mReceiptForm[2m > [22mEdit Mode[2m > [22mshould populate fields with existing data[32m 18[2mms[22m[39m
+ [32mΓ£ô[39m src/__tests__/features/ManageCSVImports.test.jsx[2m > [22mManageCSVImports[2m > [22mLoading States[2m > [22mshould show loading state while fetching[32m 26[2mms[22m[39m
+ [32mΓ£ô[39m src/__tests__/features/CSVUpload.test.jsx[2m > [22mCSVUpload[2m > [22mUpload Flow[2m > [22mshould handle successful CSV upload[32m 27[2mms[22m[39m
+ [32mΓ£ô[39m src/__tests__/features/CSVUpload.test.jsx[2m > [22mCSVUpload[2m > [22mUpload Flow[2m > [22mshould show error toast on upload failure[32m 44[2mms[22m[39m
+ [32mΓ£ô[39m src/__tests__/features/CSVUpload.test.jsx[2m > [22mCSVUpload[2m > [22mError Handling[2m > [22mshould handle network errors gracefully[32m 31[2mms[22m[39m
+ [32mΓ£ô[39m src/__tests__/features/CSVUpload.test.jsx[2m > [22mCSVUpload[2m > [22mError Handling[2m > [22mshould display parsing errors from CSV[32m 30[2mms[22m[39m
+ [32mΓ£ô[39m src/__tests__/features/ReceiptForm.test.jsx[2m > [22mReceiptForm[2m > [22mLoading State[2m > [22mshould disable cancel button when loading[32m 55[2mms[22m[39m
+ [32mΓ£ô[39m src/__tests__/features/ReceiptForm.test.jsx[2m > [22mReceiptForm[2m > [22mLoading State[2m > [22mshould disable submit button when loading[32m 67[2mms[22m[39m
+ [32mΓ£ô[39m src/__tests__/features/ReceiptForm.test.jsx[2m > [22mReceiptForm[2m > [22mCancel[2m > [22mshould call onCancel when cancel button clicked[32m 108[2mms[22m[39m
+ [32mΓ£ô[39m src/__tests__/features/ManageCSVImports.test.jsx[2m > [22mManageCSVImports[2m > [22mDelete Functionality[2m > [22mshould open delete confirmation modal[33m 490[2mms[22m[39m
+ [32mΓ£ô[39m src/__tests__/features/ManageCSVImports.test.jsx[2m > [22mManageCSVImports[2m > [22mDelete Functionality[2m > [22mshould handle successful delete[32m 173[2mms[22m[39m
+ [32mΓ£ô[39m src/__tests__/features/ManageCSVImports.test.jsx[2m > [22mManageCSVImports[2m > [22mDelete Functionality[2m > [22mshould show error toast on delete failure[32m 30[2mms[22m[39m
+ [32mΓ£ô[39m src/__tests__/features/ManageCSVImports.test.jsx[2m > [22mManageCSVImports[2m > [22mView Transactions[2m > [22mshould show transactions when View Transactions is clicked[32m 157[2mms[22m[39m
+ [32mΓ£ô[39m src/__tests__/features/ManageCSVImports.test.jsx[2m > [22mManageCSVImports[2m > [22mError Handling[2m > [22mshould display error message on fetch failure[32m 32[2mms[22m[39m
+ [32mΓ£ô[39m src/__tests__/features/ManageCSVImports.test.jsx[2m > [22mManageCSVImports[2m > [22mFiltering[2m > [22mshould call getImports on initial render[32m 21[2mms[22m[39m
+ [32mΓ£ô[39m src/components/ui/__tests__/CategoryBadge.test.jsx[2m > [22mCategoryBadge[2m > [22mrenders without crashing[32m 45[2mms[22m[39m
+ [32mΓ£ô[39m src/components/ui/__tests__/CategoryBadge.test.jsx[2m > [22mCategoryBadge[2m > [22mrenders Uncategorized when no category provided[32m 4[2mms[22m[39m
+ [32mΓ£ô[39m src/components/ui/__tests__/CategoryBadge.test.jsx[2m > [22mCategoryBadge[2m > [22mrenders Uncategorized for undefined category[32m 2[2mms[22m[39m
+ [32mΓ£ô[39m src/components/ui/__tests__/CategoryBadge.test.jsx[2m > [22mCategoryBadge[2m > [22mrenders Uncategorized for empty string category[32m 4[2mms[22m[39m
+ [32mΓ£ô[39m src/components/ui/__tests__/CategoryBadge.test.jsx[2m > [22mCategoryBadge[2m > [22mrenders category with subcategory[32m 7[2mms[22m[39m
+ [32mΓ£ô[39m src/components/ui/__tests__/CategoryBadge.test.jsx[2m > [22mCategoryBadge[2m > [22mrenders in compact mode[32m 3[2mms[22m[39m
+ [32mΓ£ô[39m src/components/ui/__tests__/CategoryBadge.test.jsx[2m > [22mCategoryBadge[2m > [22mrenders compact mode with subcategory[32m 5[2mms[22m[39m
+ [32mΓ£ô[39m src/components/ui/__tests__/CategoryBadge.test.jsx[2m > [22mCategoryBadge[2m > [22mshows group when showGroup is true[32m 2[2mms[22m[39m
+ [32mΓ£ô[39m src/components/ui/__tests__/CategoryBadge.test.jsx[2m > [22mCategoryBadge[2m > [22mshows tax status when showTaxStatus is true[32m 5[2mms[22m[39m
+ [32mΓ£ô[39m src/components/ui/__tests__/CategoryBadge.test.jsx[2m > [22mCategoryBadge[2m > [22mhandles personal categories[32m 4[2mms[22m[39m
+ [32mΓ£ô[39m src/components/ui/__tests__/CategoryBadge.test.jsx[2m > [22mCategoryBadge[2m > [22mhandles business categories with proper styling[32m 13[2mms[22m[39m
+ [32mΓ£ô[39m src/components/ui/__tests__/LoadingSpinner.test.jsx[2m > [22mLoadingSpinner[2m > [22mrenders without crashing[32m 45[2mms[22m[39m
+ [32mΓ£ô[39m src/components/ui/__tests__/LoadingSpinner.test.jsx[2m > [22mLoadingSpinner[2m > [22mrenders with default props[32m 4[2mms[22m[39m
+ [32mΓ£ô[39m src/components/ui/__tests__/LoadingSpinner.test.jsx[2m > [22mLoadingSpinner[2m > [22mrenders with custom text[32m 6[2mms[22m[39m
+ [32mΓ£ô[39m src/components/ui/__tests__/LoadingSpinner.test.jsx[2m > [22mLoadingSpinner[2m > [22mrenders without text when text is empty[32m 2[2mms[22m[39m
+ [32mΓ£ô[39m src/components/ui/__tests__/LoadingSpinner.test.jsx[2m > [22mLoadingSpinner[2m > [22mrenders with small size[32m 11[2mms[22m[39m
+ [32mΓ£ô[39m src/components/ui/__tests__/LoadingSpinner.test.jsx[2m > [22mLoadingSpinner[2m > [22mrenders with medium size (default)[32m 3[2mms[22m[39m
+ [32mΓ£ô[39m src/components/ui/__tests__/LoadingSpinner.test.jsx[2m > [22mLoadingSpinner[2m > [22mrenders with large size[32m 2[2mms[22m[39m
+ [32mΓ£ô[39m src/components/ui/__tests__/LoadingSpinner.test.jsx[2m > [22mLoadingSpinner[2m > [22mrenders with extra large size[32m 3[2mms[22m[39m
+ [32mΓ£ô[39m src/components/ui/__tests__/LoadingSpinner.test.jsx[2m > [22mLoadingSpinner[2m > [22mhas animation class for spinning effect[32m 4[2mms[22m[39m
+[90mstderr[2m | 
+src/__tests__/services/api.test.js[2m > 
+[22m[2mAPI Service - Response Interceptors[2m 
+> [22m[2m401 Unauthorized Handling[2m > 
+[22m[2mshould sign out user on 401 response
+[22m[39mUnauthorized access - redirecting to 
+login
+
+[90mstderr[2m | 
+src/__tests__/services/api.test.js[2m > 
+[22m[2mAPI Service - Response Interceptors[2m 
+> [22m[2m401 Unauthorized Handling[2m > 
+[22m[2mshould redirect to login on 401
+[22m[39mUnauthorized access - redirecting to 
+login
+
+[90mstderr[2m | 
+src/__tests__/services/api.test.js[2m > 
+[22m[2mAPI Service - Response Interceptors[2m 
+> [22m[2m401 Unauthorized Handling[2m > 
+[22m[2mshould redirect to login even if signOut 
+fails
+[22m[39mUnauthorized access - redirecting to 
+login
+
+ [32mΓ£ô[39m src/__tests__/services/api.test.js[2m > [22mAPI Service - Response Interceptors[2m > [22mSuccess Response Interceptor[2m > [22mshould extract data from axios response[32m 4[2mms[22m[39m
+ [32mΓ£ô[39m src/__tests__/services/api.test.js[2m > [22mAPI Service - Response Interceptors[2m > [22mSuccess Response Interceptor[2m > [22mshould handle response without data property[32m 1[2mms[22m[39m
+ [32mΓ£ô[39m src/__tests__/services/api.test.js[2m > [22mAPI Service - Response Interceptors[2m > [22mNetwork Error Handling[2m > [22mshould show network error toast when no response from server[32m 4[2mms[22m[39m
+ [32mΓ£ô[39m src/__tests__/services/api.test.js[2m > [22mAPI Service - Response Interceptors[2m > [22mNetwork Error Handling[2m > [22mshould show timeout error toast on request timeout[32m 1[2mms[22m[39m
+ [32mΓ£ô[39m src/__tests__/services/api.test.js[2m > [22mAPI Service - Response Interceptors[2m > [22mNetwork Error Handling[2m > [22mshould detect timeout from error message[32m 0[2mms[22m[39m
+ [32mΓ£ô[39m src/__tests__/services/api.test.js[2m > [22mAPI Service - Response Interceptors[2m > [22m401 Unauthorized Handling[2m > [22mshould sign out user on 401 response[32m 2[2mms[22m[39m
+ [32mΓ£ô[39m src/__tests__/services/api.test.js[2m > [22mAPI Service - Response Interceptors[2m > [22m401 Unauthorized Handling[2m > [22mshould redirect to login on 401[32m 1[2mms[22m[39m
+ [32mΓ£ô[39m src/__tests__/services/api.test.js[2m > [22mAPI Service - Response Interceptors[2m > [22m401 Unauthorized Handling[2m > [22mshould redirect to login even if signOut fails[32m 16[2mms[22m[39m
+ [32mΓ£ô[39m src/__tests__/services/api.test.js[2m > [22mAPI Service - Response Interceptors[2m > [22m403 Forbidden Handling[2m > [22mshould show permission denied toast on 403[32m 1[2mms[22m[39m
+ [32mΓ£ô[39m src/__tests__/services/api.test.js[2m > [22mAPI Service - Response Interceptors[2m > [22m404 Not Found Handling[2m > [22mshould not show toast on 404 (let caller handle)[32m 0[2mms[22m[39m
+ [32mΓ£ô[39m src/__tests__/services/api.test.js[2m > [22mAPI Service - Response Interceptors[2m > [22m5xx Server Error Handling[2m > [22mshould show server error toast on 500[32m 1[2mms[22m[39m
+ [32mΓ£ô[39m src/__tests__/services/api.test.js[2m > [22mAPI Service - Response Interceptors[2m > [22m5xx Server Error Handling[2m > [22mshould show server error toast on 502[32m 0[2mms[22m[39m
+ [32mΓ£ô[39m src/__tests__/services/api.test.js[2m > [22mAPI Service - Response Interceptors[2m > [22m5xx Server Error Handling[2m > [22mshould show server error toast on 503[32m 1[2mms[22m[39m
+ [32mΓ£ô[39m src/__tests__/services/api.test.js[2m > [22mAPI Service - Response Interceptors[2m > [22m4xx Client Error Handling[2m > [22mshould not show toast on 400 (let caller handle)[32m 0[2mms[22m[39m
+ [32mΓ£ô[39m src/__tests__/services/api.test.js[2m > [22mAPI Service - Response Interceptors[2m > [22m4xx Client Error Handling[2m > [22mshould not show toast on 422 (let caller handle)[32m 0[2mms[22m[39m
+ [32mΓ£ô[39m src/__tests__/services/api.test.js[2m > [22mAPI Service - Response Interceptors[2m > [22m4xx Client Error Handling[2m > [22mshould not show toast on 409 (let caller handle)[32m 0[2mms[22m[39m
+ [32mΓ£ô[39m src/__tests__/services/api.test.js[2m > [22mAPI Service - Response Interceptors[2m > [22mError Propagation[2m > [22mshould always reject with the original error[32m 0[2mms[22m[39m
+ [32mΓ£ô[39m src/__tests__/services/api.test.js[2m > [22mAPI Service - Response Interceptors[2m > [22mError Propagation[2m > [22mshould preserve error details for calling code[32m 1[2mms[22m[39m
+ [32mΓ£ô[39m src/__tests__/services/api.test.js[2m > [22mAPI Service - API Methods[2m > [22mshould be configured with correct baseURL[32m 0[2mms[22m[39m
+[90mstderr[2m | src/__tests__/features/QuickRece
+iptEntry.test.jsx[2m > 
+[22m[2mQuickReceiptEntry[2m > 
+[22m[2mRendering[2m > [22m[2mshould render 
+the component
+[22m[39mWarning: Failed prop type: The prop 
+`isOpen` is marked as required in 
+`QuickReceiptEntry`, but its value is `undefined`.
+    at QuickReceiptEntry (C:/Users/richa/Documents
+/Code/BookkeepingApp/client/src/features/Receipts/
+QuickReceiptEntry.jsx:12:30)
+Warning: QuickReceiptEntry: Support for 
+defaultProps will be removed from function 
+components in a future major release. Use 
+JavaScript default parameters instead.
+    at QuickReceiptEntry (C:/Users/richa/Documents
+/Code/BookkeepingApp/client/src/features/Receipts/
+QuickReceiptEntry.jsx:12:30)
+
+ [32mΓ£ô[39m src/__tests__/features/QuickReceiptEntry.test.jsx[2m > [22mQuickReceiptEntry[2m > [22mRendering[2m > [22mshould render the component[32m 26[2mms[22m[39m
+ [32mΓ£ô[39m src/__tests__/features/QuickReceiptEntry.test.jsx[2m > [22mQuickReceiptEntry[2m > [22mRendering[2m > [22mshould have add row functionality[32m 14[2mms[22m[39m
+ [32mΓ£ô[39m src/__tests__/features/QuickReceiptEntry.test.jsx[2m > [22mQuickReceiptEntry[2m > [22mClose Action[2m > [22mshould have close/cancel button[32m 3[2mms[22m[39m
+ [32mΓ£ô[39m src/__tests__/utils/dateUtils.test.js[2m > [22mDate Utils[2m > [22mgetYearDateRange[2m > [22mreturns correct start and end dates for a year[32m 2[2mms[22m[39m
+ [32mΓ£ô[39m src/__tests__/utils/dateUtils.test.js[2m > [22mDate Utils[2m > [22mgetYearDateRange[2m > [22mhandles leap years correctly[32m 0[2mms[22m[39m
+ [32mΓ£ô[39m src/__tests__/utils/dateUtils.test.js[2m > [22mDate Utils[2m > [22mgetMonthDateRange[2m > [22mreturns correct dates for January[32m 0[2mms[22m[39m
+ [32mΓ£ô[39m src/__tests__/utils/dateUtils.test.js[2m > [22mDate Utils[2m > [22mgetMonthDateRange[2m > [22mreturns correct dates for February in a leap year[32m 0[2mms[22m[39m
+ [32mΓ£ô[39m src/__tests__/utils/dateUtils.test.js[2m > [22mDate Utils[2m > [22mgetMonthDateRange[2m > [22mreturns correct dates for December[32m 0[2mms[22m[39m
+ [32mΓ£ô[39m src/__tests__/utils/dateUtils.test.js[2m > [22mDate Utils[2m > [22mgetCurrentDate[2m > [22mreturns a valid date string in YYYY-MM-DD format[32m 0[2mms[22m[39m
+ [32mΓ£ô[39m src/__tests__/utils/dateUtils.test.js[2m > [22mDate Utils[2m > [22mformatDateForDisplay[2m > [22mformats date string for display[32m 29[2mms[22m[39m
+ [32mΓ£ô[39m src/__tests__/services/receiptService.test.js[2m > [22mreceiptService[2m > [22mcreateReceipt[2m > [22mshould create receipt without file[32m 7[2mms[22m[39m
+ [32mΓ£ô[39m src/__tests__/services/receiptService.test.js[2m > [22mreceiptService[2m > [22mcreateReceipt[2m > [22mshould create receipt with file using FormData[32m 2[2mms[22m[39m
+ [32mΓ£ô[39m src/__tests__/services/receiptService.test.js[2m > [22mreceiptService[2m > [22mgetReceipts[2m > [22mshould fetch receipts with filters[32m 1[2mms[22m[39m
+ [32mΓ£ô[39m src/__tests__/services/receiptService.test.js[2m > [22mreceiptService[2m > [22mgetReceipts[2m > [22mshould return receipts data[32m 0[2mms[22m[39m
+ [32mΓ£ô[39m src/__tests__/services/receiptService.test.js[2m > [22mreceiptService[2m > [22mgetReceiptById[2m > [22mshould fetch receipt by ID[32m 1[2mms[22m[39m
+ [32mΓ£ô[39m src/__tests__/services/receiptService.test.js[2m > [22mreceiptService[2m > [22mupdateReceipt[2m > [22mshould update receipt[32m 0[2mms[22m[39m
+ [32mΓ£ô[39m src/__tests__/services/receiptService.test.js[2m > [22mreceiptService[2m > [22mdeleteReceipt[2m > [22mshould delete receipt[32m 1[2mms[22m[39m
+ [32mΓ£ô[39m src/__tests__/services/receiptService.test.js[2m > [22mreceiptService[2m > [22mbulkCreate[2m > [22mshould bulk create receipts[32m 1[2mms[22m[39m
+ [32mΓ£ô[39m src/__tests__/services/receiptService.test.js[2m > [22mreceiptService[2m > [22mbulkCreate[2m > [22mshould handle partial success[32m 1[2mms[22m[39m
+ [32mΓ£ô[39m src/__tests__/services/receiptService.test.js[2m > [22mreceiptService[2m > [22mbulkCreateFromTransactions[2m > [22mshould create receipts from transactions[32m 1[2mms[22m[39m
+ [32mΓ£ô[39m src/__tests__/services/receiptService.test.js[2m > [22mreceiptService[2m > [22mattachToTransaction[2m > [22mshould attach receipt to transaction[32m 1[2mms[22m[39m
+ [32mΓ£ô[39m src/__tests__/services/receiptService.test.js[2m > [22mreceiptService[2m > [22mdetachFromTransaction[2m > [22mshould detach receipt from transaction[32m 0[2mms[22m[39m
+ [32mΓ£ô[39m src/__tests__/services/receiptService.test.js[2m > [22mreceiptService[2m > [22muploadImage[2m > [22mshould upload image to receipt[32m 1[2mms[22m[39m
+ [32mΓ£ô[39m src/__tests__/services/receiptService.test.js[2m > [22mreceiptService[2m > [22mdeleteImage[2m > [22mshould delete image from receipt[32m 0[2mms[22m[39m
+ [32mΓ£ô[39m src/__tests__/services/receiptService.test.js[2m > [22mreceiptService[2m > [22mbatchUpdateReceipts[2m > [22mshould batch update receipts[32m 0[2mms[22m[39m
+ [32mΓ£ô[39m src/__tests__/services/receiptService.test.js[2m > [22mreceiptService[2m > [22mbatchDeleteReceipts[2m > [22mshould batch delete receipts[32m 1[2mms[22m[39m
+ [32mΓ£ô[39m src/__tests__/services/receiptService.test.js[2m > [22mreceiptService[2m > [22mgetReceiptStats[2m > [22mshould fetch receipt statistics[32m 0[2mms[22m[39m
+ [32mΓ£ô[39m src/__tests__/services/receiptService.test.js[2m > [22mreceiptService[2m > [22mError Handling[2m > [22mshould throw error when not authenticated[32m 1[2mms[22m[39m
+ [32mΓ£ô[39m src/__tests__/services/receiptService.test.js[2m > [22mreceiptService[2m > [22mError Handling[2m > [22mshould propagate API errors[32m 2[2mms[22m[39m
+[90mstderr[2m | src/__tests__/components/Loading
+Spinner.test.jsx[2m > 
+[22m[2mLoadingSpinner[2m > [22m[2mrenders 
+loading spinner
+[22m[39mΓÜá∩╕Å React Router Future Flag 
+Warning: React Router will begin wrapping state 
+updates in `React.startTransition` in v7. You can 
+use the `v7_startTransition` future flag to 
+opt-in early. For more information, see https://re
+actrouter.com/v6/upgrading/future#v7_starttransiti
+on.
+ΓÜá∩╕Å React Router Future Flag Warning: Relative 
+route resolution within Splat routes is changing 
+in v7. You can use the `v7_relativeSplatPath` 
+future flag to opt-in early. For more 
+information, see https://reactrouter.com/v6/upgrad
+ing/future#v7_relativesplatpath.
+
+ [32mΓ£ô[39m src/__tests__/components/LoadingSpinner.test.jsx[2m > [22mLoadingSpinner[2m > [22mrenders loading spinner[32m 27[2mms[22m[39m
+ [32mΓ£ô[39m src/__tests__/components/LoadingSpinner.test.jsx[2m > [22mLoadingSpinner[2m > [22mrenders with custom size[32m 3[2mms[22m[39m
+ [32mΓ£ô[39m src/__tests__/components/LoadingSpinner.test.jsx[2m > [22mLoadingSpinner[2m > [22mrenders with custom text[32m 3[2mms[22m[39m
+
+[31mΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[39m[1m[41m Failed 
+Suites 1 [49m[22m[31mΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[39m
+
+[41m[1m FAIL [22m[49m src/components/layout/__
+tests__/Header.test.jsx[2m [ 
+src/components/layout/__tests__/Header.test.jsx 
+][22m
+[31m[1mError[22m: Failed to resolve import 
+"../layout/Header" from "src/components/layout/__t
+ests__/Header.test.jsx". Does the file exist?[39m
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mC:/Users/richa/Documents/Code/Bookkee
+pingApp/client/src/components/layout/__tests__/Hea
+der.test.jsx[39m:3:0
+[33m  25 |  const __vi_import_0__ = await 
+import("react/jsx-dev-runtime");
+  26 |  const __vi_import_1__ = await 
+import("@testing-library/react");
+  27 |  const __vi_import_2__ = await 
+import("../layout/Header");
+     |                                       ^
+  28 |  const __vi_import_3__ = await 
+import("../../context/AuthContext");
+  29 |  [39m
+[90m [2mΓ¥»[22m 
+TransformPluginContext._formatLog node_modules/vit
+est/node_modules/vite/dist/node/chunks/config.js:
+[2m28998:43[22m[39m
+[90m [2mΓ¥»[22m TransformPluginContext.error no
+de_modules/vitest/node_modules/vite/dist/node/chun
+ks/config.js:[2m28995:14[22m[39m
+[90m [2mΓ¥»[22m normalizeUrl node_modules/vites
+t/node_modules/vite/dist/node/chunks/config.js:[2
+m27118:18[22m[39m
+[90m [2mΓ¥»[22m node_modules/vitest/node_module
+s/vite/dist/node/chunks/config.js:[2m27176:32[22
+m[39m
+[90m [2mΓ¥»[22m 
+TransformPluginContext.transform node_modules/vite
+st/node_modules/vite/dist/node/chunks/config.js:[
+2m27144:4[22m[39m
+[90m [2mΓ¥»[22m 
+EnvironmentPluginContainer.transform node_modules/
+vitest/node_modules/vite/dist/node/chunks/config.j
+s:[2m28796:14[22m[39m
+[90m [2mΓ¥»[22m loadAndTransform node_modules/v
+itest/node_modules/vite/dist/node/chunks/config.js
+:[2m22669:26[22m[39m
+
+[31m[2mΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ
+»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[1/4]ΓÄ»[22m[39m
+
+
+[31mΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[39m[1m[41m Failed 
+Tests 3 [49m[22m[31mΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[39m
+
+[41m[1m FAIL [22m[49m src/components/__tests__
+/CompactTransactionRow.test.jsx[2m > 
+[22mCompactTransactionRow[2m > [22mdisplays 
+formatted amount
+[31m[1mTestingLibraryElementError[22m[39m: 
+Found multiple elements with the text: /-?\$?151?/
+
+Here are the matching elements:
+
+Ignored nodes: comments, script, style
+[36m<div[39m
+  [33mclass[39m=[32m"w-16 flex-shrink-0 
+text-xs text-gray-500 dark:text-gray-400"[39m
+[36m>[39m
+  [0mJan 15[0m
+[36m</div>[39m
+
+Ignored nodes: comments, script, style
+[36m<div[39m
+  [33mclass[39m=[32m"w-24 flex-shrink-0 
+text-right text-sm font-medium text-red-600 
+dark:text-red-400"[39m
+[36m>[39m
+  [0m-[0m
+  [0m$151[0m
+[36m</div>[39m
+
+(If this is intentional, then use the `*AllBy*` 
+variant of the query (like `queryAllByText`, 
+`getAllByText`, or `findAllByText`)).
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<li[39m
+      [33mclass[39m=[32m"border-b 
+border-gray-100 dark:border-gray-700 
+last:border-b-0"[39m
+    [36m>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"flex items-center 
+px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-750 
+transition-colors "[39m
+      [36m>[39m
+        [36m<button[39m
+          [33mclass[39m=[32m"p-1 mr-2 
+text-gray-400 hover:text-gray-600 
+dark:hover:text-gray-300 transition-colors 
+flex-shrink-0"[39m
+          [33mtitle[39m=[32m"Show details"[39m
+        [36m>[39m
+          [36m<svg[39m
+            [33maria-hidden[39m=[32m"true"[39m
+            [33mclass[39m=[32m"w-4 h-4"[39m
+            [33mdata-slot[39m=[32m"icon"[39m
+            [33mfill[39m=[32m"none"[39m
+            
+[33mstroke[39m=[32m"currentColor"[39m
+            [33mstroke-width[39m=[32m"1.5"[39m
+            [33mviewBox[39m=[32m"0 0 24 
+24"[39m
+            [33mxmlns[39m=[32m"http://www.w3.or
+g/2000/svg"[39m
+          [36m>[39m
+            [36m<path[39m
+              [33md[39m=[32m"m8.25 4.5 7.5 
+7.5-7.5 7.5"[39m
+              
+[33mstroke-linecap[39m=[32m"round"[39m
+              
+[33mstroke-linejoin[39m=[32m"round"[39m
+            [36m/>[39m
+          [36m</svg>[39m
+        [36m</button>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"w-16 
+flex-shrink-0 text-xs text-gray-500 
+dark:text-gray-400"[39m
+        [36m>[39m
+          [0mJan 15[0m
+        [36m</div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"w-16 
+flex-shrink-0 text-center text-xs font-medium 
+px-1.5 py-0.5 rounded text-red-600 
+dark:text-red-400 bg-red-50 
+dark:bg-red-900/30"[39m
+        [36m>[39m
+          [0mExpense[0m
+        [36m</div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"flex-1 min-w-0 
+mx-3"[39m
+        [36m>[39m
+          [36m<p[39m
+            [33mclass[39m=[32m"text-sm 
+text-gray-900 dark:text-white truncate"[39m
+            [33mtitle[39m=[32m"Office Supplies 
+Purchase"[39m
+          [36m>[39m
+            [0mOffice Supplies Purchase[0m
+          [36m</p>[39m
+        [36m</div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"flex items-center 
+gap-1.5 flex-shrink-0 mr-3"[39m
+        [36m/>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"w-24 
+flex-shrink-0 text-right text-sm font-medium 
+text-red-600 dark:text-red-400"[39m
+        [36m>[39m
+          [0m-[0m
+          [0m$151[0m
+        [36m</div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"flex items-center 
+gap-1 ml-2 flex-shrink-0"[39m
+        [36m>[39m
+          [36m<button[39m
+            [33mclass[39m=[32m"p-1.5 
+text-gray-400 hover:text-blue-500 
+dark:hover:text-blue-400 transition-colors"[39m
+            [33mtitle[39m=[32m"Edit"[39m
+          [36m>[39m
+            [36m<svg[39m
+              
+[33maria-hidden[39m=[32m"true"[39m
+              [33mclass[39m=[32m"h-4 w-4"[39m
+              [33mdata-slot[39m=[32m"icon"[39m
+              [33mfill[39m=[32m"none"[39m
+              
+[33mstroke[39m=[32m"currentColor"[39m
+              
+[33mstroke-width[39m=[32m"1.5"[39m
+              [33mviewBox[39m=[32m"0 0 24 
+24"[39m
+              [33mxmlns[39m=[32m"http://www.w3.
+org/2000/svg"[39m
+            [36m>[39m
+              [36m<path[39m
+                [33md[39m=[32m"m16.862 4.487 
+1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.832 
+19.82a4.5 4.5 0 0 1-1.897 
+1.13l-2.685.8.8-2.685a4.5 4.5 0 0 1 
+1.13-1.897L16.863 4.487Zm0 0L19.5 7.125"[39m
+                
+[33mstroke-linecap[39m=[32m"round"[39m
+                
+[33mstroke-linejoin[39m=[32m"round"[39m
+              [36m/>[39m
+            [36m</svg>[39m
+          [36m</button>[39m
+          [36m<button[39m
+            [33mclass[39m=[32m"p-1.5 
+text-gray-400 hover:text-red-500 
+dark:hover:text-red-400 transition-colors 
+disabled:opacity-50"[39m
+            [33mtitle[39m=[32m"Delete"[39m
+          [36m>[39m
+            [36m<svg[39m
+              
+[33maria-hidden[39m=[32m"true"[39m
+              [33mclass[39m=[32m"h-4 w-4"[39m
+              [33mdata-slot[39m=[32m"icon"[39m
+              [33mfill[39m=[32m"none"[39m
+              
+[33mstroke[39m=[32m"currentColor"[39m
+              
+[33mstroke-width[39m=[32m"1.5"[39m
+              [33mviewBox[39m=[32m"0 0 24 
+24"[39m
+              [33mxmlns[39m=[32m"http://www.w3.
+org/2000/svg"[39m
+            [36m>[39m
+              [36m<path[39m
+                [33md[39m=[32m"m14.74 9-.346 
+9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 
+1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 
+1-2.244 2.077H8.084a2.25 2.25 0 0 
+1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 
+0 0-3.478-.397m-12 .562c.34-.059.68-.114 
+1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 
+0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 
+0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 
+2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"[39m
+                
+[33mstroke-linecap[39m=[32m"round"[39m
+                
+[33mstroke-linejoin[39m=[32m"round"[39m
+              [36m/>[39m
+            [36m</svg>[39m
+          [36m</button>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+    [36m</li>[39m
+  [36m</div>[39m
+[36m</body>[39m
+[90m [2mΓ¥»[22m Object.getElementError node_mod
+ules/@testing-library/dom/dist/config.js:[2m37:19
+[22m[39m
+[90m [2mΓ¥»[22m getElementError node_modules/@t
+esting-library/dom/dist/query-helpers.js:[2m20:35
+[22m[39m
+[90m [2mΓ¥»[22m getMultipleElementsFoundError n
+ode_modules/@testing-library/dom/dist/query-helper
+s.js:[2m23:10[22m[39m
+[90m [2mΓ¥»[22m node_modules/@testing-library/d
+om/dist/query-helpers.js:[2m55:13[22m[39m
+[90m [2mΓ¥»[22m node_modules/@testing-library/d
+om/dist/query-helpers.js:[2m95:19[22m[39m
+[36m [2mΓ¥»[22m src/components/__tests__/Compac
+tTransactionRow.test.jsx:[2m50:19[22m[39m
+    [90m 48| [39m    [34mrender[39m([33m<[39
+m[33mCompactTransactionRow[39m 
+[33m{[39m[33m...[39mdefaultProps[33m}[39m 
+[33m/[39m[33m>[39m)[33m;[39m
+    [90m 49| [39m    [90m// Amount should be 
+displayed (might be formatted)[39m
+    [90m 50| [39m    [34mexpect[39m(screen[33
+m.[39m[34mgetByText[39m([36m/-?\$?151?/[39m))
+[33m.[39m[34mtoBeInTheDocument[39m()[33m;[39
+m
+    [90m   | [39m                  [31m^[39m
+    [90m 51| [39m  })[33m;[39m
+    [90m 52| [39m
+
+[31m[2mΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ
+»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[2/4]ΓÄ»[22m[39m
+
+[41m[1m FAIL [22m[49m src/components/forms/__t
+ests__/TransactionModal.test.jsx[2m > 
+[22mTransactionModal[2m > [22mrenders create 
+mode when open
+[31m[1mTestingLibraryElementError[22m[39m: 
+Unable to find an element with the text: Add 
+Transaction. This could be because the text is 
+broken up by multiple elements. In this case, you 
+can provide a function for your text matcher to 
+make your matcher more flexible.
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"fixed inset-0 z-50 
+overflow-y-auto"[39m
+    [36m>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"flex items-center 
+justify-center min-h-screen pt-4 px-4 pb-20 
+text-center sm:block sm:p-0"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"fixed inset-0 
+bg-gray-500 dark:bg-gray-900 bg-opacity-75 
+dark:bg-opacity-75 transition-opacity"[39m
+        [36m/>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"inline-block 
+align-bottom bg-white dark:bg-gray-800 rounded-lg 
+px-4 pt-5 pb-4 text-left overflow-hidden 
+shadow-xl transform transition-all sm:my-8 
+sm:align-middle sm:max-w-lg sm:w-full sm:p-6"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"flex 
+items-center justify-between mb-4"[39m
+          [36m>[39m
+            [36m<h3[39m
+              [33mclass[39m=[32m"text-lg 
+font-medium text-gray-900 dark:text-white"[39m
+            [36m>[39m
+              [0mAdd New Transaction[0m
+            [36m</h3>[39m
+            [36m<button[39m
+              [33mclass[39m=[32m"text-gray-400 
+hover:text-gray-600 dark:hover:text-gray-200 
+transition-colors"[39m
+            [36m>[39m
+              [36m<svg[39m
+                
+[33maria-hidden[39m=[32m"true"[39m
+                [33mclass[39m=[32m"h-6 
+w-6"[39m
+                
+[33mdata-slot[39m=[32m"icon"[39m
+                [33mfill[39m=[32m"none"[39m
+                
+[33mstroke[39m=[32m"currentColor"[39m
+                
+[33mstroke-width[39m=[32m"1.5"[39m
+                [33mviewBox[39m=[32m"0 0 24 
+24"[39m
+                [33mxmlns[39m=[32m"http://www.w
+3.org/2000/svg"[39m
+              [36m>[39m
+                [36m<path[39m
+                  [33md[39m=[32m"M6 18 18 6M6 
+6l12 12"[39m
+                  
+[33mstroke-linecap[39m=[32m"round"[39m
+                  
+[33mstroke-linejoin[39m=[32m"round"[39m
+                [36m/>[39m
+              [36m</svg>[39m
+            [36m</button>[39m
+          [36m</div>[39m
+          [36m<form[39m
+            [33mclass[39m=[32m"space-y-4"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"grid 
+grid-cols-2 gap-4"[39m
+            [36m>[39m
+              [36m<div>[39m
+                [36m<label[39m
+                  
+[33mclass[39m=[32m"form-label"[39m
+                [36m>[39m
+                  [0mDate[0m
+                [36m</label>[39m
+                [36m<input[39m
+                  
+[33mclass[39m=[32m"form-input"[39m
+                  [33mname[39m=[32m"date"[39m
+                  [33mtype[39m=[32m"date"[39m
+                [36m/>[39m
+              [36m</div>[39m
+              [36m<div>[39m
+                [36m<label[39m
+                  
+[33mclass[39m=[32m"form-label"[39m
+                [36m>[39m
+                  [0mType[0m
+                [36m</label>[39m
+                [36m<select[39m
+                  
+[33mclass[39m=[32m"form-input"[39m
+                  [33mname[39m=[32m"type"[39m
+                [36m>[39m
+                  [36m<option[39m
+                    
+[33mvalue[39m=[32m"expense"[39m
+                  [36m>[39m
+                    [0mExpense[0m
+                  [36m</option>[39m
+                  [36m<option[39m
+                    
+[33mvalue[39m=[32m"income"[39m
+                  [36m>[39m
+                    [0mIncome[0m
+                  [36m</option>[39m
+                [36m</select>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+            [36m<div>[39m
+              [36m<label[39m
+                
+[33mclass[39m=[32m"form-label"[39m
+              [36m>[39m
+                [0mAmount ([0m
+                [0mExpense[0m
+                [0m)[0m
+              [36m</label>[39m
+              [36m<div[39m
+                
+[33mclass[39m=[32m"relative"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"absolute 
+inset-y-0 left-0 pl-3 flex items-center 
+pointer-events-none"[39m
+                [36m>[39m
+                  [36m<span[39m
+                    
+[33mclass[39m=[32m"text-gray-500 
+dark:text-gray-400 sm:text-sm"[39m
+                  [36m>[39m
+                    [0m$[0m
+                  [36m</span>[39m
+                [36m</div>[39m
+                [36m<input[39m
+                  
+[33mclass[39m=[32m"form-input pl-7"[39m
+                  [33mmin[39m=[32m"0"[39m
+                  
+[33mname[39m=[32m"amount"[39m
+                  
+[33mplaceholder[39m=[32m"0.00"[39m
+                  [33mstep[39m=[32m"0.01"[39m
+                  
+[33mtype[39m=[32m"number"[39m
+                [36m/>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+            [36m<div>[39m
+              [36m<label[39m
+                
+[33mclass[39m=[32m"form-label"[39m
+              [36m>[39m
+                [0mDescription[0m
+              [36m</label>[39m
+              [36m<input[39m
+                
+[33mclass[39m=[32m"form-input"[39m
+                
+[33mname[39m=[32m"description"[39m
+                
+[33mplaceholder[39m=[32m"Transaction 
+description"[39m
+                [33mtype[39m=[32m"text"[39m
+              [36m/>[39m
+            [36m</div>[39m
+            [36m<div>[39m
+              [36m<label[39m
+                
+[33mclass[39m=[32m"form-label"[39m
+              [36m>[39m
+                [0mCompany[0m
+              [36m</label>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"relative 
+company-selector w-full"[39m
+              [36m>[39m
+                [36m<div[39m
+                  
+[33mclass[39m=[32m"form-input cursor-pointer 
+flex items-center justify-between "[39m
+                [36m>[39m
+                  [36m<span[39m
+                    
+[33mclass[39m=[32m"text-gray-500 
+dark:text-gray-400"[39m
+                  [36m>[39m
+                    [0mSelect a company...[0m
+                  [36m</span>[39m
+                  [36m<svg[39m
+                    [33mclass[39m=[32m"w-5 h-5 
+text-gray-400 transition-transform "[39m
+                    
+[33mfill[39m=[32m"none"[39m
+                    
+[33mstroke[39m=[32m"currentColor"[39m
+                    [33mviewBox[39m=[32m"0 0 
+24 24"[39m
+                  [36m>[39m
+                    [36m<path[39m
+                      [33md[39m=[32m"M19 9l-7 
+7-7-7"[39m
+                      
+[33mstroke-linecap[39m=[32m"round"[39m
+                      
+[33mstroke-linejoin[39m=[32m"round"[39m
+                      
+[33mstroke-width[39m=[32m"2"[39m
+                    [36m/>[39m
+                  [36m</svg>[39m
+                [36m</div>[39m
+              [36m</div>[39m
+              [36m<p[39m
+                [33mclass[39m=[32m"mt-1 
+text-xs text-gray-500 dark:t...
+[90m [2mΓ¥»[22m Object.getElementError node_mod
+ules/@testing-library/dom/dist/config.js:[2m37:19
+[22m[39m
+[90m [2mΓ¥»[22m node_modules/@testing-library/d
+om/dist/query-helpers.js:[2m76:38[22m[39m
+[90m [2mΓ¥»[22m node_modules/@testing-library/d
+om/dist/query-helpers.js:[2m52:17[22m[39m
+[90m [2mΓ¥»[22m node_modules/@testing-library/d
+om/dist/query-helpers.js:[2m95:19[22m[39m
+[36m [2mΓ¥»[22m src/components/forms/__tests__/
+TransactionModal.test.jsx:[2m85:19[22m[39m
+    [90m 83| [39m    )[33m;[39m
+    [90m 84| [39m    
+    [90m 85| [39m    [34mexpect[39m(screen[33
+m.[39m[34mgetByText[39m([32m'Add Transaction'
+[39m))[33m.[39m[34mtoBeInTheDocument[39m()[33
+m;[39m
+    [90m   | [39m                  [31m^[39m
+    [90m 86| [39m  })[33m;[39m
+    [90m 87| [39m
+
+[31m[2mΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ
+»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[3/4]ΓÄ»[22m[39m
+
+[41m[1m FAIL [22m[49m src/components/forms/__t
+ests__/TransactionModal.test.jsx[2m > 
+[22mTransactionModal[2m > [22mrenders category 
+dropdown with groups
+[31m[1mTestingLibraryElementError[22m[39m: 
+Found a label with the text of: /category/i, 
+however no form control was found associated to 
+that label. Make sure you're using the "for" 
+attribute or "aria-labelledby" attribute 
+correctly.
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"fixed inset-0 z-50 
+overflow-y-auto"[39m
+    [36m>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"flex items-center 
+justify-center min-h-screen pt-4 px-4 pb-20 
+text-center sm:block sm:p-0"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"fixed inset-0 
+bg-gray-500 dark:bg-gray-900 bg-opacity-75 
+dark:bg-opacity-75 transition-opacity"[39m
+        [36m/>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"inline-block 
+align-bottom bg-white dark:bg-gray-800 rounded-lg 
+px-4 pt-5 pb-4 text-left overflow-hidden 
+shadow-xl transform transition-all sm:my-8 
+sm:align-middle sm:max-w-lg sm:w-full sm:p-6"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"flex 
+items-center justify-between mb-4"[39m
+          [36m>[39m
+            [36m<h3[39m
+              [33mclass[39m=[32m"text-lg 
+font-medium text-gray-900 dark:text-white"[39m
+            [36m>[39m
+              [0mAdd New Transaction[0m
+            [36m</h3>[39m
+            [36m<button[39m
+              [33mclass[39m=[32m"text-gray-400 
+hover:text-gray-600 dark:hover:text-gray-200 
+transition-colors"[39m
+            [36m>[39m
+              [36m<svg[39m
+                
+[33maria-hidden[39m=[32m"true"[39m
+                [33mclass[39m=[32m"h-6 
+w-6"[39m
+                
+[33mdata-slot[39m=[32m"icon"[39m
+                [33mfill[39m=[32m"none"[39m
+                
+[33mstroke[39m=[32m"currentColor"[39m
+                
+[33mstroke-width[39m=[32m"1.5"[39m
+                [33mviewBox[39m=[32m"0 0 24 
+24"[39m
+                [33mxmlns[39m=[32m"http://www.w
+3.org/2000/svg"[39m
+              [36m>[39m
+                [36m<path[39m
+                  [33md[39m=[32m"M6 18 18 6M6 
+6l12 12"[39m
+                  
+[33mstroke-linecap[39m=[32m"round"[39m
+                  
+[33mstroke-linejoin[39m=[32m"round"[39m
+                [36m/>[39m
+              [36m</svg>[39m
+            [36m</button>[39m
+          [36m</div>[39m
+          [36m<form[39m
+            [33mclass[39m=[32m"space-y-4"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"grid 
+grid-cols-2 gap-4"[39m
+            [36m>[39m
+              [36m<div>[39m
+                [36m<label[39m
+                  
+[33mclass[39m=[32m"form-label"[39m
+                [36m>[39m
+                  [0mDate[0m
+                [36m</label>[39m
+                [36m<input[39m
+                  
+[33mclass[39m=[32m"form-input"[39m
+                  [33mname[39m=[32m"date"[39m
+                  [33mtype[39m=[32m"date"[39m
+                [36m/>[39m
+              [36m</div>[39m
+              [36m<div>[39m
+                [36m<label[39m
+                  
+[33mclass[39m=[32m"form-label"[39m
+                [36m>[39m
+                  [0mType[0m
+                [36m</label>[39m
+                [36m<select[39m
+                  
+[33mclass[39m=[32m"form-input"[39m
+                  [33mname[39m=[32m"type"[39m
+                [36m>[39m
+                  [36m<option[39m
+                    
+[33mvalue[39m=[32m"expense"[39m
+                  [36m>[39m
+                    [0mExpense[0m
+                  [36m</option>[39m
+                  [36m<option[39m
+                    
+[33mvalue[39m=[32m"income"[39m
+                  [36m>[39m
+                    [0mIncome[0m
+                  [36m</option>[39m
+                [36m</select>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+            [36m<div>[39m
+              [36m<label[39m
+                
+[33mclass[39m=[32m"form-label"[39m
+              [36m>[39m
+                [0mAmount ([0m
+                [0mExpense[0m
+                [0m)[0m
+              [36m</label>[39m
+              [36m<div[39m
+                
+[33mclass[39m=[32m"relative"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"absolute 
+inset-y-0 left-0 pl-3 flex items-center 
+pointer-events-none"[39m
+                [36m>[39m
+                  [36m<span[39m
+                    
+[33mclass[39m=[32m"text-gray-500 
+dark:text-gray-400 sm:text-sm"[39m
+                  [36m>[39m
+                    [0m$[0m
+
+[2m Test Files [22m [1m[31m3 failed[39m[22m[2m | [22m[1m[32m15 passed[39m[22m[90m (18)[39m
+[2m      Tests [22m [1m[31m3 failed[39m[22m[2m | [22m[1m[32m175 passed[39m[22m[2m | [22m[33m1 skipped[39m[90m (179)[39m
+[2m   Start at [22m 19:38:11
+[2m   Duration [22m 8.45s[2m (transform 3.48s, setup 9.17s, import 11.84s, tests 7.65s, environment 40.41s)[22m
+
+                  [36m</span>[39m
+                [36m</div>[39m
+                [36m<input[39m
+                  
+[33mclass[39m=[32m"form-input pl-7"[39m
+                  [33mmin[39m=[32m"0"[39m
+                  
+[33mname[39m=[32m"amount"[39m
+                  
+[33mplaceholder[39m=[32m"0.00"[39m
+                  [33mstep[39m=[32m"0.01"[39m
+                  
+[33mtype[39m=[32m"number"[39m
+                [36m/>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+            [36m<div>[39m
+              [36m<label[39m
+                
+[33mclass[39m=[32m"form-label"[39m
+              [36m>[39m
+                [0mDescription[0m
+              [36m</label>[39m
+              [36m<input[39m
+                
+[33mclass[39m=[32m"form-input"[39m
+                
+[33mname[39m=[32m"description"[39m
+                
+[33mplaceholder[39m=[32m"Transaction 
+description"[39m
+                [33mtype[39m=[32m"text"[39m
+              [36m/>[39m
+            [36m</div>[39m
+            [36m<div>[39m
+              [36m<label[39m
+                
+[33mclass[39m=[32m"form-label"[39m
+              [36m>[39m
+                [0mCompany[0m
+              [36m</label>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"relative 
+company-selector w-full"[39m
+              [36m>[39m
+                [36m<div[39m
+                  
+[33mclass[39m=[32m"form-input cursor-pointer 
+flex items-center justify-between "[39m
+                [36m>[39m
+                  [36m<span[39m
+                    
+[33mclass[39m=[32m"text-gray-500 
+dark:text-gray-400"[39m
+                  [36m>[39m
+                    [0mSelect a company...[0m
+                  [36m</span>[39m
+                  [36m<svg[39m
+                    [33mclass[39m=[32m"w-5 h-5 
+text-gray-400 transition-transform "[39m
+                    
+[33mfill[39m=[32m"none"[39m
+                    
+[33mstroke[39m=[32m"currentColor"[39m
+                    [33mviewBox[39m=[32m"0 0 
+24 24"[39m
+                  [36m>[39m
+                    [36m<path[39m
+                      [33md[39m=[32m"M19 9l-7 
+7-7-7"[39m
+                      
+[33mstroke-linecap[39m=[32m"round"[39m
+                      
+[33mstroke-linejoin[39m=[32m"round"[39m
+                      
+[33mstroke-width[39m=[32m"2"[39m
+                    [36m/>[39m
+                  [36m</svg>[39m
+                [36m</div>[39m
+              [36m</div>[39m
+              [36m<p[39m
+                [33mclass[39m=[32m"mt-1 
+text-xs text-gray-500 dark:t...
+[90m [2mΓ¥»[22m Object.getElementError node_mod
+ules/@testing-library/dom/dist/config.js:[2m37:19
+[22m[39m
+[90m [2mΓ¥»[22m getAllByLabelText node_modules/
+@testing-library/dom/dist/queries/label-text.js:[
+2m108:40[22m[39m
+[90m [2mΓ¥»[22m node_modules/@testing-library/d
+om/dist/query-helpers.js:[2m52:17[22m[39m
+[90m [2mΓ¥»[22m node_modules/@testing-library/d
+om/dist/query-helpers.js:[2m95:19[22m[39m
+[36m [2mΓ¥»[22m src/components/forms/__tests__/
+TransactionModal.test.jsx:[2m139:19[22m[39m
+    [90m137| [39m    
+    [90m138| [39m    [90m// Check that 
+category selection exists[39m
+    [90m139| [39m    [34mexpect[39m(screen[33
+m.[39m[34mgetByLabelText[39m([36m/category/i[
+39m))[33m.[39m[34mtoBeInTheDocument[39m()[33m
+;[39m
+    [90m   | [39m                  [31m^[39m
+    [90m140| [39m  })[33m;[39m
+    [90m141| [39m})[33m;[39m
+
+[31m[2mΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ
+»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[4/4]ΓÄ»[22m[39m
+

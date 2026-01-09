@@ -206,9 +206,9 @@ export const deletePayee = async (req, res) => {
 export const getTransactionsWithoutPayees = async (req, res) => {
   try {
     const { uid: userId } = req.user;
-    const { sectionCode = 'checks' } = req.query;
+    const { paymentMethod = 'check' } = req.query;
 
-    const transactions = await getDb().getTransactionsWithoutPayees(userId, sectionCode);
+    const transactions = await getDb().getTransactionsWithoutPayees(userId, paymentMethod);
 
     res.json({
       success: true,

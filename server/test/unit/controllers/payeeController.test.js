@@ -6,20 +6,26 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const servicesPath = path.resolve(__dirname, '../../../services');
 const configPath = path.resolve(__dirname, '../../../config');
+const adaptersPath = path.resolve(__dirname, '../../../services/adapters');
 
-// Mock payeeService before importing controller
-jest.unstable_mockModule(path.join(servicesPath, 'payeeService.js'), () => ({
-  default: {
-    createPayee: jest.fn(),
-    getPayees: jest.fn(),
-    searchPayees: jest.fn(),
-    getPayeeById: jest.fn(),
-    updatePayee: jest.fn(),
-    deletePayee: jest.fn(),
-    getTransactionsWithoutPayees: jest.fn(),
-    getPayeesByType: jest.fn(),
-    bulkAssignPayeeToTransactions: jest.fn()
-  }
+// Create mock adapter with all necessary methods
+const mockAdapter = {
+  createPayee: jest.fn(),
+  getPayees: jest.fn(),
+  searchPayees: jest.fn(),
+  getPayeeById: jest.fn(),
+  updatePayee: jest.fn(),
+  deletePayee: jest.fn(),
+  getTransactionsWithoutPayees: jest.fn(),
+  getPayeesByType: jest.fn(),
+  bulkAssignPayeeToTransactions: jest.fn()
+};
+
+// Mock the adapter factory before importing controller
+jest.unstable_mockModule(path.join(adaptersPath, 'index.js'), () => ({
+  getDatabaseAdapter: jest.fn(() => mockAdapter),
+  getDbProvider: jest.fn(() => 'supabase'),
+  DB_PROVIDERS: { SUPABASE: 'supabase', FIREBASE: 'firebase' }
 }));
 
 // Mock logger
@@ -44,8 +50,6 @@ const {
   getVendors,
   bulkAssignPayee
 } = await import('../../../controllers/payeeController.js');
-
-const payeeService = (await import('../../../services/payeeService.js')).default;
 
 describe('Payee Controller', () => {
   let req, res;
@@ -77,7 +81,7 @@ describe('Payee Controller', () => {
         type: 'employee',
         email: 'john@example.com'
       };
-      payeeService.createPayee.mockResolvedValue({
+      mockAdapter.createPayee.mockResolvedValue({
         id: 'payee-1',
         name: 'John Doe',
         type: 'employee'
@@ -85,7 +89,7 @@ describe('Payee Controller', () => {
 
       await createPayee(req, res);
 
-      expect(payeeService.createPayee).toHaveBeenCalledWith('user-123', req.body);
+      expect(mockAdapter.createPayee).toHaveBeenCalledWith('user-123', req.body);
       expect(res.status).toHaveBeenCalledWith(201);
       expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
         success: true,
@@ -95,7 +99,7 @@ describe('Payee Controller', () => {
 
     it('should handle service errors', async () => {
       req.body = { name: 'John Doe', type: 'employee' };
-      payeeService.createPayee.mockRejectedValue(new Error('Database error'));
+      mockAdapter.createPayee.mockRejectedValue(new Error('Database error'));
 
       await createPayee(req, res);
 
@@ -113,11 +117,11 @@ describe('Payee Controller', () => {
         { id: 'payee-1', name: 'Employee One', type: 'employee' },
         { id: 'payee-2', name: 'Vendor Two', type: 'vendor' }
       ];
-      payeeService.getPayees.mockResolvedValue(payees);
+      mockAdapter.getPayees.mockResolvedValue(payees);
 
       await getPayees(req, res);
 
-      expect(payeeService.getPayees).toHaveBeenCalledWith('user-123', {});
+      expect(mockAdapter.getPayees).toHaveBeenCalledWith('user-123', {});
       expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
         success: true,
         payees,
@@ -127,46 +131,46 @@ describe('Payee Controller', () => {
 
     it('should filter by type', async () => {
       req.query = { type: 'employee' };
-      payeeService.getPayees.mockResolvedValue([
+      mockAdapter.getPayees.mockResolvedValue([
         { id: 'payee-1', name: 'Employee One', type: 'employee' }
       ]);
 
       await getPayees(req, res);
 
-      expect(payeeService.getPayees).toHaveBeenCalledWith('user-123', { type: 'employee' });
+      expect(mockAdapter.getPayees).toHaveBeenCalledWith('user-123', { type: 'employee' });
     });
 
     it('should filter by companyId', async () => {
       req.query = { companyId: 'company-1' };
-      payeeService.getPayees.mockResolvedValue([]);
+      mockAdapter.getPayees.mockResolvedValue([]);
 
       await getPayees(req, res);
 
-      expect(payeeService.getPayees).toHaveBeenCalledWith('user-123', { companyId: 'company-1' });
+      expect(mockAdapter.getPayees).toHaveBeenCalledWith('user-123', { companyId: 'company-1' });
     });
 
     it('should filter by isActive', async () => {
       req.query = { isActive: 'true' };
-      payeeService.getPayees.mockResolvedValue([]);
+      mockAdapter.getPayees.mockResolvedValue([]);
 
       await getPayees(req, res);
 
-      expect(payeeService.getPayees).toHaveBeenCalledWith('user-123', { isActive: true });
+      expect(mockAdapter.getPayees).toHaveBeenCalledWith('user-123', { isActive: true });
     });
 
     it('should use search when provided', async () => {
       req.query = { search: 'john' };
-      payeeService.searchPayees.mockResolvedValue([
+      mockAdapter.searchPayees.mockResolvedValue([
         { id: 'payee-1', name: 'John Doe' }
       ]);
 
       await getPayees(req, res);
 
-      expect(payeeService.searchPayees).toHaveBeenCalledWith('user-123', 'john', {});
+      expect(mockAdapter.searchPayees).toHaveBeenCalledWith('user-123', 'john', {});
     });
 
     it('should handle service errors', async () => {
-      payeeService.getPayees.mockRejectedValue(new Error('Service error'));
+      mockAdapter.getPayees.mockRejectedValue(new Error('Service error'));
 
       await getPayees(req, res);
 
@@ -177,7 +181,7 @@ describe('Payee Controller', () => {
   describe('getPayeeById', () => {
     it('should return payee by ID', async () => {
       req.params.id = 'payee-1';
-      payeeService.getPayeeById.mockResolvedValue({
+      mockAdapter.getPayeeById.mockResolvedValue({
         id: 'payee-1',
         name: 'John Doe',
         type: 'employee'
@@ -185,7 +189,7 @@ describe('Payee Controller', () => {
 
       await getPayeeById(req, res);
 
-      expect(payeeService.getPayeeById).toHaveBeenCalledWith('user-123', 'payee-1');
+      expect(mockAdapter.getPayeeById).toHaveBeenCalledWith('user-123', 'payee-1');
       expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
         success: true
       }));
@@ -193,7 +197,7 @@ describe('Payee Controller', () => {
 
     it('should return 404 when payee not found', async () => {
       req.params.id = 'nonexistent';
-      payeeService.getPayeeById.mockRejectedValue(new Error('Payee not found'));
+      mockAdapter.getPayeeById.mockRejectedValue(new Error('Payee not found'));
 
       await getPayeeById(req, res);
 
@@ -202,7 +206,7 @@ describe('Payee Controller', () => {
 
     it('should return 403 on unauthorized access', async () => {
       req.params.id = 'payee-1';
-      payeeService.getPayeeById.mockRejectedValue(new Error('Unauthorized access'));
+      mockAdapter.getPayeeById.mockRejectedValue(new Error('Unauthorized access'));
 
       await getPayeeById(req, res);
 
@@ -214,14 +218,14 @@ describe('Payee Controller', () => {
     it('should update a payee', async () => {
       req.params.id = 'payee-1';
       req.body = { name: 'Updated Name', email: 'updated@example.com' };
-      payeeService.updatePayee.mockResolvedValue({
+      mockAdapter.updatePayee.mockResolvedValue({
         id: 'payee-1',
         name: 'Updated Name'
       });
 
       await updatePayee(req, res);
 
-      expect(payeeService.updatePayee).toHaveBeenCalledWith('user-123', 'payee-1', req.body);
+      expect(mockAdapter.updatePayee).toHaveBeenCalledWith('user-123', 'payee-1', req.body);
       expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
         success: true,
         message: 'Payee updated successfully'
@@ -231,7 +235,7 @@ describe('Payee Controller', () => {
     it('should return 404 when payee not found', async () => {
       req.params.id = 'nonexistent';
       req.body = { name: 'Updated' };
-      payeeService.updatePayee.mockRejectedValue(new Error('Payee not found'));
+      mockAdapter.updatePayee.mockRejectedValue(new Error('Payee not found'));
 
       await updatePayee(req, res);
 
@@ -242,11 +246,11 @@ describe('Payee Controller', () => {
   describe('deletePayee', () => {
     it('should delete a payee', async () => {
       req.params.id = 'payee-1';
-      payeeService.deletePayee.mockResolvedValue({ id: 'payee-1' });
+      mockAdapter.deletePayee.mockResolvedValue({ id: 'payee-1' });
 
       await deletePayee(req, res);
 
-      expect(payeeService.deletePayee).toHaveBeenCalledWith('user-123', 'payee-1');
+      expect(mockAdapter.deletePayee).toHaveBeenCalledWith('user-123', 'payee-1');
       expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
         success: true,
         message: 'Payee deleted successfully'
@@ -255,7 +259,7 @@ describe('Payee Controller', () => {
 
     it('should return 404 when payee not found', async () => {
       req.params.id = 'nonexistent';
-      payeeService.deletePayee.mockRejectedValue(new Error('Payee not found'));
+      mockAdapter.deletePayee.mockRejectedValue(new Error('Payee not found'));
 
       await deletePayee(req, res);
 
@@ -269,11 +273,11 @@ describe('Payee Controller', () => {
         { id: 'tx-1', description: 'Check #123', amount: -500 },
         { id: 'tx-2', description: 'Check #456', amount: -750 }
       ];
-      payeeService.getTransactionsWithoutPayees.mockResolvedValue(transactions);
+      mockAdapter.getTransactionsWithoutPayees.mockResolvedValue(transactions);
 
       await getTransactionsWithoutPayees(req, res);
 
-      expect(payeeService.getTransactionsWithoutPayees).toHaveBeenCalledWith('user-123', 'checks');
+      expect(mockAdapter.getTransactionsWithoutPayees).toHaveBeenCalledWith('user-123', 'check');
       expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
         success: true,
         transactions,
@@ -281,13 +285,13 @@ describe('Payee Controller', () => {
       }));
     });
 
-    it('should use sectionCode from query', async () => {
-      req.query.sectionCode = 'withdrawals';
-      payeeService.getTransactionsWithoutPayees.mockResolvedValue([]);
+    it('should use paymentMethod from query', async () => {
+      req.query.paymentMethod = 'wire';
+      mockAdapter.getTransactionsWithoutPayees.mockResolvedValue([]);
 
       await getTransactionsWithoutPayees(req, res);
 
-      expect(payeeService.getTransactionsWithoutPayees).toHaveBeenCalledWith('user-123', 'withdrawals');
+      expect(mockAdapter.getTransactionsWithoutPayees).toHaveBeenCalledWith('user-123', 'wire');
     });
   });
 
@@ -296,11 +300,11 @@ describe('Payee Controller', () => {
       const employees = [
         { id: 'emp-1', name: 'John Doe', type: 'employee' }
       ];
-      payeeService.getPayeesByType.mockResolvedValue(employees);
+      mockAdapter.getPayeesByType.mockResolvedValue(employees);
 
       await getEmployees(req, res);
 
-      expect(payeeService.getPayeesByType).toHaveBeenCalledWith('user-123', 'employee', undefined);
+      expect(mockAdapter.getPayeesByType).toHaveBeenCalledWith('user-123', 'employee', undefined);
       expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
         success: true,
         employees,
@@ -310,11 +314,11 @@ describe('Payee Controller', () => {
 
     it('should filter by companyId', async () => {
       req.query.companyId = 'company-1';
-      payeeService.getPayeesByType.mockResolvedValue([]);
+      mockAdapter.getPayeesByType.mockResolvedValue([]);
 
       await getEmployees(req, res);
 
-      expect(payeeService.getPayeesByType).toHaveBeenCalledWith('user-123', 'employee', 'company-1');
+      expect(mockAdapter.getPayeesByType).toHaveBeenCalledWith('user-123', 'employee', 'company-1');
     });
   });
 
@@ -323,11 +327,11 @@ describe('Payee Controller', () => {
       const vendors = [
         { id: 'vendor-1', name: 'Acme Corp', type: 'vendor' }
       ];
-      payeeService.getPayeesByType.mockResolvedValue(vendors);
+      mockAdapter.getPayeesByType.mockResolvedValue(vendors);
 
       await getVendors(req, res);
 
-      expect(payeeService.getPayeesByType).toHaveBeenCalledWith('user-123', 'vendor', undefined);
+      expect(mockAdapter.getPayeesByType).toHaveBeenCalledWith('user-123', 'vendor', undefined);
       expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
         success: true,
         vendors,
@@ -343,13 +347,13 @@ describe('Payee Controller', () => {
         payeeId: 'payee-1',
         payeeName: 'John Doe'
       };
-      payeeService.bulkAssignPayeeToTransactions.mockResolvedValue({
+      mockAdapter.bulkAssignPayeeToTransactions.mockResolvedValue({
         updatedCount: 3
       });
 
       await bulkAssignPayee(req, res);
 
-      expect(payeeService.bulkAssignPayeeToTransactions).toHaveBeenCalledWith(
+      expect(mockAdapter.bulkAssignPayeeToTransactions).toHaveBeenCalledWith(
         'user-123',
         ['tx-1', 'tx-2', 'tx-3'],
         'payee-1',
@@ -406,7 +410,7 @@ describe('Payee Controller', () => {
         transactionIds: ['tx-1'],
         payeeId: 'payee-1'
       };
-      payeeService.bulkAssignPayeeToTransactions.mockRejectedValue(new Error('Bulk update failed'));
+      mockAdapter.bulkAssignPayeeToTransactions.mockRejectedValue(new Error('Bulk update failed'));
 
       await bulkAssignPayee(req, res);
 

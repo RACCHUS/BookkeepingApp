@@ -15,7 +15,7 @@ import { IRS_CATEGORIES } from '@shared/constants/categories';
  * QuickTransactionEntry - Rapid entry of multiple transactions
  * Optimized for entering multiple transactions quickly
  */
-const QuickTransactionEntry = ({ isOpen, onClose, onSubmit, isLoading, companies = [] }) => {
+const QuickTransactionEntry = ({ isOpen, onClose, onSubmit, isLoading = false, companies = [] }) => {
   // Multiple transaction entries
   const [entries, setEntries] = useState([createEmptyEntry()]);
   const [submitStatus, setSubmitStatus] = useState(null); // null | 'success' | 'partial' | 'error'
@@ -133,8 +133,7 @@ const QuickTransactionEntry = ({ isOpen, onClose, onSubmit, isLoading, companies
           category: entry.category || '',
           companyId: entry.companyId || null,
           payee: entry.payee?.trim() || '',
-          notes: entry.notes || '',
-          sectionCode: 'manual' // Manual entry
+          notes: entry.notes || ''
         };
       });
 
@@ -467,11 +466,6 @@ QuickTransactionEntry.propTypes = {
     id: PropTypes.string.isRequired,
     name: PropTypes.string.isRequired
   }))
-};
-
-QuickTransactionEntry.defaultProps = {
-  isLoading: false,
-  companies: []
 };
 
 export default QuickTransactionEntry;

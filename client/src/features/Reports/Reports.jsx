@@ -250,10 +250,10 @@ const Reports = () => {
           break;
           
         case 'checks':
-          // Fetch check transactions (sectionCode = 'checks')
+          // Fetch check transactions (paymentMethod = 'check')
           const checksRes = await apiClient.transactions.getAll({
             ...reportFilters,
-            sectionCode: 'checks',
+            paymentMethod: 'check',
             limit: 500
           });
           const checksList = checksRes.data?.transactions || checksRes.transactions || checksRes || [];

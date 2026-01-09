@@ -51,7 +51,8 @@ const IncomeSourcesPage = () => {
       if (incomeCategories.some(cat => catLower.includes(cat.toLowerCase()))) return true;
       if (catLower.includes('income') || catLower.includes('receipt') || catLower.includes('revenue')) return true;
     }
-    if (tx.sectionCode === 'deposits') return true;
+    // Positive amounts typically indicate income
+    if (tx.amount > 0) return true;
     return false;
   };
 
@@ -300,7 +301,7 @@ const IncomeSourcesPage = () => {
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow">
             <IncomeAssignment 
               sources={sources}
-              onAssignmentChange={fetchUnassignedCount}
+              onAssignmentChange={refetchUnassignedCount}
             />
           </div>
         )}

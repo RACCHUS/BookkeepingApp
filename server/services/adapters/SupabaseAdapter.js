@@ -64,12 +64,16 @@ class SupabaseAdapter extends DatabaseAdapter {
         company_id: transactionData.companyId || null,
         upload_id: transactionData.uploadId || transactionData.statementId || null,
         statement_id: transactionData.statementId || transactionData.uploadId || null,
+        csv_import_id: transactionData.csvImportId || null,
         income_source_id: transactionData.incomeSourceId || null,
         bank_name: transactionData.bankName || null,
         account_last_four: transactionData.accountLastFour || null,
         check_number: transactionData.checkNumber || null,
         reference_number: transactionData.referenceNumber || null,
         section_code: transactionData.sectionCode || null,
+        payment_method: transactionData.paymentMethod || null,
+        source: transactionData.source || 'manual',
+        source_file: transactionData.sourceFile || null,
         vendor_id: transactionData.vendorId || null,
         vendor_name: transactionData.vendorName || null,
         is_1099_payment: transactionData.is1099Payment || false,
@@ -848,7 +852,7 @@ class SupabaseAdapter extends DatabaseAdapter {
     return (data || []).map(p => this._transformPayee(p));
   }
 
-  async getTransactionsWithoutPayees(userId, sectionCode = null) {
+  async getTransactionsWithoutPayees(userId, paymentMethod = null) {
     let query = this.supabase
       .from('transactions')
       .select('*')
@@ -856,8 +860,8 @@ class SupabaseAdapter extends DatabaseAdapter {
       .is('payee_id', null)
       .order('date', { ascending: false });
 
-    if (sectionCode) {
-      query = query.eq('section_code', sectionCode);
+    if (paymentMethod) {
+      query = query.eq('payment_method', paymentMethod);
     }
 
     const { data, error } = await query;
@@ -1385,12 +1389,16 @@ class SupabaseAdapter extends DatabaseAdapter {
       companyId: row.company_id,
       uploadId: row.upload_id,
       statementId: row.upload_id || row.statement_id, // Alias for compatibility
+      csvImportId: row.csv_import_id,
       incomeSourceId: row.income_source_id,
       bankName: row.bank_name,
       accountLastFour: row.account_last_four,
       checkNumber: row.check_number,
       referenceNumber: row.reference_number,
       sectionCode: row.section_code,
+      paymentMethod: row.payment_method,
+      source: row.source,
+      sourceFile: row.source_file,
       vendorId: row.vendor_id,
       vendorName: row.vendor_name,
       is1099Payment: row.is_1099_payment,
@@ -1536,6 +1544,95 @@ class SupabaseAdapter extends DatabaseAdapter {
       createdAt: row.created_at,
       updatedAt: row.updated_at
     };
+  }
+
+  // ==================== GENERIC TABLE OPERATIONS ====================
+
+  /**
+   * Generic query method for any table
+   * @param {string} tableName - Table name
+   * @param {Object} filters - Key-value filters to apply
+   * @returns {Promise<Array>}
+   */
+  async query(tableName, filters = {}) {
+    let query = this.supabase.from(tableName).select('*');
+    
+    // Apply filters
+    for (const [key, value] of Object.entries(filters)) {
+      query = query.eq(key, value);
+    }
+    
+    const { data, error } = await query;
+    if (error) throw error;
+    return data || [];
+  }
+
+  /**
+   * Get a single record by ID
+   * @param {string} tableName - Table name
+   * @param {string} id - Record ID
+   * @returns {Promise<Object|null>}
+   */
+  async getById(tableName, id) {
+    const { data, error } = await this.supabase
+      .from(tableName)
+      .select('*')
+      .eq('id', id)
+      .single();
+    
+    if (error && error.code !== 'PGRST116') throw error; // PGRST116 = no rows returned
+    return data || null;
+  }
+
+  /**
+   * Create a new record
+   * @param {string} tableName - Table name
+   * @param {Object} record - Record data
+   * @returns {Promise<Object>}
+   */
+  async create(tableName, record) {
+    const { data, error } = await this.supabase
+      .from(tableName)
+      .insert(record)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
+  }
+
+  /**
+   * Update a record by ID
+   * @param {string} tableName - Table name
+   * @param {string} id - Record ID
+   * @param {Object} updates - Fields to update
+   * @returns {Promise<Object>}
+   */
+  async update(tableName, id, updates) {
+    const { data, error } = await this.supabase
+      .from(tableName)
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
+  }
+
+  /**
+   * Delete a record by ID
+   * @param {string} tableName - Table name
+   * @param {string} id - Record ID
+   * @returns {Promise<void>}
+   */
+  async delete(tableName, id) {
+    const { error } = await this.supabase
+      .from(tableName)
+      .delete()
+      .eq('id', id);
+    
+    if (error) throw error;
   }
 }
 

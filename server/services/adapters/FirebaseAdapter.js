@@ -151,8 +151,8 @@ class FirebaseAdapter extends DatabaseAdapter {
     return this.payee.searchPayees(userId, search, filters);
   }
 
-  async getTransactionsWithoutPayees(userId, sectionCode = null) {
-    return this.payee.getTransactionsWithoutPayees(userId, sectionCode);
+  async getTransactionsWithoutPayees(userId, paymentMethod = null) {
+    return this.payee.getTransactionsWithoutPayees(userId, paymentMethod);
   }
 
   // ==================== UPLOADS ====================

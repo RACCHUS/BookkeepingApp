@@ -10,12 +10,15 @@ import {
   DocumentTextIcon,
   Cog6ToothIcon,
   PlusIcon,
-  ArrowPathIcon
+  ArrowPathIcon,
+  TableCellsIcon
 } from '@heroicons/react/24/outline';
 import PDFUpload from '../PDFUpload/PDFUpload';
+import CSVUpload from '../CSVUpload/CSVUpload';
 import ManageDocuments from './ManageDocuments';
 import ManageReceipts from './ManageReceipts';
 import ManageChecks from './ManageChecks';
+import ManageCSVImports from './ManageCSVImports';
 import receiptService from '../../services/receiptService';
 import checkService from '../../services/checkService';
 import api from '../../services/api';
@@ -29,8 +32,8 @@ const DocumentManagement = () => {
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   
-  // Main tab: 'pdf', 'receipts', 'checks'
-  const initialTab = searchParams.get('tab') || 'pdf';
+  // Main tab: 'receipts', 'checks', 'csv', 'pdf'
+  const initialTab = searchParams.get('tab') || 'receipts';
   // Sub tab: 'upload' or 'manage'
   const initialSubTab = searchParams.get('sub') || 'upload';
   
@@ -66,18 +69,14 @@ const DocumentManagement = () => {
   const companies = companiesData?.companies || [];
 
   const mainTabs = [
-    { id: 'pdf', name: 'Bank Statements', icon: DocumentTextIcon },
     { id: 'receipts', name: 'Receipts', icon: ReceiptPercentIcon },
-    { id: 'checks', name: 'Checks', icon: BanknotesIcon }
+    { id: 'checks', name: 'Checks', icon: BanknotesIcon },
+    { id: 'csv', name: 'CSV Import', icon: TableCellsIcon },
+    { id: 'pdf', name: 'PDF Statements', icon: DocumentTextIcon }
   ];
 
   const getSubTabs = (mainTab) => {
     switch (mainTab) {
-      case 'pdf':
-        return [
-          { id: 'upload', name: 'Upload', icon: CloudArrowUpIcon },
-          { id: 'manage', name: 'Manage', icon: FolderIcon }
-        ];
       case 'receipts':
         return [
           { id: 'upload', name: 'Add Receipt', icon: PlusIcon },
@@ -87,6 +86,16 @@ const DocumentManagement = () => {
         return [
           { id: 'upload', name: 'Add Check', icon: PlusIcon },
           { id: 'manage', name: 'Manage', icon: Cog6ToothIcon }
+        ];
+      case 'csv':
+        return [
+          { id: 'upload', name: 'Import CSV', icon: CloudArrowUpIcon },
+          { id: 'manage', name: 'Manage Imports', icon: FolderIcon }
+        ];
+      case 'pdf':
+        return [
+          { id: 'upload', name: 'Upload', icon: CloudArrowUpIcon },
+          { id: 'manage', name: 'Manage', icon: FolderIcon }
         ];
       default:
         return [];
@@ -171,14 +180,6 @@ const DocumentManagement = () => {
   };
 
   const renderTabContent = () => {
-    // PDF tabs
-    if (activeTab === 'pdf') {
-      if (activeSubTab === 'upload') {
-        return <PDFUpload />;
-      }
-      return <ManageDocuments />;
-    }
-    
     // Receipts tabs
     if (activeTab === 'receipts') {
       if (activeSubTab === 'upload') {
@@ -426,7 +427,32 @@ const DocumentManagement = () => {
       return <ManageChecks />;
     }
     
-    return <PDFUpload />;
+    // CSV tabs
+    if (activeTab === 'csv') {
+      if (activeSubTab === 'upload') {
+        return <CSVUpload />;
+      }
+      if (activeSubTab === 'manage') {
+        return <ManageCSVImports />;
+      }
+      // Default to upload for CSV
+      return <CSVUpload />;
+    }
+    
+    // PDF tabs (last)
+    if (activeTab === 'pdf') {
+      if (activeSubTab === 'upload') {
+        return <PDFUpload />;
+      }
+      if (activeSubTab === 'manage') {
+        return <ManageDocuments />;
+      }
+      // Default to upload for PDF
+      return <PDFUpload />;
+    }
+    
+    // Fallback
+    return <ReceiptUpload />;
   };
 
   const subTabs = getSubTabs(activeTab);

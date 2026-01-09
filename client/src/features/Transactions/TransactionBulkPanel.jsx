@@ -8,8 +8,21 @@ import {
   TrashIcon,
   ArrowPathIcon
 } from '@heroicons/react/24/outline';
-import { CATEGORY_GROUPS } from '@shared/constants/categories';
-import { SECTION_OPTIONS } from '@shared/constants/sections';
+import { CATEGORY_GROUPS, PAYMENT_METHODS } from '@shared/constants/categories';
+
+// Payment method display labels
+const PAYMENT_METHOD_LABELS = {
+  cash: 'Cash',
+  check: 'Check',
+  credit_card: 'Credit Card',
+  debit_card: 'Debit Card',
+  bank_transfer: 'Bank Transfer',
+  paypal: 'PayPal',
+  venmo: 'Venmo',
+  zelle: 'Zelle',
+  other_electronic: 'Other Electronic',
+  other: 'Other'
+};
 
 /**
  * TransactionBulkPanel - Collapsible panel for bulk editing selected transactions
@@ -24,34 +37,46 @@ const TransactionBulkPanel = ({
   vendors = [],
   incomeSources = [],
   statements = [],
+  receipts = [],
+  checks = [],
+  csvImports = [],
   onBulkUpdate,
   onBulkDelete,
   onClearSelection,
   isUpdating = false
 }) => {
   const [isExpanded, setIsExpanded] = useState(true);
-  const [showFieldSelector, setShowFieldSelector] = useState(false);
+  const [showFieldSelector, setShowFieldSelector] = useState(true);
   
   // Track which fields to update
   const [fieldsToUpdate, setFieldsToUpdate] = useState({
     category: false,
+    subcategory: false,
     type: false,
     companyId: false,
     payee: false,
     vendorName: false,
     incomeSourceId: false,
     statementId: false,
-    sectionCode: false,
     description: false,
     date: false,
     amount: false,
     notes: false,
-    isReconciled: false
+    isReconciled: false,
+    paymentMethod: false,
+    checkNumber: false,
+    isReviewed: false,
+    is1099Payment: false,
+    tags: false,
+    csvImportId: false,
+    receiptId: false,
+    checkId: false
   });
 
   // Field values
   const [updateValues, setUpdateValues] = useState({
     category: '',
+    subcategory: '',
     type: '',
     companyId: '',
     companyName: '',
@@ -60,13 +85,20 @@ const TransactionBulkPanel = ({
     incomeSourceId: '',
     incomeSourceName: '',
     statementId: '',
-    sectionCode: '',
     description: '',
     date: '',
     amount: '',
     notes: '',
     appendNotes: false,
-    isReconciled: false
+    isReconciled: false,
+    paymentMethod: '',
+    checkNumber: '',
+    isReviewed: false,
+    is1099Payment: false,
+    tags: '',
+    csvImportId: '',
+    receiptId: '',
+    checkId: ''
   });
 
   // Transaction types
@@ -118,6 +150,9 @@ const TransactionBulkPanel = ({
     if (fieldsToUpdate.category && updateValues.category) {
       updates.category = updateValues.category;
     }
+    if (fieldsToUpdate.subcategory) {
+      updates.subcategory = updateValues.subcategory || null;
+    }
     if (fieldsToUpdate.type && updateValues.type) {
       updates.type = updateValues.type;
     }
@@ -138,9 +173,6 @@ const TransactionBulkPanel = ({
     if (fieldsToUpdate.statementId) {
       updates.statementId = updateValues.statementId || null;
     }
-    if (fieldsToUpdate.sectionCode && updateValues.sectionCode) {
-      updates.sectionCode = updateValues.sectionCode;
-    }
     if (fieldsToUpdate.description && updateValues.description?.trim()) {
       updates.description = updateValues.description.trim();
     }
@@ -157,6 +189,31 @@ const TransactionBulkPanel = ({
     if (fieldsToUpdate.isReconciled) {
       updates.isReconciled = updateValues.isReconciled;
     }
+    if (fieldsToUpdate.paymentMethod) {
+      updates.paymentMethod = updateValues.paymentMethod || null;
+    }
+    if (fieldsToUpdate.checkNumber) {
+      updates.checkNumber = updateValues.checkNumber || null;
+    }
+    if (fieldsToUpdate.isReviewed) {
+      updates.isReviewed = updateValues.isReviewed;
+    }
+    if (fieldsToUpdate.is1099Payment) {
+      updates.is1099Payment = updateValues.is1099Payment;
+    }
+    if (fieldsToUpdate.tags && updateValues.tags?.trim()) {
+      // Parse comma-separated tags
+      updates.tags = updateValues.tags.split(',').map(t => t.trim()).filter(Boolean);
+    }
+    if (fieldsToUpdate.csvImportId) {
+      updates.csvImportId = updateValues.csvImportId || null;
+    }
+    if (fieldsToUpdate.receiptId) {
+      updates.receiptId = updateValues.receiptId || null;
+    }
+    if (fieldsToUpdate.checkId) {
+      updates.checkId = updateValues.checkId || null;
+    }
 
     if (Object.keys(updates).length === 0) {
       return;
@@ -168,21 +225,30 @@ const TransactionBulkPanel = ({
   const resetForm = () => {
     setFieldsToUpdate({
       category: false,
+      subcategory: false,
       type: false,
       companyId: false,
       payee: false,
       vendorName: false,
       incomeSourceId: false,
       statementId: false,
-      sectionCode: false,
       description: false,
       date: false,
       amount: false,
       notes: false,
-      isReconciled: false
+      isReconciled: false,
+      paymentMethod: false,
+      checkNumber: false,
+      isReviewed: false,
+      is1099Payment: false,
+      tags: false,
+      csvImportId: false,
+      receiptId: false,
+      checkId: false
     });
     setUpdateValues({
       category: '',
+      subcategory: '',
       type: '',
       companyId: '',
       companyName: '',
@@ -191,13 +257,20 @@ const TransactionBulkPanel = ({
       incomeSourceId: '',
       incomeSourceName: '',
       statementId: '',
-      sectionCode: '',
       description: '',
       date: '',
       amount: '',
       notes: '',
       appendNotes: false,
-      isReconciled: false
+      isReconciled: false,
+      paymentMethod: '',
+      checkNumber: '',
+      isReviewed: false,
+      is1099Payment: false,
+      tags: '',
+      csvImportId: '',
+      receiptId: '',
+      checkId: ''
     });
   };
 
@@ -278,7 +351,7 @@ const TransactionBulkPanel = ({
                   onClick={() => setShowFieldSelector(!showFieldSelector)}
                   className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
                 >
-                  {showFieldSelector ? 'Hide selector' : 'Show field selector'}
+                  {showFieldSelector ? 'Hide field selector' : 'Show field selector'}
                 </button>
                 <button
                   onClick={resetForm}
@@ -293,18 +366,26 @@ const TransactionBulkPanel = ({
               <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2 mt-2">
                 {[
                   { key: 'category', label: 'Category' },
+                  { key: 'subcategory', label: 'Subcategory' },
                   { key: 'type', label: 'Type' },
                   { key: 'companyId', label: 'Company' },
                   { key: 'payee', label: 'Payee' },
                   { key: 'vendorName', label: 'Vendor' },
                   { key: 'incomeSourceId', label: 'Income Source' },
                   { key: 'statementId', label: 'Statement' },
-                  { key: 'sectionCode', label: 'Section' },
+                  { key: 'paymentMethod', label: 'Payment Method' },
+                  { key: 'checkNumber', label: 'Check Number' },
                   { key: 'description', label: 'Description' },
                   { key: 'date', label: 'Date' },
                   { key: 'amount', label: 'Amount' },
                   { key: 'notes', label: 'Notes' },
-                  { key: 'isReconciled', label: 'Reconciled' }
+                  { key: 'tags', label: 'Tags' },
+                  { key: 'isReconciled', label: 'Reconciled' },
+                  { key: 'isReviewed', label: 'Reviewed' },
+                  { key: 'is1099Payment', label: '1099 Payment' },
+                  { key: 'csvImportId', label: 'CSV Import' },
+                  { key: 'receiptId', label: 'Receipt' },
+                  { key: 'checkId', label: 'Check' }
                 ].map(({ key, label }) => (
                   <label
                     key={key}
@@ -350,6 +431,23 @@ const TransactionBulkPanel = ({
                     </optgroup>
                   ))}
                 </select>
+              </div>
+            )}
+
+            {/* Subcategory */}
+            {fieldsToUpdate.subcategory && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Subcategory
+                </label>
+                <input
+                  type="text"
+                  name="subcategory"
+                  value={updateValues.subcategory}
+                  onChange={handleValueChange}
+                  placeholder="Enter subcategory..."
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                />
               </div>
             )}
 
@@ -428,62 +526,54 @@ const TransactionBulkPanel = ({
             )}
 
             {/* Income Source */}
-            {fieldsToUpdate.incomeSourceId && incomeSources?.length > 0 && (
+            {fieldsToUpdate.incomeSourceId && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Income Source
                 </label>
-                <select
-                  name="incomeSourceId"
-                  value={updateValues.incomeSourceId}
-                  onChange={handleValueChange}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">No source / Clear</option>
-                  {incomeSources.map(source => (
-                    <option key={source.id} value={source.id}>{source.name}</option>
-                  ))}
-                </select>
+                {incomeSources?.length > 0 ? (
+                  <select
+                    name="incomeSourceId"
+                    value={updateValues.incomeSourceId}
+                    onChange={handleValueChange}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">No source / Clear</option>
+                    {incomeSources.map(source => (
+                      <option key={source.id} value={source.id}>{source.name}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <div className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-600 text-gray-500 dark:text-gray-400 text-sm">
+                    No income sources available. Create income sources first.
+                  </div>
+                )}
               </div>
             )}
 
             {/* Statement */}
-            {fieldsToUpdate.statementId && statements?.length > 0 && (
+            {fieldsToUpdate.statementId && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Statement/PDF
                 </label>
-                <select
-                  name="statementId"
-                  value={updateValues.statementId}
-                  onChange={handleValueChange}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">Unlink from statement</option>
-                  {statements.map(stmt => (
-                    <option key={stmt.id} value={stmt.id}>{stmt.name}</option>
-                  ))}
-                </select>
-              </div>
-            )}
-
-            {/* Section Code */}
-            {fieldsToUpdate.sectionCode && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Section
-                </label>
-                <select
-                  name="sectionCode"
-                  value={updateValues.sectionCode}
-                  onChange={handleValueChange}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">Select section...</option>
-                  {SECTION_OPTIONS.map(section => (
-                    <option key={section.code} value={section.code}>{section.label}</option>
-                  ))}
-                </select>
+                {statements?.length > 0 ? (
+                  <select
+                    name="statementId"
+                    value={updateValues.statementId}
+                    onChange={handleValueChange}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">Unlink from statement</option>
+                    {statements.map(stmt => (
+                      <option key={stmt.id} value={stmt.id}>{stmt.name}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <div className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-600 text-gray-500 dark:text-gray-400 text-sm">
+                    No statements available. Upload PDF statements first.
+                  </div>
+                )}
               </div>
             )}
 
@@ -583,6 +673,181 @@ const TransactionBulkPanel = ({
                   />
                   <span className="text-gray-700 dark:text-gray-300">Mark as reconciled</span>
                 </label>
+              </div>
+            )}
+
+            {/* Payment Method */}
+            {fieldsToUpdate.paymentMethod && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Payment Method
+                </label>
+                <select
+                  name="paymentMethod"
+                  value={updateValues.paymentMethod}
+                  onChange={handleValueChange}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Select payment method...</option>
+                  {Object.entries(PAYMENT_METHOD_LABELS).map(([value, label]) => (
+                    <option key={value} value={value}>{label}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {/* Check Number */}
+            {fieldsToUpdate.checkNumber && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Check Number
+                </label>
+                <input
+                  type="text"
+                  name="checkNumber"
+                  value={updateValues.checkNumber}
+                  onChange={handleValueChange}
+                  placeholder="Enter check number..."
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            )}
+
+            {/* Is Reviewed */}
+            {fieldsToUpdate.isReviewed && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Review Status
+                </label>
+                <label className="flex items-center gap-2 mt-2">
+                  <input
+                    type="checkbox"
+                    name="isReviewed"
+                    checked={updateValues.isReviewed}
+                    onChange={handleValueChange}
+                    className="h-5 w-5 text-blue-600 rounded focus:ring-blue-500"
+                  />
+                  <span className="text-gray-700 dark:text-gray-300">Mark as reviewed</span>
+                </label>
+              </div>
+            )}
+
+            {/* Is 1099 Payment */}
+            {fieldsToUpdate.is1099Payment && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  1099 Payment Status
+                </label>
+                <label className="flex items-center gap-2 mt-2">
+                  <input
+                    type="checkbox"
+                    name="is1099Payment"
+                    checked={updateValues.is1099Payment}
+                    onChange={handleValueChange}
+                    className="h-5 w-5 text-purple-600 rounded focus:ring-purple-500"
+                  />
+                  <span className="text-gray-700 dark:text-gray-300">Mark as 1099 payment</span>
+                </label>
+              </div>
+            )}
+
+            {/* Tags */}
+            {fieldsToUpdate.tags && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Tags
+                </label>
+                <input
+                  type="text"
+                  name="tags"
+                  value={updateValues.tags}
+                  onChange={handleValueChange}
+                  placeholder="tag1, tag2, tag3"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                />
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Separate with commas</p>
+              </div>
+            )}
+
+            {/* CSV Import */}
+            {fieldsToUpdate.csvImportId && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  CSV Import
+                </label>
+                {csvImports?.length > 0 ? (
+                  <select
+                    name="csvImportId"
+                    value={updateValues.csvImportId}
+                    onChange={handleValueChange}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">Unlink from CSV import</option>
+                    {csvImports.map(imp => (
+                      <option key={imp.id} value={imp.id}>{imp.file_name}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <div className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-600 text-gray-500 dark:text-gray-400 text-sm">
+                    No CSV imports available
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Receipt */}
+            {fieldsToUpdate.receiptId && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Receipt
+                </label>
+                {receipts?.length > 0 ? (
+                  <select
+                    name="receiptId"
+                    value={updateValues.receiptId}
+                    onChange={handleValueChange}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">Unlink receipt</option>
+                    {receipts.map(r => (
+                      <option key={r.id} value={r.id}>
+                        {r.vendor || 'Receipt'} - ${r.amount?.toFixed(2)} ({new Date(r.date).toLocaleDateString()})
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <div className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-600 text-gray-500 dark:text-gray-400 text-sm">
+                    No receipts available. Add receipts first.
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Check */}
+            {fieldsToUpdate.checkId && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Check
+                </label>
+                {checks?.length > 0 ? (
+                  <select
+                    name="checkId"
+                    value={updateValues.checkId}
+                    onChange={handleValueChange}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">Unlink check</option>
+                    {checks.map(c => (
+                      <option key={c.id} value={c.id}>
+                        #{c.checkNumber || c.check_number || 'N/A'} - {c.payee} (${c.amount?.toFixed(2)})
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <div className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-600 text-gray-500 dark:text-gray-400 text-sm">
+                    No checks available. Add checks first.
+                  </div>
+                )}
               </div>
             )}
           </div>

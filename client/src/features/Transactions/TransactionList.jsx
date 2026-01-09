@@ -5,6 +5,8 @@ import { CompanySelector } from '../../components/common';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-hot-toast';
 import { apiClient } from '../../services/api';
+import receiptService from '../../services/receiptService';
+import checkService from '../../services/checkService';
 import { useAuth } from '../../context/AuthContext';
 import { LoadingSpinner } from '../../components/ui';
 import { TransactionModal } from '../../components/forms';
@@ -13,10 +15,33 @@ import {
   CATEGORY_GROUPS, 
   getCategoriesForDropdown, 
   isBusinessCategory, 
-  isTaxDeductible 
+  isTaxDeductible,
+  PAYMENT_METHODS
 } from '@shared/constants/categories';
-import { SECTION_OPTIONS, getSectionDisplayName } from '@shared/constants/sections';
-import { SORT_OPTIONS, SORT_DIRECTIONS, SORT_PRESETS, getSortOptionByValue, getSortDirectionByValue } from '@shared/constants/sorting';
+import { createDefaultSorts, multiLevelSort } from '@shared/constants/sorting';
+
+// Payment method display labels
+const PAYMENT_METHOD_LABELS = {
+  [PAYMENT_METHODS.CASH]: { label: 'Cash', icon: '💵' },
+  [PAYMENT_METHODS.CHECK]: { label: 'Check', icon: '📝' },
+  [PAYMENT_METHODS.CREDIT_CARD]: { label: 'Credit Card', icon: '💳' },
+  [PAYMENT_METHODS.DEBIT_CARD]: { label: 'Debit Card', icon: '💳' },
+  [PAYMENT_METHODS.BANK_TRANSFER]: { label: 'Bank Transfer', icon: '🏦' },
+  [PAYMENT_METHODS.PAYPAL]: { label: 'PayPal', icon: '🅿️' },
+  [PAYMENT_METHODS.VENMO]: { label: 'Venmo', icon: '📱' },
+  [PAYMENT_METHODS.ZELLE]: { label: 'Zelle', icon: '⚡' },
+  [PAYMENT_METHODS.OTHER_ELECTRONIC]: { label: 'Electronic', icon: '🔌' },
+  [PAYMENT_METHODS.OTHER]: { label: 'Other', icon: '📋' },
+};
+
+// Helper to get payment method display
+const getPaymentMethodDisplay = (paymentMethod) => {
+  const method = PAYMENT_METHOD_LABELS[paymentMethod];
+  if (method) {
+    return `${method.icon} ${method.label}`;
+  }
+  return paymentMethod || 'Unknown';
+};
 
 // Improved, user-friendly transaction types
 const TRANSACTION_TYPES = [
@@ -25,20 +50,6 @@ const TRANSACTION_TYPES = [
   { value: 'expense', label: 'Expense', color: 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300' },
   { value: 'transfer', label: 'Transfer', color: 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300' },
   { value: 'adjustment', label: 'Adjustment', color: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300' },
-];
-
-// PDF section filter options
-const SECTION_FILTERS = [
-  { value: '', label: 'All Sections' },
-  ...SECTION_OPTIONS.map(section => ({
-    value: section.code,
-    label: section.label,
-    icon: section.code === 'deposits' ? '💰' : 
-          section.code === 'checks' ? '📝' :
-          section.code === 'card' ? '💳' :
-          section.code === 'electronic' ? '🔌' :
-          section.code === 'manual' ? '✍️' : '❓'
-  }))
 ];
 
 // Helper for category label with group and subcategory
@@ -70,49 +81,57 @@ const getCategoryLabel = (category, subcategory) => {
 };
 import {
   PlusIcon,
-  MagnifyingGlassIcon,
   TrashIcon,
   PencilIcon,
   CheckIcon,
   XMarkIcon,
   TagIcon,
   CheckCircleIcon,
-  ArrowsUpDownIcon,
   ReceiptPercentIcon,
   BanknotesIcon
 } from '@heroicons/react/24/outline';
 import QuickTransactionEntry from './QuickTransactionEntry';
 import TransactionBulkPanel from './TransactionBulkPanel';
+import TransactionFilterPanel from './TransactionFilterPanel';
+import TransactionSortPanel from './TransactionSortPanel';
+import CompactTransactionRow from '../../components/CompactTransactionRow';
 
 const TransactionList = () => {
   const { user, loading: authLoading } = useAuth(); // Add authentication context with loading state
   const [searchParams] = useSearchParams();
-  const [filters, setFilters] = useState({
-    limit: 50,
-    offset: 0,
-    orderBy: 'date',
-    order: 'desc'
-  });
   const [deletingId, setDeletingId] = useState(null);
   
-  // Search and filter state
-  const [searchTerm, setSearchTerm] = useState('');
-  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState('');
-  const [typeFilter, setTypeFilter] = useState('');
-  const [sectionFilter, setSectionFilter] = useState('');
-  const [companyFilter, setCompanyFilter] = useState('');
-  const [uploadFilter, setUploadFilter] = useState('');
-  const [dateRange, setDateRange] = useState({ start: '', end: '' });
+  // Unified filter state for TransactionFilterPanel
+  const [transactionFilters, setTransactionFilters] = useState({
+    searchTerm: '',
+    category: '',
+    type: '',
+    companyId: '',
+    statementId: '',
+    payee: '',
+    vendor: '',
+    hasCategory: '',
+    hasNotes: '',
+    is1099: '',
+    isReconciled: '',
+    isReviewed: '',
+    taxDeductible: '',
+    hasReceipt: '',
+    hasCheckNumber: '',
+    source: '',
+    hasPdfSource: '',
+    amountRange: { min: '', max: '' },
+    dateRange: { start: '', end: '' }
+  });
   
-  // New filter states
-  const [amountRange, setAmountRange] = useState({ min: '', max: '' });
-  const [payeeFilter, setPayeeFilter] = useState('');
-  const [vendorFilter, setVendorFilter] = useState(''); // Filter by vendor (business you purchase from)
-  const [notesFilter, setNotesFilter] = useState(''); // '', 'with', 'without'
-  const [taxDeductibleFilter, setTaxDeductibleFilter] = useState(''); // '', 'yes', 'no'
-  const [reconciliationFilter, setReconciliationFilter] = useState(''); // '', 'reconciled', 'unreconciled'
-  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  // Query/pagination filters (separate from display filters)
+  const [queryFilters, setQueryFilters] = useState({
+    limit: 1000,
+    offset: 0
+  });
+  
+  // Multi-level sorting state
+  const [sorts, setSorts] = useState(createDefaultSorts());
   
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -123,26 +142,16 @@ const TransactionList = () => {
 
   // Statement/PDF filter state
   const [statements, setStatements] = useState([]);
-  const [statementFilter, setStatementFilter] = useState('');
 
   // Link to upload mode - when navigating from upload details to link transactions
   const linkToUploadId = searchParams.get('linkToUpload');
   const isLinkMode = !!linkToUploadId;
 
-  // Debounce search term - update debounced value after 300ms of no typing
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearchTerm(searchTerm);
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [searchTerm]);
-
   // Handle URL parameters for upload-specific filtering
   useEffect(() => {
     const uploadId = searchParams.get('uploadId');
     if (uploadId) {
-      setUploadFilter(uploadId);
-      setStatementFilter(uploadId); // Also set statement filter for consistency
+      setTransactionFilters(prev => ({ ...prev, statementId: uploadId }));
     }
     // Enable select mode automatically when in link mode
     if (linkToUploadId) {
@@ -150,38 +159,67 @@ const TransactionList = () => {
     }
   }, [searchParams, linkToUploadId]);
 
-  // Fetch available statements/PDFs for filter dropdown
+  // Fetch available statements (both PDF and CSV) for filter dropdown
   const fetchStatements = () => {
-    apiClient.pdf.getUploads()
-      .then((res) => {
-        // The response is { success: true, data: [...] } where data is the direct array
-        const uploads = Array.isArray(res?.data) ? res.data : (res?.data?.uploads || []);
-        if (Array.isArray(uploads)) {
-          setStatements(uploads
-            .map((u, idx) => {
-              // Robust unique id fallback
-              const id = u.id || u._id || u.filename || u.originalname || `statement_${idx}`;
-              if (!id) return null;
-              let displayName = u.name && u.name !== 'undefined' ? u.name : '';
-              const uploadedAt = u.uploadedAt || u.createdAt || u.timestamp;
-              if (!displayName) {
-                if (uploadedAt) {
-                  displayName = `Statement (${new Date(uploadedAt).toLocaleDateString()}) [${String(id).slice(-6)}]`;
-                } else {
-                  displayName = `Statement [${id}]`;
-                }
+    Promise.all([
+      apiClient.pdf.getUploads().catch(() => ({ data: [] })),
+      apiClient.csv.getImports({ status: 'completed' }).catch(() => ({ data: [] }))
+    ])
+      .then(([pdfRes, csvRes]) => {
+        // Process PDF uploads
+        const pdfUploads = Array.isArray(pdfRes?.data) ? pdfRes.data : (pdfRes?.data?.uploads || []);
+        const pdfStatements = (Array.isArray(pdfUploads) ? pdfUploads : [])
+          .map((u, idx) => {
+            const id = u.id || u._id || u.filename || u.originalname || `pdf_${idx}`;
+            if (!id) return null;
+            let displayName = u.name && u.name !== 'undefined' ? u.name : '';
+            const uploadedAt = u.uploadedAt || u.createdAt || u.timestamp;
+            if (!displayName) {
+              if (uploadedAt) {
+                displayName = `PDF Statement (${new Date(uploadedAt).toLocaleDateString()})`;
               } else {
-                displayName = `${displayName} (${uploadedAt ? new Date(uploadedAt).toLocaleDateString() : ''}) [${String(id).slice(-6)}]`;
+                displayName = `PDF Statement`;
               }
-              return {
-                id: String(id),
-                name: displayName,
-                uploadedAt
-              };
-            })
-            .filter(Boolean)
-        );
-        }
+            }
+            return {
+              id: String(id),
+              name: `[PDF] ${displayName}`,
+              uploadedAt,
+              type: 'pdf'
+            };
+          })
+          .filter(Boolean);
+        
+        // Process CSV imports
+        const csvImports = Array.isArray(csvRes?.data) ? csvRes.data : [];
+        const csvStatements = csvImports
+          .map((c, idx) => {
+            const id = c.id || c.import_id || `csv_${idx}`;
+            if (!id) return null;
+            const fileName = c.file_name || c.fileName || '';
+            const bankName = c.bank_name || c.bankName || '';
+            const uploadedAt = c.created_at || c.createdAt;
+            let displayName = fileName || bankName;
+            if (!displayName) {
+              displayName = uploadedAt ? `CSV Import (${new Date(uploadedAt).toLocaleDateString()})` : 'CSV Import';
+            }
+            return {
+              id: String(id),
+              name: `[CSV] ${displayName}`,
+              uploadedAt,
+              type: 'csv'
+            };
+          })
+          .filter(Boolean);
+        
+        // Combine and sort by date (newest first)
+        const allStatements = [...pdfStatements, ...csvStatements].sort((a, b) => {
+          const dateA = a.uploadedAt ? new Date(a.uploadedAt) : new Date(0);
+          const dateB = b.uploadedAt ? new Date(b.uploadedAt) : new Date(0);
+          return dateB - dateA;
+        });
+        
+        setStatements(allStatements);
       })
       .catch((error) => {
         console.error('Failed to load statements:', error);
@@ -203,18 +241,19 @@ const TransactionList = () => {
 
   // Build dynamic query parameters including filters
   const queryParams = useMemo(() => {
-    const params = { ...filters };
+    const params = { ...queryFilters };
     
-    if (categoryFilter && categoryFilter !== '__uncategorized__') params.category = categoryFilter;
-    if (typeFilter) params.type = typeFilter;
-    if (sectionFilter) params.sectionCode = sectionFilter;
-    if (companyFilter) params.companyId = companyFilter;
-    if (uploadFilter) params.uploadId = uploadFilter;
-    if (dateRange.start) params.startDate = dateRange.start;
-    if (dateRange.end) params.endDate = dateRange.end;
+    if (transactionFilters.category && transactionFilters.category !== '__uncategorized__') {
+      params.category = transactionFilters.category;
+    }
+    if (transactionFilters.type) params.type = transactionFilters.type;
+    if (transactionFilters.companyId) params.companyId = transactionFilters.companyId;
+    if (transactionFilters.statementId) params.uploadId = transactionFilters.statementId;
+    if (transactionFilters.dateRange?.start) params.startDate = transactionFilters.dateRange.start;
+    if (transactionFilters.dateRange?.end) params.endDate = transactionFilters.dateRange.end;
     
     return params;
-  }, [filters, categoryFilter, typeFilter, sectionFilter, companyFilter, uploadFilter, dateRange]);
+  }, [queryFilters, transactionFilters]);
 
   // All query and mutation hooks must be declared before any conditional logic
   const { data, isLoading, error, refetch } = useQuery({
@@ -250,18 +289,47 @@ const TransactionList = () => {
 
   const incomeSources = incomeSourcesData?.data?.sources || incomeSourcesData?.data || [];
 
-  // Refresh statements when transaction data changes (moved after data declaration)
+  // Fetch receipts for bulk edit panel
+  const { data: receiptsData } = useQuery({
+    queryKey: ['receipts'],
+    queryFn: () => receiptService.getReceipts(),
+    enabled: !!user && !authLoading,
+  });
+
+  const receipts = receiptsData?.data || [];
+
+  // Fetch checks for bulk edit panel
+  const { data: checksData } = useQuery({
+    queryKey: ['checks'],
+    queryFn: () => checkService.getChecks(),
+    enabled: !!user && !authLoading,
+  });
+
+  const checks = checksData?.data || [];
+
+  // Fetch CSV imports for bulk edit panel
+  const { data: csvImportsData } = useQuery({
+    queryKey: ['csv-imports'],
+    queryFn: () => apiClient.csv.getImports(),
+    enabled: !!user && !authLoading,
+  });
+
+  const csvImports = csvImportsData?.data?.imports || csvImportsData?.data || [];
+
+  // Fetch statements once on mount
   useEffect(() => {
     fetchStatements();
-  }, [data]);
+  }, []);
 
   // Delete mutation
   const deleteMutation = useMutation({
     mutationFn: (transactionId) => apiClient.transactions.delete(transactionId),
     onSuccess: (data, transactionId) => {
       toast.success('Transaction deleted successfully');
-      // Refresh the transactions list
+      // Refresh all transaction-related queries
       queryClient.invalidateQueries(['transactions']);
+      queryClient.invalidateQueries(['recent-transactions']);
+      queryClient.invalidateQueries(['transaction-summary']);
       setDeletingId(null);
     },
     onError: (error, transactionId) => {
@@ -292,8 +360,10 @@ const TransactionList = () => {
   const updateMutation = useMutation({
     mutationFn: ({ id, data }) => apiClient.transactions.update(id, data),
     onSuccess: () => {
-      // Refresh the transactions list
+      // Refresh all transaction-related queries
       queryClient.invalidateQueries(['transactions']);
+      queryClient.invalidateQueries(['recent-transactions']);
+      queryClient.invalidateQueries(['transaction-summary']);
     },
     onError: (error) => {
       console.error('Update transaction error:', error);
@@ -306,7 +376,10 @@ const TransactionList = () => {
   const bulkUpdateMutation = useMutation({
     mutationFn: (transactions) => apiClient.transactions.bulkUpdate(transactions),
     onSuccess: () => {
+      // Refresh all transaction-related queries
       queryClient.invalidateQueries(['transactions']);
+      queryClient.invalidateQueries(['recent-transactions']);
+      queryClient.invalidateQueries(['transaction-summary']);
       setSelectedTransactions(new Set());
       setBulkOperating(false);
       // Note: Don't disable select mode - user might want to continue bulk editing
@@ -347,7 +420,10 @@ const TransactionList = () => {
   const inlineUpdateMutation = useMutation({
     mutationFn: ({ id, data }) => apiClient.transactions.update(id, data),
     onSuccess: () => {
+      // Refresh all transaction-related queries
       queryClient.invalidateQueries(['transactions']);
+      queryClient.invalidateQueries(['recent-transactions']);
+      queryClient.invalidateQueries(['transaction-summary']);
       setEditingCategoryId(null);
       setEditingCategoryValue('');
       toast.success('Category updated successfully');
@@ -611,170 +687,222 @@ const TransactionList = () => {
     }
     
     let filtered = [...transactions]; // Create a copy to avoid mutations
+    const f = transactionFilters; // Shorthand
 
-    // Search filter (debounced)
-    if (debouncedSearchTerm) {
-      const term = debouncedSearchTerm.toLowerCase();
-      filtered = filtered.filter(transaction => 
-        transaction.description?.toLowerCase().includes(term) ||
-        transaction.payee?.toLowerCase().includes(term) ||
-        transaction.category?.toLowerCase().includes(term) ||
-        transaction.subcategory?.toLowerCase().includes(term) ||
-        transaction.notes?.toLowerCase().includes(term) ||
-        transaction.checkNumber?.toString().includes(term)
+    // Search filter
+    if (f.searchTerm) {
+      const term = f.searchTerm.toLowerCase();
+      filtered = filtered.filter(tx => 
+        tx.description?.toLowerCase().includes(term) ||
+        tx.payee?.toLowerCase().includes(term) ||
+        tx.category?.toLowerCase().includes(term) ||
+        tx.subcategory?.toLowerCase().includes(term) ||
+        tx.notes?.toLowerCase().includes(term) ||
+        tx.checkNumber?.toString().includes(term)
       );
     }
 
     // Category filter
-    if (categoryFilter) {
-      if (categoryFilter === '__uncategorized__') {
-        // Show transactions with empty, null, undefined, or category === 'Uncategorized' (legacy)
-        filtered = filtered.filter(transaction => !transaction.category || transaction.category === '' || transaction.category === null || transaction.category === 'Uncategorized');
+    if (f.category) {
+      if (f.category === '__uncategorized__') {
+        filtered = filtered.filter(tx => !tx.category || tx.category === '' || tx.category === 'Uncategorized');
       } else {
-        filtered = filtered.filter(transaction => transaction.category === categoryFilter);
+        filtered = filtered.filter(tx => tx.category === f.category);
       }
     }
 
-    // Statement/PDF filter
-    if (statementFilter) {
-      if (statementFilter === '__manual') {
-        // Show only transactions without a statementId (manual/unlinked)
-        filtered = filtered.filter(transaction => 
-          !transaction.statementId || transaction.statementId === ''
+    // Statement/PDF/CSV filter
+    if (f.statementId) {
+      if (f.statementId === '__manual') {
+        filtered = filtered.filter(tx => 
+          (!tx.statementId || tx.statementId === '') &&
+          (!tx.csvImportId || tx.csvImportId === '')
         );
       } else {
-        // Show only transactions with the specific statementId
-        filtered = filtered.filter(transaction => 
-          String(transaction.statementId) === String(statementFilter)
-        );
+        const selectedStatement = statements.find(s => String(s.id) === String(f.statementId));
+        if (selectedStatement?.type === 'csv') {
+          filtered = filtered.filter(tx => String(tx.csvImportId) === String(f.statementId));
+        } else {
+          filtered = filtered.filter(tx => String(tx.statementId) === String(f.statementId));
+        }
       }
     }
 
     // Type filter
-    if (typeFilter) {
-      filtered = filtered.filter(transaction => transaction.type === typeFilter);
-    }
-
-    // Section filter
-    if (sectionFilter) {
-      if (sectionFilter === 'uncategorized') {
-        // Show transactions with no sectionCode or sectionCode === 'uncategorized'
-        filtered = filtered.filter(transaction => 
-          !transaction.sectionCode || transaction.sectionCode === 'uncategorized'
-        );
-      } else {
-        filtered = filtered.filter(transaction => transaction.sectionCode === sectionFilter);
-      }
+    if (f.type) {
+      filtered = filtered.filter(tx => tx.type === f.type);
     }
 
     // Company filter
-    if (companyFilter) {
-      if (companyFilter === '__no_company') {
-        // Show only transactions without a companyId (no company assigned)
-        filtered = filtered.filter(transaction => 
-          !transaction.companyId || transaction.companyId === ''
-        );
+    if (f.companyId) {
+      if (f.companyId === '__no_company') {
+        filtered = filtered.filter(tx => !tx.companyId || tx.companyId === '');
       } else {
-        // Show only transactions with the specific companyId
-        filtered = filtered.filter(transaction => 
-          String(transaction.companyId) === String(companyFilter)
+        filtered = filtered.filter(tx => String(tx.companyId) === String(f.companyId));
+      }
+    }
+
+    // Payee filter
+    if (f.payee) {
+      if (f.payee === '__no_payee') {
+        filtered = filtered.filter(tx => !tx.payee || tx.payee.trim() === '');
+      } else {
+        filtered = filtered.filter(tx => 
+          tx.payee?.toLowerCase().includes(f.payee.toLowerCase())
         );
       }
     }
 
-    // Payee filter (who you pay - employees, contractors, vendors)
-    if (payeeFilter) {
-      if (payeeFilter === '__no_payee') {
-        filtered = filtered.filter(transaction => 
-          !transaction.payee || transaction.payee.trim() === ''
-        );
+    // Vendor filter
+    if (f.vendor) {
+      if (f.vendor === '__no_vendor') {
+        filtered = filtered.filter(tx => !tx.vendorName || tx.vendorName.trim() === '');
       } else {
-        filtered = filtered.filter(transaction => 
-          transaction.payee === payeeFilter
-        );
-      }
-    }
-
-    // Vendor filter (external business you purchase from)
-    if (vendorFilter) {
-      if (vendorFilter === '__no_vendor') {
-        filtered = filtered.filter(transaction => 
-          !transaction.vendorName || transaction.vendorName.trim() === ''
-        );
-      } else {
-        filtered = filtered.filter(transaction => 
-          transaction.vendorName === vendorFilter
+        filtered = filtered.filter(tx => 
+          tx.vendorName?.toLowerCase().includes(f.vendor.toLowerCase())
         );
       }
     }
 
     // Amount range filter
-    if (amountRange.min !== '') {
-      const minAmount = parseFloat(amountRange.min);
+    if (f.amountRange?.min) {
+      const minAmount = parseFloat(f.amountRange.min);
       if (!isNaN(minAmount)) {
-        filtered = filtered.filter(transaction => 
-          Math.abs(parseFloat(transaction.amount) || 0) >= minAmount
-        );
+        filtered = filtered.filter(tx => Math.abs(parseFloat(tx.amount) || 0) >= minAmount);
       }
     }
-    if (amountRange.max !== '') {
-      const maxAmount = parseFloat(amountRange.max);
+    if (f.amountRange?.max) {
+      const maxAmount = parseFloat(f.amountRange.max);
       if (!isNaN(maxAmount)) {
-        filtered = filtered.filter(transaction => 
-          Math.abs(parseFloat(transaction.amount) || 0) <= maxAmount
-        );
+        filtered = filtered.filter(tx => Math.abs(parseFloat(tx.amount) || 0) <= maxAmount);
+      }
+    }
+
+    // Has category filter
+    if (f.hasCategory) {
+      if (f.hasCategory === 'yes') {
+        filtered = filtered.filter(tx => tx.category && tx.category !== '' && tx.category !== 'Uncategorized');
+      } else if (f.hasCategory === 'no') {
+        filtered = filtered.filter(tx => !tx.category || tx.category === '' || tx.category === 'Uncategorized');
       }
     }
 
     // Notes filter
-    if (notesFilter) {
-      if (notesFilter === 'with') {
-        filtered = filtered.filter(transaction => 
-          transaction.notes && transaction.notes.trim() !== ''
-        );
-      } else if (notesFilter === 'without') {
-        filtered = filtered.filter(transaction => 
-          !transaction.notes || transaction.notes.trim() === ''
-        );
+    if (f.hasNotes) {
+      if (f.hasNotes === 'with') {
+        filtered = filtered.filter(tx => tx.notes && tx.notes.trim() !== '');
+      } else if (f.hasNotes === 'without') {
+        filtered = filtered.filter(tx => !tx.notes || tx.notes.trim() === '');
+      }
+    }
+
+    // 1099 filter
+    if (f.is1099) {
+      if (f.is1099 === 'yes') {
+        filtered = filtered.filter(tx => tx.is1099Payment || tx.isContractorPayment);
+      } else if (f.is1099 === 'no') {
+        filtered = filtered.filter(tx => !tx.is1099Payment && !tx.isContractorPayment);
       }
     }
 
     // Tax deductible filter
-    if (taxDeductibleFilter) {
-      if (taxDeductibleFilter === 'yes') {
-        filtered = filtered.filter(transaction => 
-          transaction.category && isTaxDeductible(transaction.category)
-        );
-      } else if (taxDeductibleFilter === 'no') {
-        filtered = filtered.filter(transaction => 
-          !transaction.category || !isTaxDeductible(transaction.category)
-        );
+    if (f.taxDeductible) {
+      if (f.taxDeductible === 'yes') {
+        filtered = filtered.filter(tx => tx.category && isTaxDeductible(tx.category));
+      } else if (f.taxDeductible === 'no') {
+        filtered = filtered.filter(tx => !tx.category || !isTaxDeductible(tx.category));
       }
     }
 
     // Reconciliation filter
-    if (reconciliationFilter) {
-      if (reconciliationFilter === 'reconciled') {
-        filtered = filtered.filter(transaction => transaction.isReconciled === true);
-      } else if (reconciliationFilter === 'unreconciled') {
-        filtered = filtered.filter(transaction => !transaction.isReconciled);
+    if (f.isReconciled) {
+      if (f.isReconciled === 'yes') {
+        filtered = filtered.filter(tx => tx.isReconciled === true);
+      } else if (f.isReconciled === 'no') {
+        filtered = filtered.filter(tx => !tx.isReconciled);
+      }
+    }
+
+    // Review status filter
+    if (f.isReviewed) {
+      if (f.isReviewed === 'yes') {
+        filtered = filtered.filter(tx => tx.isManuallyReviewed === true);
+      } else if (f.isReviewed === 'no') {
+        filtered = filtered.filter(tx => !tx.isManuallyReviewed);
+      }
+    }
+
+    // Has receipt filter
+    if (f.hasReceipt) {
+      if (f.hasReceipt === 'yes') {
+        filtered = filtered.filter(tx => tx.receiptUrl);
+      } else if (f.hasReceipt === 'no') {
+        filtered = filtered.filter(tx => !tx.receiptUrl);
+      }
+    }
+
+    // Has check number filter
+    if (f.hasCheckNumber) {
+      if (f.hasCheckNumber === 'yes') {
+        filtered = filtered.filter(tx => tx.checkNumber);
+      } else if (f.hasCheckNumber === 'no') {
+        filtered = filtered.filter(tx => !tx.checkNumber);
+      }
+    }
+
+    // Source filter
+    if (f.source) {
+      filtered = filtered.filter(tx => tx.source === f.source);
+    }
+
+    // Has PDF/source file filter
+    if (f.hasPdfSource) {
+      if (f.hasPdfSource === 'yes') {
+        filtered = filtered.filter(tx => tx.sourceFileId || tx.statementId);
+      } else if (f.hasPdfSource === 'no') {
+        filtered = filtered.filter(tx => !tx.sourceFileId && !tx.statementId);
       }
     }
 
     // Date range filter
-    if (dateRange.start) {
-      filtered = filtered.filter(transaction => 
-        new Date(transaction.date) >= new Date(dateRange.start)
-      );
+    if (f.dateRange?.start) {
+      filtered = filtered.filter(tx => new Date(tx.date) >= new Date(f.dateRange.start));
     }
-    if (dateRange.end) {
-      filtered = filtered.filter(transaction => 
-        new Date(transaction.date) <= new Date(dateRange.end)
-      );
+    if (f.dateRange?.end) {
+      filtered = filtered.filter(tx => new Date(tx.date) <= new Date(f.dateRange.end));
     }
 
-    return filtered;
-  }, [data?.data?.transactions, debouncedSearchTerm, categoryFilter, statementFilter, typeFilter, sectionFilter, companyFilter, payeeFilter, vendorFilter, amountRange, notesFilter, taxDeductibleFilter, reconciliationFilter, dateRange]);
+    // Apply multi-level sorting
+    return multiLevelSort(filtered, sorts);
+  }, [data?.data?.transactions, transactionFilters, statements, sorts]);
+
+  // Compute visible columns based on active filters and sorts
+  // These columns will be shown inline in the compact row view
+  const visibleColumns = useMemo(() => {
+    const columns = new Set();
+    const f = transactionFilters;
+    
+    // Add columns for active filters
+    if (f.category) columns.add('category');
+    if (f.companyId) columns.add('company');
+    if (f.payee) columns.add('payee');
+    if (f.vendor) columns.add('vendor');
+    if (f.statementId) columns.add('statementId');
+    if (f.source) columns.add('source');
+    if (f.hasReceipt === 'yes') columns.add('hasReceipt');
+    if (f.hasCheckNumber === 'yes') columns.add('hasCheckNumber');
+    
+    // Add columns for active sorts (first 2 levels only to avoid clutter)
+    sorts.slice(0, 2).forEach(sort => {
+      if (sort.field && sort.field !== 'date' && sort.field !== 'amount' && sort.field !== 'description' && sort.field !== 'type') {
+        if (sort.field === 'companyName') columns.add('company');
+        else if (sort.field === 'payeeName' || sort.field === 'payee') columns.add('payee');
+        else columns.add(sort.field);
+      }
+    });
+    
+    return Array.from(columns);
+  }, [transactionFilters, sorts]);
 
   // Available categories for filters - moved before conditional returns
   const availableCategories = useMemo(() => {
@@ -795,11 +923,12 @@ const TransactionList = () => {
     if (!transactions || !Array.isArray(transactions)) {
       return [];
     }
-    return [...new Set(transactions
+    // Return as objects with id and name for TransactionFilterPanel
+    const payeeNames = [...new Set(transactions
       .map(t => t.payee)
       .filter(p => p && p.trim() !== '')
-      .sort((a, b) => a.localeCompare(b))
-    )];
+    )].sort((a, b) => a.localeCompare(b));
+    return payeeNames.map(name => ({ id: name, name }));
   }, [data?.data?.transactions]);
 
   // Available vendors for filter dropdown (external businesses you purchase from)
@@ -808,31 +937,13 @@ const TransactionList = () => {
     if (!transactions || !Array.isArray(transactions)) {
       return [];
     }
-    return [...new Set(transactions
+    // Return as objects with id and name for TransactionFilterPanel
+    const vendorNames = [...new Set(transactions
       .map(t => t.vendorName)
       .filter(v => v && v.trim() !== '')
-      .sort((a, b) => a.localeCompare(b))
-    )];
+    )].sort((a, b) => a.localeCompare(b));
+    return vendorNames.map(name => ({ id: name, name }));
   }, [data?.data?.transactions]);
-
-  // Count of active filters for UI indicator
-  const activeFilterCount = useMemo(() => {
-    let count = 0;
-    if (debouncedSearchTerm) count++;
-    if (categoryFilter) count++;
-    if (typeFilter) count++;
-    if (sectionFilter) count++;
-    if (companyFilter) count++;
-    if (statementFilter) count++;
-    if (payeeFilter) count++;
-    if (vendorFilter) count++;
-    if (amountRange.min || amountRange.max) count++;
-    if (notesFilter) count++;
-    if (taxDeductibleFilter) count++;
-    if (reconciliationFilter) count++;
-    if (dateRange.start || dateRange.end) count++;
-    return count;
-  }, [debouncedSearchTerm, categoryFilter, typeFilter, sectionFilter, companyFilter, statementFilter, payeeFilter, vendorFilter, amountRange, notesFilter, taxDeductibleFilter, reconciliationFilter, dateRange]);
 
   // Show loading state while auth is loading
   if (authLoading) {
@@ -921,24 +1032,29 @@ const TransactionList = () => {
 
   // Reset filters
   const resetFilters = () => {
-    setSearchTerm('');
-    setDebouncedSearchTerm('');
-    setCategoryFilter('');
-    setTypeFilter('');
-    setSectionFilter('');
-    setCompanyFilter('');
-    setUploadFilter('');
-    setDateRange({ start: '', end: '' });
-    setStatementFilter('');
-    // Reset new filters
-    setAmountRange({ min: '', max: '' });
-    setPayeeFilter('');
-    setVendorFilter('');
-    setNotesFilter('');
-    setTaxDeductibleFilter('');
-    setReconciliationFilter('');
-    // Reset sorting to default
-    setFilters(prev => ({ ...prev, orderBy: 'date', order: 'desc' }));
+    setTransactionFilters({
+      searchTerm: '',
+      category: '',
+      type: '',
+      companyId: '',
+      statementId: '',
+      payee: '',
+      vendor: '',
+      hasCategory: '',
+      hasNotes: '',
+      is1099: '',
+      isReconciled: '',
+      isReviewed: '',
+      taxDeductible: '',
+      hasReceipt: '',
+      hasCheckNumber: '',
+      source: '',
+      hasPdfSource: '',
+      amountRange: { min: '', max: '' },
+      dateRange: { start: '', end: '' }
+    });
+    // Reset sorting to default (date descending)
+    setSorts(createDefaultSorts());
   };
 
   return (
@@ -998,6 +1114,9 @@ const TransactionList = () => {
           vendors={availableVendors}
           incomeSources={incomeSources}
           statements={statements}
+          receipts={receipts}
+          checks={checks}
+          csvImports={csvImports}
           onBulkUpdate={handleBulkPanelUpdate}
           onBulkDelete={handleBulkDelete}
           onClearSelection={() => setSelectedTransactions(new Set())}
@@ -1012,7 +1131,7 @@ const TransactionList = () => {
           {totalCount > 0 && (
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
               Showing {transactions.length} of {totalCount} transactions
-              {hasMore && ' (scroll for more)'}
+              {hasMore && ` (Page ${Math.floor(queryFilters.offset / queryFilters.limit) + 1} of ${Math.ceil(totalCount / queryFilters.limit)})`}
             </p>
           )}
         </div>
@@ -1061,462 +1180,34 @@ const TransactionList = () => {
         </div>
       </div>
 
-      {/* Search and Filters */}
-      <div className="space-y-4">
-        {/* Primary Filters Row */}
-        <div className="grid grid-cols-1 md:grid-cols-7 gap-4">
-          {/* Search */}
-          <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <MagnifyingGlassIcon className="h-5 w-5 text-gray-400 dark:text-gray-500" />
-            </div>
-            <input
-              type="text"
-              className="block w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md leading-5 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:placeholder-gray-400 dark:focus:placeholder-gray-500 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-              placeholder="Search transactions..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
+      {/* Search and Filters - Using TransactionFilterPanel for consistency */}
+      <TransactionFilterPanel
+        filters={transactionFilters}
+        onFiltersChange={setTransactionFilters}
+        onReset={resetFilters}
+        companies={companies}
+        payees={availablePayees}
+        vendors={availableVendors}
+        statements={statements}
+        showRefresh={true}
+        onRefresh={refetch}
+        isLoading={isLoading}
+        variant="all"
+      />
 
-          {/* Category Filter (grouped, user-friendly) */}
-        <div>
-          <select
-            value={categoryFilter}
-            onChange={(e) => setCategoryFilter(e.target.value)}
-            className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md leading-5 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-          >
-            <option value="">All Categories</option>
-            {Object.entries(CATEGORY_GROUPS).map(([group, cats]) => (
-              <optgroup key={group} label={group.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}>
-                {cats.filter(category => category !== 'Uncategorized').map(category => (
-                  <option key={category} value={category}>
-                    {category}
-                  </option>
-                ))}
-              </optgroup>
-            ))}
-            <option value="__uncategorized__">Uncategorized</option>
-          </select>
-        </div>
-
-        {/* Type Filter (user-friendly) */}
-        <div>
-          <select
-            value={typeFilter}
-            onChange={(e) => setTypeFilter(e.target.value)}
-            className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md leading-5 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-          >
-            {TRANSACTION_TYPES.map(type => (
-              <option key={type.value} value={type.value}>{type.label}</option>
-            ))}
-          </select>
-        </div>
-
-        {/* Section Filter (PDF sections) */}
-        <div>
-          <select
-            value={sectionFilter}
-            onChange={(e) => setSectionFilter(e.target.value)}
-            className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md leading-5 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-            title="Filter by PDF section"
-          >
-            {SECTION_FILTERS.map(section => (
-              <option key={section.value} value={section.value}>
-                {section.icon ? `${section.icon} ${section.label}` : section.label}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {/* Statement/PDF Filter */}
-        <div>
-          <select
-            value={statementFilter}
-            onChange={e => setStatementFilter(e.target.value)}
-            className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md leading-5 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-            style={{ minWidth: 0 }}
-            aria-label="Statement/PDF"
-          >
-            <option value="">All Statements</option>
-            <option value="__manual">Manual/Unlinked Only</option>
-            {statements.map(s => (
-              <option key={s.id} value={s.id}>{s.name}</option>
-            ))}
-          </select>
-        </div>
-
-        {/* Reset Filters */}
-        <div className="flex space-x-2">
-          <button
-            onClick={resetFilters}
-            className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
-          >
-            Reset {activeFilterCount > 0 && `(${activeFilterCount})`}
-          </button>
-          <button
-            onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-            className={`px-4 py-2 border rounded-md text-sm font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors ${
-              showAdvancedFilters 
-                ? 'border-blue-500 text-blue-700 bg-blue-50 dark:border-blue-400 dark:text-blue-300 dark:bg-blue-900/30' 
-                : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600'
-            }`}
-          >
-            {showAdvancedFilters ? '▼ Less Filters' : '▶ More Filters'}
-          </button>
-        </div>
-        </div>
-
-        {/* Advanced Filters (collapsible) */}
-        {showAdvancedFilters && (
-          <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4 space-y-4">
-            <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-3">Advanced Filters</h4>
-            
-            {/* Row 1: Payee, Vendor, Amount Range */}
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-              {/* Payee Filter - who you pay (employees, contractors, etc.) */}
-              <div>
-                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1" title="Who you pay - employees, contractors, or vendors for services">
-                  Payee <span className="text-gray-400">(who you pay)</span>
-                </label>
-                <select
-                  value={payeeFilter}
-                  onChange={(e) => setPayeeFilter(e.target.value)}
-                  className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                >
-                  <option value="">All Payees</option>
-                  <option value="__no_payee">No Payee Assigned</option>
-                  {availablePayees.map(payee => (
-                    <option key={payee} value={payee}>{payee}</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Vendor Filter - external business you purchase from */}
-              <div>
-                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1" title="External business you purchase goods/services from">
-                  Vendor <span className="text-gray-400">(purchase from)</span>
-                </label>
-                <select
-                  value={vendorFilter}
-                  onChange={(e) => setVendorFilter(e.target.value)}
-                  className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                >
-                  <option value="">All Vendors</option>
-                  <option value="__no_vendor">No Vendor Assigned</option>
-                  {availableVendors.map(vendor => (
-                    <option key={vendor} value={vendor}>{vendor}</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Min Amount */}
-              <div>
-                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Min Amount ($)</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  placeholder="0.00"
-                  value={amountRange.min}
-                  onChange={(e) => setAmountRange(prev => ({ ...prev, min: e.target.value }))}
-                  className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                />
-              </div>
-
-              {/* Max Amount */}
-              <div>
-                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Max Amount ($)</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  placeholder="No limit"
-                  value={amountRange.max}
-                  onChange={(e) => setAmountRange(prev => ({ ...prev, max: e.target.value }))}
-                  className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                />
-              </div>
-
-              {/* Company Filter (for those without the main selector) */}
-              <div>
-                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Company</label>
-                <select
-                  value={companyFilter}
-                  onChange={(e) => setCompanyFilter(e.target.value)}
-                  className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                >
-                  <option value="">All Companies</option>
-                  <option value="__no_company">No Company Assigned</option>
-                  {companies.map(company => (
-                    <option key={company.id} value={company.id}>{company.name}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            {/* Row 2: Notes, Tax Deductible, Reconciliation, Date Quick Filters */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              {/* Notes Filter */}
-              <div>
-                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Notes</label>
-                <select
-                  value={notesFilter}
-                  onChange={(e) => setNotesFilter(e.target.value)}
-                  className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                >
-                  <option value="">All</option>
-                  <option value="with">📝 With Notes</option>
-                  <option value="without">🚫 Without Notes</option>
-                </select>
-              </div>
-
-              {/* Tax Deductible Filter */}
-              <div>
-                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Tax Deductible</label>
-                <select
-                  value={taxDeductibleFilter}
-                  onChange={(e) => setTaxDeductibleFilter(e.target.value)}
-                  className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                >
-                  <option value="">All</option>
-                  <option value="yes">✅ Tax Deductible</option>
-                  <option value="no">❌ Not Deductible</option>
-                </select>
-              </div>
-
-              {/* Reconciliation Filter */}
-              <div>
-                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Reconciliation</label>
-                <select
-                  value={reconciliationFilter}
-                  onChange={(e) => setReconciliationFilter(e.target.value)}
-                  className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                >
-                  <option value="">All</option>
-                  <option value="reconciled">✓ Reconciled</option>
-                  <option value="unreconciled">○ Not Reconciled</option>
-                </select>
-              </div>
-
-              {/* Quick Date Presets */}
-              <div>
-                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Quick Date Range</label>
-                <select
-                  onChange={(e) => {
-                    const preset = e.target.value;
-                    const today = new Date();
-                    let start = '', end = '';
-                    
-                    if (preset === 'today') {
-                      start = end = today.toISOString().split('T')[0];
-                    } else if (preset === 'week') {
-                      const weekAgo = new Date(today);
-                      weekAgo.setDate(weekAgo.getDate() - 7);
-                      start = weekAgo.toISOString().split('T')[0];
-                      end = today.toISOString().split('T')[0];
-                    } else if (preset === 'month') {
-                      const monthAgo = new Date(today);
-                      monthAgo.setMonth(monthAgo.getMonth() - 1);
-                      start = monthAgo.toISOString().split('T')[0];
-                      end = today.toISOString().split('T')[0];
-                    } else if (preset === 'quarter') {
-                      const quarterAgo = new Date(today);
-                      quarterAgo.setMonth(quarterAgo.getMonth() - 3);
-                      start = quarterAgo.toISOString().split('T')[0];
-                      end = today.toISOString().split('T')[0];
-                    } else if (preset === 'year') {
-                      start = `${today.getFullYear()}-01-01`;
-                      end = today.toISOString().split('T')[0];
-                    } else if (preset === 'lastyear') {
-                      start = `${today.getFullYear() - 1}-01-01`;
-                      end = `${today.getFullYear() - 1}-12-31`;
-                    }
-                    
-                    setDateRange({ start, end });
-                  }}
-                  className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                >
-                  <option value="">Select preset...</option>
-                  <option value="today">📅 Today</option>
-                  <option value="week">📆 Last 7 Days</option>
-                  <option value="month">🗓️ Last 30 Days</option>
-                  <option value="quarter">📊 Last 90 Days</option>
-                  <option value="year">🎯 This Year</option>
-                  <option value="lastyear">📁 Last Year</option>
-                </select>
-              </div>
-            </div>
-
-            {/* Active Filters Summary */}
-            {activeFilterCount > 0 && (
-              <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-200 dark:border-gray-600">
-                <span className="text-xs text-gray-500 dark:text-gray-400 py-1">Active filters:</span>
-                {debouncedSearchTerm && (
-                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
-                    Search: "{debouncedSearchTerm}"
-                    <button onClick={() => setSearchTerm('')} className="ml-1 hover:text-blue-600">×</button>
-                  </span>
-                )}
-                {categoryFilter && (
-                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
-                    Category: {categoryFilter === '__uncategorized__' ? 'Uncategorized' : categoryFilter}
-                    <button onClick={() => setCategoryFilter('')} className="ml-1 hover:text-purple-600">×</button>
-                  </span>
-                )}
-                {typeFilter && (
-                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
-                    Type: {typeFilter}
-                    <button onClick={() => setTypeFilter('')} className="ml-1 hover:text-green-600">×</button>
-                  </span>
-                )}
-                {payeeFilter && (
-                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
-                    Payee: {payeeFilter === '__no_payee' ? 'None' : payeeFilter}
-                    <button onClick={() => setPayeeFilter('')} className="ml-1 hover:text-yellow-600">×</button>
-                  </span>
-                )}
-                {vendorFilter && (
-                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-200">
-                    Vendor: {vendorFilter === '__no_vendor' ? 'None' : vendorFilter}
-                    <button onClick={() => setVendorFilter('')} className="ml-1 hover:text-teal-600">×</button>
-                  </span>
-                )}
-                {(amountRange.min || amountRange.max) && (
-                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200">
-                    Amount: ${amountRange.min || '0'} - ${amountRange.max || '∞'}
-                    <button onClick={() => setAmountRange({ min: '', max: '' })} className="ml-1 hover:text-orange-600">×</button>
-                  </span>
-                )}
-                {notesFilter && (
-                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-600 dark:text-gray-200">
-                    Notes: {notesFilter === 'with' ? 'With' : 'Without'}
-                    <button onClick={() => setNotesFilter('')} className="ml-1 hover:text-gray-600">×</button>
-                  </span>
-                )}
-                {(dateRange.start || dateRange.end) && (
-                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200">
-                    Date: {dateRange.start || '...'} to {dateRange.end || '...'}
-                    <button onClick={() => setDateRange({ start: '', end: '' })} className="ml-1 hover:text-indigo-600">×</button>
-                  </span>
-                )}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Sorting Controls */}
-        <div className="bg-gray-50 dark:bg-gray-700 rounded-lg overflow-hidden">
-          <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-600">
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white flex items-center">
-              <ArrowsUpDownIcon className="h-5 w-5 mr-2" />
-              Sort Options
-            </h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-              Choose how to order your transactions
-            </p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Sort by
-            </label>
-            <select
-              value={filters.orderBy}
-              onChange={(e) => setFilters(prev => ({ ...prev, orderBy: e.target.value }))}
-              className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md leading-5 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-            >
-              {SORT_OPTIONS.map(option => (
-                <option key={option.value} value={option.value}>
-                  {option.icon} {option.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Direction
-            </label>
-            <select
-              value={filters.order}
-              onChange={(e) => setFilters(prev => ({ ...prev, order: e.target.value }))}
-              className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md leading-5 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-            >
-              {SORT_DIRECTIONS.map(direction => (
-                <option key={direction.value} value={direction.value}>
-                  {direction.icon} {direction.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Quick Sort
-            </label>
-            <select
-              onChange={(e) => {
-                if (e.target.value) {
-                  const preset = SORT_PRESETS.find(p => p.label === e.target.value);
-                  if (preset) {
-                    setFilters(prev => ({ ...prev, orderBy: preset.orderBy, order: preset.order }));
-                  }
-                }
-              }}
-              className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md leading-5 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-            >
-              <option value="">Select preset...</option>
-              {SORT_PRESETS.map(preset => (
-                <option key={preset.label} value={preset.label}>
-                  {preset.icon} {preset.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="flex items-end">
-            <div className="text-sm text-gray-500 dark:text-gray-400 p-2 bg-blue-50 dark:bg-blue-900/20 rounded border border-blue-200 dark:border-blue-800">
-              <div className="font-medium text-blue-900 dark:text-blue-100">
-                Current: {getSortOptionByValue(filters.orderBy).icon} {getSortOptionByValue(filters.orderBy).label}
-              </div>
-              <div className="text-blue-700 dark:text-blue-300">
-                {getSortDirectionByValue(filters.order).icon} {getSortDirectionByValue(filters.order).label}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-      </div>
-
-      {/* Date Range Filter */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            From Date
-          </label>
-          <input
-            type="date"
-            value={dateRange.start}
-            onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))}
-            className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md leading-5 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            To Date
-          </label>
-          <input
-            type="date"
-            value={dateRange.end}
-            onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))}
-            className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md leading-5 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-          />
-        </div>
-      </div>
+      {/* Multi-level Sorting Controls */}
+      <TransactionSortPanel
+        sorts={sorts}
+        onSortsChange={setSorts}
+        maxLevels={5}
+        showPresets={true}
+        showGrouped={false}
+        collapsible={true}
+        defaultCollapsed={true}
+      />
 
       {/* Transactions Table */}
-      <div className="bg-white dark:bg-gray-800 shadow overflow-hidden sm:rounded-md transition-colors">
+      <div className="bg-white dark:bg-gray-800 shadow overflow-hidden sm:rounded-md transition-colors mb-6">
         {filteredTransactions.length === 0 ? (
           <div className="text-center py-12">
             <p className="text-gray-500 dark:text-gray-400">No transactions found.</p>
@@ -1543,181 +1234,51 @@ const TransactionList = () => {
               </div>
             )}
             
-            <ul className="divide-y divide-gray-200 dark:divide-gray-700">
+            {/* Column Headers */}
+            <div className="flex items-center px-3 py-2 bg-gray-100 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+              <div className="w-6 mr-2"></div> {/* Expand button spacer */}
+              {isSelectMode && <div className="w-4 mr-3"></div>} {/* Checkbox spacer */}
+              <div className="w-16 flex-shrink-0">Date</div>
+              <div className="w-16 flex-shrink-0 text-center">Type</div>
+              <div className="flex-1 mx-3">Description</div>
+              {visibleColumns.length > 0 && (
+                <div className="flex items-center gap-1.5 flex-shrink-0 mr-3">
+                  {visibleColumns.map(col => (
+                    <span key={col} className="px-2 py-0.5 text-xs">
+                      {col.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase()).replace('Id', '').trim()}
+                    </span>
+                  ))}
+                </div>
+              )}
+              <div className="w-24 flex-shrink-0 text-right">Amount</div>
+              <div className="w-20 ml-2 flex-shrink-0 text-right">Actions</div>
+            </div>
+            
+            <ul className="divide-y-0">
             {Array.isArray(filteredTransactions) && filteredTransactions.map((transaction) => {
               // Find statement info for this transaction
               const statement = statements.find(s => s.id === transaction.statementId);
               return (
-                <li key={transaction.id}>
-                  <div className="px-4 py-4 sm:px-6">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center flex-1">
-                        {/* Selection checkbox */}
-                        {isSelectMode && (
-                          <div className="flex-shrink-0 mr-3">
-                            <input
-                              type="checkbox"
-                              checked={selectedTransactions.has(transaction.id)}
-                              onChange={() => handleSelectTransaction(transaction.id)}
-                              className="h-4 w-4 text-blue-600 border-gray-300 dark:border-gray-600 rounded focus:ring-blue-500 dark:focus:ring-blue-400"
-                            />
-                          </div>
-                        )}
-                        <div className="flex-shrink-0">
-                          {/* Type badge with color and tooltip */}
-                          {(() => {
-                            const typeObj = TRANSACTION_TYPES.find(t => t.value === transaction.type);
-                            return (
-                              <div
-                                className={`h-8 w-20 rounded-full flex items-center justify-center text-sm font-semibold ${typeObj?.color || 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'}`}
-                                title={typeObj?.label || 'Other'}
-                              >
-                                {typeObj?.label || transaction.type || 'Other'}
-                              </div>
-                            );
-                          })()}
-                        </div>
-                        <div className="ml-4 flex-1">
-                          <div className="text-sm font-medium text-gray-900 dark:text-white">
-                            {transaction.description}
-                          </div>
-                          <div className="text-sm text-gray-500 dark:text-gray-400">
-                            {transaction.payee && `${transaction.payee} • `}
-                            {/* Company display */}
-                            {transaction.companyName && (
-                              <span className="inline-block bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300 px-2 py-1 rounded-full text-xs font-medium mr-2">
-                                <svg className="w-3 h-3 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                                </svg>
-                                {transaction.companyName}
-                              </span>
-                            )}
-                            {/* Section display */}
-                            {(transaction.sectionCode || (!transaction.sectionCode && transaction.source !== 'manual')) && (
-                              <span className="inline-block bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300 px-2 py-1 rounded-full text-xs font-medium mr-2">
-                                {(() => {
-                                  const sectionCode = transaction.sectionCode || 'uncategorized';
-                                  const section = SECTION_FILTERS.find(s => s.value === sectionCode);
-                                  return section ? `${section.icon} ${section.label}` : getSectionDisplayName(sectionCode);
-                                })()}
-                              </span>
-                            )}
-                            {/* Statement/PDF display */}
-                          {statement && (
-                            <span className="inline-block text-blue-600 dark:text-blue-400 font-semibold mr-2">
-                              {statement.name}
-                            </span>
-                          )}
-                          {!transaction.statementId && (
-                            <span className="inline-block text-gray-400 italic mr-2">Manual/Unlinked</span>
-                          )}
-                            <span className="inline-block">
-                              {editingCategoryId === transaction.id ? (
-                                <div className="flex items-center space-x-1">
-                                  <select
-                                    value={editingCategoryValue}
-                                    onChange={(e) => setEditingCategoryValue(e.target.value)}
-                                    onKeyDown={handleCategoryKeyPress}
-                                    className="text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
-                                    autoFocus
-                                  >
-                                    <option value="">Select Category</option>
-                                    {Object.entries(CATEGORY_GROUPS).map(([groupName, categories]) => (
-                                      <optgroup key={groupName} label={groupName.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}>
-                                        {categories.map(category => (
-                                          <option key={category} value={category}>
-                                            {category}
-                                          </option>
-                                        ))}
-                                      </optgroup>
-                                    ))}
-                                  </select>
-                                  <button
-                                    onClick={handleSaveCategoryEdit}
-                                    className="p-1 text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300"
-                                    title="Save category"
-                                  >
-                                    <CheckIcon className="h-3 w-3" />
-                                  </button>
-                                  <button
-                                    onClick={handleCancelCategoryEdit}
-                                    className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                                    title="Cancel"
-                                  >
-                                    <XMarkIcon className="h-3 w-3" />
-                                  </button>
-                                </div>
-                              ) : (
-                                <div className="flex items-center">
-                                  <span className={`${transaction.category ? 'text-gray-700 dark:text-gray-300' : 'text-gray-400 dark:text-gray-500 italic'}`} title={getCategoryLabel(transaction.category, transaction.subcategory)}>
-                                    {transaction.category ? getCategoryLabel(transaction.category, transaction.subcategory) : 'Uncategorized'}
-                                  </span>
-                                  {!isSelectMode && (
-                                    <button
-                                      onClick={() => handleStartCategoryEdit(transaction)}
-                                      className="ml-1 p-1 text-gray-400 hover:text-blue-500 dark:hover:text-blue-400 transition-colors"
-                                      title="Edit category"
-                                    >
-                                      <TagIcon className="h-3 w-3" />
-                                    </button>
-                                  )}
-                                </div>
-                              )}
-                            </span>
-                            {transaction.source && ` • ${transaction.source}`}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex items-center space-x-4">
-                        {/* Receipt indicator */}
-                        <div 
-                          className={`flex items-center ${transaction.receiptId ? 'text-green-500' : 'text-gray-300 dark:text-gray-600'}`}
-                          title={transaction.receiptId ? 'Receipt attached' : 'No receipt'}
-                        >
-                          <ReceiptPercentIcon className="h-4 w-4" />
-                        </div>
-                        <div className="text-right">
-                          <div className={`text-sm font-medium ${
-                            transaction.type === 'income' 
-                              ? 'text-green-600 dark:text-green-400' 
-                              : transaction.type === 'expense'
-                              ? 'text-red-600 dark:text-red-400'
-                              : 'text-gray-900 dark:text-white'
-                          }`}>
-                            {transaction.type === 'income' ? '+' : transaction.type === 'expense' ? '-' : ''}
-                            ${Math.abs(transaction.amount).toLocaleString()}
-                          </div>
-                          <div className="text-sm text-gray-500 dark:text-gray-400">
-                            {new Date(transaction.date).toLocaleDateString()}
-                          </div>
-                        </div>
-                        {!isSelectMode && (
-                          <div className="flex items-center space-x-2">
-                            <button
-                              onClick={() => handleEditTransaction(transaction)}
-                              className="p-2 text-gray-400 dark:text-gray-500 hover:text-blue-500 dark:hover:text-blue-400 transition-colors"
-                              title="Edit transaction"
-                            >
-                              <PencilIcon className="h-4 w-4" />
-                            </button>
-                            <button
-                              onClick={() => handleDelete(transaction.id, transaction.description)}
-                              disabled={deletingId === transaction.id}
-                              className="p-2 text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 transition-colors disabled:opacity-50"
-                              title="Delete transaction"
-                            >
-                              {deletingId === transaction.id ? (
-                                <LoadingSpinner size="sm" />
-                              ) : (
-                                <TrashIcon className="h-4 w-4" />
-                              )}
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </li>
+                <CompactTransactionRow
+                  key={transaction.id}
+                  transaction={transaction}
+                  isSelectMode={isSelectMode}
+                  isSelected={selectedTransactions.has(transaction.id)}
+                  onSelect={handleSelectTransaction}
+                  editingCategoryId={editingCategoryId}
+                  editingCategoryValue={editingCategoryValue}
+                  onCategoryEdit={handleStartCategoryEdit}
+                  onCategoryChange={setEditingCategoryValue}
+                  onCategoryKeyPress={handleCategoryKeyPress}
+                  onSaveCategoryEdit={handleSaveCategoryEdit}
+                  onCancelCategoryEdit={handleCancelCategoryEdit}
+                  onEdit={handleEditTransaction}
+                  onDelete={handleDelete}
+                  deletingId={deletingId}
+                  visibleColumns={visibleColumns}
+                  statement={statement}
+                  getPaymentMethodDisplay={getPaymentMethodDisplay}
+                />
               );
             })}
             {(!Array.isArray(transactions) || transactions.length === 0) && (
@@ -1726,6 +1287,42 @@ const TransactionList = () => {
               </li>
             )}
           </ul>
+          
+          {/* Pagination Controls */}
+          {totalCount > 0 && (
+            <div className="px-4 py-4 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between">
+              <div className="text-sm text-gray-500 dark:text-gray-400">
+                Showing {queryFilters.offset + 1} - {Math.min(queryFilters.offset + queryFilters.limit, totalCount)} of {totalCount}
+              </div>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => setQueryFilters(prev => ({ ...prev, offset: Math.max(0, prev.offset - prev.limit) }))}
+                  disabled={queryFilters.offset === 0}
+                  className={`px-3 py-1 text-sm font-medium rounded-md border ${
+                    queryFilters.offset === 0
+                      ? 'border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-600 cursor-not-allowed'
+                      : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600'
+                  }`}
+                >
+                  Previous
+                </button>
+                <span className="text-sm text-gray-600 dark:text-gray-400">
+                  Page {Math.floor(queryFilters.offset / queryFilters.limit) + 1} of {Math.ceil(totalCount / queryFilters.limit)}
+                </span>
+                <button
+                  onClick={() => setQueryFilters(prev => ({ ...prev, offset: prev.offset + prev.limit }))}
+                  disabled={!hasMore}
+                  className={`px-3 py-1 text-sm font-medium rounded-md border ${
+                    !hasMore
+                      ? 'border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-600 cursor-not-allowed'
+                      : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600'
+                  }`}
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
           </>
         )}
       </div>

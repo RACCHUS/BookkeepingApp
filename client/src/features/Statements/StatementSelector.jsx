@@ -1,7 +1,7 @@
 import React from 'react';
 
 /**
- * StatementSelector - Dropdown/select for linking a transaction to a statement/PDF
+ * StatementSelector - Dropdown/select for linking a transaction to a PDF statement
  * Props:
  *   value: current statementId
  *   onChange: function(newStatementId)
@@ -11,6 +11,7 @@ import React from 'react';
 const StatementSelector = ({ value, onChange, statements = [], onRefresh }) => {
   // Check if the current value is missing from the statements list
   const hasValue = value && statements.some(s => s.id === value);
+  const isEmpty = !value;
   return (
     <div>
       <div className="flex items-center justify-between">
@@ -26,7 +27,7 @@ const StatementSelector = ({ value, onChange, statements = [], onRefresh }) => {
         )}
       </div>
       <select
-        className="form-input"
+        className={`form-input ${isEmpty ? 'text-gray-400 dark:text-gray-500' : ''}`}
         value={value || ''}
         onChange={e => onChange(e.target.value)}
       >

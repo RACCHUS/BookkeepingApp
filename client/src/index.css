@@ -8,6 +8,12 @@
   html {
     font-family: 'Inter', system-ui, sans-serif;
   }
+  
+  body {
+    margin: 0;
+    padding: 0;
+    @apply bg-gray-100 dark:bg-gray-900;
+  }
 }
 
 @layer components {
@@ -278,5 +284,15 @@
   
   .current-indicator {
     @apply absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full;
+  }
+  
+  /* Hide scrollbar but keep functionality */
+  .scrollbar-hide {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+  }
+  
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;  /* Chrome, Safari and Opera */
   }
 }

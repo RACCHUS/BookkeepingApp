@@ -8,6 +8,25 @@ const servicesPath = path.resolve(__dirname, '../../../services');
 const configPath = path.resolve(__dirname, '../../../config');
 const utilsPath = path.resolve(__dirname, '../../../utils');
 const middlewaresPath = path.resolve(__dirname, '../../../middlewares');
+const adaptersPath = path.resolve(__dirname, '../../../services/adapters');
+
+// Create mock adapter with all necessary methods
+const mockAdapter = {
+  createUploadRecord: jest.fn(),
+  getUploadById: jest.fn(),
+  updateUpload: jest.fn(),
+  deleteUpload: jest.fn(),
+  deleteTransactionsByUploadId: jest.fn(),
+  unlinkTransactionsByUploadId: jest.fn(),
+  recordDeletedUploadId: jest.fn()
+};
+
+// Mock the adapter factory before importing controller
+jest.unstable_mockModule(path.join(adaptersPath, 'index.js'), () => ({
+  getDatabaseAdapter: jest.fn(() => mockAdapter),
+  getDbProvider: jest.fn(() => 'supabase'),
+  DB_PROVIDERS: { SUPABASE: 'supabase', FIREBASE: 'firebase' }
+}));
 
 // Mock dependencies before importing controller
 jest.unstable_mockModule(path.join(servicesPath, 'supabaseService.js'), () => ({
@@ -45,7 +64,9 @@ jest.unstable_mockModule(path.join(configPath, 'index.js'), () => ({
 jest.unstable_mockModule(path.join(utilsPath, 'errorHandler.js'), () => ({
   isFirestoreIndexError: jest.fn(),
   getIndexErrorMessage: jest.fn(),
-  logIndexError: jest.fn()
+  logIndexError: jest.fn(),
+  extractIndexCreationUrl: jest.fn(),
+  withIndexFallback: jest.fn()
 }));
 
 jest.unstable_mockModule(path.join(middlewaresPath, 'index.js'), () => ({
@@ -55,7 +76,6 @@ jest.unstable_mockModule(path.join(middlewaresPath, 'index.js'), () => ({
 // Now dynamically import controller (after mocks are set up)
 const { uploadPDF, processPDF, getUploadStatus, batchDeleteUploads } = await import('../../../controllers/pdfController.js');
 const { uploadFileToSupabase, deleteFileFromSupabase } = await import('../../../services/supabaseService.js');
-const firebaseService = (await import('../../../services/cleanFirebaseService.js')).default;
 const { logger } = await import('../../../config/index.js');
 
 describe('PDF Controller', () => {
@@ -121,7 +141,7 @@ describe('PDF Controller', () => {
         url: 'https://supabase.io/files/user-123/uuid-bank-statement.pdf',
         storageProvider: 'supabase'
       });
-      firebaseService.createUploadRecord.mockResolvedValue();
+      mockAdapter.createUploadRecord.mockResolvedValue();
     });
 
     it('should upload PDF successfully without autoProcess', async () => {
@@ -134,7 +154,7 @@ describe('PDF Controller', () => {
         validFile.buffer,
         expect.stringContaining('user-123/')
       );
-      expect(firebaseService.createUploadRecord).toHaveBeenCalled();
+      expect(mockAdapter.createUploadRecord).toHaveBeenCalled();
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
         success: true,
@@ -151,7 +171,7 @@ describe('PDF Controller', () => {
 
       await uploadPDF(req, res);
 
-      expect(firebaseService.createUploadRecord).toHaveBeenCalledWith(
+      expect(mockAdapter.createUploadRecord).toHaveBeenCalledWith(
         'user-123',
         expect.objectContaining({
           name: 'January 2024 Statement'
@@ -169,7 +189,7 @@ describe('PDF Controller', () => {
 
       await uploadPDF(req, res);
 
-      expect(firebaseService.createUploadRecord).toHaveBeenCalledWith(
+      expect(mockAdapter.createUploadRecord).toHaveBeenCalledWith(
         'user-123',
         expect.objectContaining({
           companyId: 'company-123',
@@ -194,7 +214,7 @@ describe('PDF Controller', () => {
 
       await uploadPDF(req, res);
 
-      expect(firebaseService.createUploadRecord).toHaveBeenCalledWith(
+      expect(mockAdapter.createUploadRecord).toHaveBeenCalledWith(
         'user-123',
         expect.objectContaining({
           companyId: null,
@@ -238,7 +258,7 @@ describe('PDF Controller', () => {
         url: 'https://supabase.io/files/test.pdf',
         storageProvider: 'supabase'
       });
-      firebaseService.createUploadRecord.mockResolvedValue();
+      mockAdapter.createUploadRecord.mockResolvedValue();
     });
 
     it('should return processing status when autoProcess is true', async () => {
@@ -288,7 +308,7 @@ describe('PDF Controller', () => {
         url: 'https://supabase.io/test.pdf',
         storageProvider: 'supabase'
       });
-      firebaseService.createUploadRecord.mockRejectedValue(new Error('Firestore error'));
+      mockAdapter.createUploadRecord.mockRejectedValue(new Error('Firestore error'));
 
       await uploadPDF(req, res);
 
@@ -306,7 +326,7 @@ describe('PDF Controller', () => {
         url: 'https://supabase.io/test.pdf',
         storageProvider: 'supabase'
       });
-      firebaseService.createUploadRecord.mockResolvedValue();
+      mockAdapter.createUploadRecord.mockResolvedValue();
     });
 
     it('should handle very long filenames', async () => {
@@ -347,7 +367,7 @@ describe('PDF Controller', () => {
       await uploadPDF(req, res);
 
       // Should use original filename when name is whitespace-only
-      expect(firebaseService.createUploadRecord).toHaveBeenCalledWith(
+      expect(mockAdapter.createUploadRecord).toHaveBeenCalledWith(
         'user-123',
         expect.objectContaining({
           name: 'statement.pdf'
@@ -359,7 +379,7 @@ describe('PDF Controller', () => {
   describe('processPDF', () => {
     it('should extract upload ID from params', async () => {
       req.params.id = 'upload-123';
-      firebaseService.getUploadById.mockResolvedValue({
+      mockAdapter.getUploadById.mockResolvedValue({
         id: 'upload-123',
         status: 'uploaded'
       });
@@ -438,15 +458,15 @@ describe('PDF Controller', () => {
         deleteTransactions: false
       };
 
-      firebaseService.getUploadById.mockResolvedValue({
+      mockAdapter.getUploadById.mockResolvedValue({
         id: 'upload-1',
         name: 'Test Upload',
         fileName: 'test.pdf',
         storageProvider: 'supabase'
       });
-      firebaseService.unlinkTransactionsByUploadId.mockResolvedValue(5);
-      firebaseService.recordDeletedUploadId.mockResolvedValue();
-      firebaseService.deleteUpload.mockResolvedValue();
+      mockAdapter.unlinkTransactionsByUploadId.mockResolvedValue(5);
+      mockAdapter.recordDeletedUploadId.mockResolvedValue();
+      mockAdapter.deleteUpload.mockResolvedValue();
 
       await batchDeleteUploads(req, res);
 
@@ -467,18 +487,18 @@ describe('PDF Controller', () => {
         deleteTransactions: true
       };
 
-      firebaseService.getUploadById.mockResolvedValue({
+      mockAdapter.getUploadById.mockResolvedValue({
         id: 'upload-1',
         name: 'Test Upload',
         fileName: 'test.pdf'
       });
-      firebaseService.deleteTransactionsByUploadId.mockResolvedValue(10);
-      firebaseService.recordDeletedUploadId.mockResolvedValue();
-      firebaseService.deleteUpload.mockResolvedValue();
+      mockAdapter.deleteTransactionsByUploadId.mockResolvedValue(10);
+      mockAdapter.recordDeletedUploadId.mockResolvedValue();
+      mockAdapter.deleteUpload.mockResolvedValue();
 
       await batchDeleteUploads(req, res);
 
-      expect(firebaseService.deleteTransactionsByUploadId).toHaveBeenCalled();
+      expect(mockAdapter.deleteTransactionsByUploadId).toHaveBeenCalled();
       expect(res.json).toHaveBeenCalledWith(
         expect.objectContaining({
           success: true
@@ -489,7 +509,7 @@ describe('PDF Controller', () => {
     it('should handle non-existent uploads gracefully', async () => {
       req.body = { uploadIds: ['non-existent'] };
 
-      firebaseService.getUploadById.mockRejectedValue(new Error('Not found'));
+      mockAdapter.getUploadById.mockRejectedValue(new Error('Not found'));
 
       await batchDeleteUploads(req, res);
 
@@ -511,7 +531,7 @@ describe('PDF Controller', () => {
       req.body = { uploadIds: ['upload-1', 'upload-2'] };
 
       // First upload succeeds
-      firebaseService.getUploadById
+      mockAdapter.getUploadById
         .mockResolvedValueOnce({
           id: 'upload-1',
           name: 'Test Upload 1',
@@ -520,9 +540,9 @@ describe('PDF Controller', () => {
         // Second upload not found
         .mockRejectedValueOnce(new Error('Not found'));
 
-      firebaseService.unlinkTransactionsByUploadId.mockResolvedValue(0);
-      firebaseService.recordDeletedUploadId.mockResolvedValue();
-      firebaseService.deleteUpload.mockResolvedValue();
+      mockAdapter.unlinkTransactionsByUploadId.mockResolvedValue(0);
+      mockAdapter.recordDeletedUploadId.mockResolvedValue();
+      mockAdapter.deleteUpload.mockResolvedValue();
 
       await batchDeleteUploads(req, res);
 

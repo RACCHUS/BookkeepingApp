@@ -96,6 +96,8 @@ const ManageReceipts = () => {
     onSuccess: () => {
       queryClient.invalidateQueries(['receipts']);
       queryClient.invalidateQueries(['transactions']);
+      queryClient.invalidateQueries(['recent-transactions']);
+      queryClient.invalidateQueries(['transaction-summary']);
       setShowDeleteModal(false);
       setDeletingReceipt(null);
       setDeleteTransaction(false);
@@ -113,6 +115,8 @@ const ManageReceipts = () => {
     onSuccess: (data) => {
       queryClient.invalidateQueries(['receipts']);
       queryClient.invalidateQueries(['transactions']);
+      queryClient.invalidateQueries(['recent-transactions']);
+      queryClient.invalidateQueries(['transaction-summary']);
       setShowLinkModal(false);
       setLinkingReceipts([]);
       setSelectedTransactionId('');
@@ -128,6 +132,8 @@ const ManageReceipts = () => {
     onSuccess: (data) => {
       queryClient.invalidateQueries(['receipts']);
       queryClient.invalidateQueries(['transactions']);
+      queryClient.invalidateQueries(['recent-transactions']);
+      queryClient.invalidateQueries(['transaction-summary']);
       setSelectedIds(new Set());
       toast.success(`Unlinked ${data.data?.successful?.length || 0} receipts`);
     },

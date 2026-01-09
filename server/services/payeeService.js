@@ -309,12 +309,12 @@ class PayeeService {
   /**
    * Get transactions without assigned payees
    */
-  async getTransactionsWithoutPayees(userId, sectionCode = 'checks') {
+  async getTransactionsWithoutPayees(userId, paymentMethod = 'check') {
     try {
-      // Get transactions from the checks section that don't have payee assigned
+      // Get transactions with the specified payment method that don't have payee assigned
       let query = this.db.collection('transactions')
         .where('userId', '==', userId)
-        .where('sectionCode', '==', sectionCode);
+        .where('paymentMethod', '==', paymentMethod);
 
       const snapshot = await query.get();
       const transactions = [];

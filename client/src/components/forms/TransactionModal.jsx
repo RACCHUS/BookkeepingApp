@@ -13,9 +13,9 @@ import {
   getCategoriesForDropdown, 
   getSubcategories, 
   isTaxDeductible,
-  isBusinessCategory 
+  isBusinessCategory,
+  PAYMENT_METHODS
 } from '@shared/constants/categories';
-import { STATEMENT_SECTIONS, SECTION_OPTIONS, getSectionDisplayName } from '@shared/constants/sections';
 
 // React Query cache settings to prevent excessive Firestore reads
 const QUERY_CONFIG = {
@@ -28,20 +28,18 @@ const QUERY_CONFIG = {
 const TransactionModal = ({ transaction, isOpen, onClose, onSave, mode = 'edit', refreshTrigger }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Fetch statements with React Query caching
-  const { data: statements = [] } = useQuery({
-    queryKey: ['statements-for-modal', refreshTrigger],
+  // Fetch PDF statements with React Query caching
+  const { data: statements = [], refetch: refetchStatements } = useQuery({
+    queryKey: ['pdf-statements-for-modal', refreshTrigger],
     queryFn: async () => {
       const res = await apiClient.pdf.getUploads();
-      // The response is { success: true, data: [...] } where data is the direct array
       const uploads = Array.isArray(res?.data) ? res.data : (res?.data?.uploads || []);
       if (!Array.isArray(uploads)) return [];
       
       return uploads
         .map((u, idx) => {
-          // Robust unique id fallback (should always be present after backend fix)
           const id = u.id || u.fileId || u._id || u.filename || u.originalname || `statement_${idx}`;
-          if (!id) return null; // skip if no id at all
+          if (!id) return null;
           let displayName = u.name && u.name !== 'undefined' ? u.name : '';
           const uploadedAt = u.uploadedAt || u.createdAt || u.timestamp;
           if (!displayName) {
@@ -52,6 +50,37 @@ const TransactionModal = ({ transaction, isOpen, onClose, onSave, mode = 'edit',
             }
           } else {
             displayName = `${displayName} (${uploadedAt ? new Date(uploadedAt).toLocaleDateString() : ''}) [${String(id).slice(-6)}]`;
+          }
+          return {
+            id: String(id),
+            name: displayName,
+            uploadedAt
+          };
+        })
+        .filter(Boolean);
+    },
+    ...QUERY_CONFIG,
+  });
+
+  // Fetch CSV imports with React Query caching
+  const { data: csvImports = [], refetch: refetchCsvImports } = useQuery({
+    queryKey: ['csv-imports-for-modal', refreshTrigger],
+    queryFn: async () => {
+      const res = await apiClient.csv.getImports({ status: 'completed' });
+      const imports = Array.isArray(res?.data) ? res.data : [];
+      
+      return imports
+        .map((c, idx) => {
+          const id = c.id || c.import_id || `csv_${idx}`;
+          if (!id) return null;
+          const fileName = c.file_name || c.fileName || '';
+          const bankName = c.bank_name || c.bankName || '';
+          const uploadedAt = c.created_at || c.createdAt;
+          let displayName = fileName || bankName;
+          if (!displayName) {
+            displayName = uploadedAt ? `CSV Import (${new Date(uploadedAt).toLocaleDateString()})` : 'CSV Import';
+          } else {
+            displayName = `${displayName} (${uploadedAt ? new Date(uploadedAt).toLocaleDateString() : ''})`;
           }
           return {
             id: String(id),
@@ -117,10 +146,15 @@ const TransactionModal = ({ transaction, isOpen, onClose, onSave, mode = 'edit',
       type: typeof transaction?.type === 'string' && ['income','expense'].includes(transaction.type) ? transaction.type : (typeof transaction?.amount === 'number' && transaction.amount > 0 ? 'income' : 'expense'),
       payee: typeof transaction?.payee === 'string' ? transaction.payee : '',
       vendorName: typeof transaction?.vendorName === 'string' ? transaction.vendorName : '',
-      isContractorPayment: !!transaction?.isContractorPayment,
+      isContractorPayment: !!transaction?.isContractorPayment || !!transaction?.is1099Payment,
+      isReconciled: !!transaction?.isReconciled,
+      isReviewed: !!transaction?.isReviewed,
+      paymentMethod: typeof transaction?.paymentMethod === 'string' ? transaction.paymentMethod : '',
+      checkNumber: typeof transaction?.checkNumber === 'string' ? transaction.checkNumber : '',
+      tags: Array.isArray(transaction?.tags) ? transaction.tags.join(', ') : '',
       notes: typeof transaction?.notes === 'string' ? transaction.notes : '',
       statementId: typeof transaction?.statementId === 'string' ? transaction.statementId : '',
-      sectionCode: typeof transaction?.sectionCode === 'string' ? transaction.sectionCode : 'manual',
+      csvImportId: typeof transaction?.csvImportId === 'string' ? transaction.csvImportId : '',
       companyId: typeof transaction?.companyId === 'string' ? transaction.companyId : '',
       companyName: typeof transaction?.companyName === 'string' ? transaction.companyName : '',
       incomeSourceId: typeof transaction?.incomeSourceId === 'string' ? transaction.incomeSourceId : '',
@@ -203,10 +237,15 @@ const TransactionModal = ({ transaction, isOpen, onClose, onSave, mode = 'edit',
         type: typeof transaction?.type === 'string' && ['income','expense'].includes(transaction.type) ? transaction.type : (typeof transaction?.amount === 'number' && transaction.amount > 0 ? 'income' : 'expense'),
         payee: typeof transaction?.payee === 'string' ? transaction.payee : '',
         vendorName: typeof transaction?.vendorName === 'string' ? transaction.vendorName : '',
-        isContractorPayment: !!transaction?.isContractorPayment,
+        isContractorPayment: !!transaction?.isContractorPayment || !!transaction?.is1099Payment,
+        isReconciled: !!transaction?.isReconciled,
+        isReviewed: !!transaction?.isReviewed,
+        paymentMethod: typeof transaction?.paymentMethod === 'string' ? transaction.paymentMethod : '',
+        checkNumber: typeof transaction?.checkNumber === 'string' ? transaction.checkNumber : '',
+        tags: Array.isArray(transaction?.tags) ? transaction.tags.join(', ') : '',
         notes: typeof transaction?.notes === 'string' ? transaction.notes : '',
         statementId: typeof transaction?.statementId === 'string' ? transaction.statementId : '',
-        sectionCode: typeof transaction?.sectionCode === 'string' ? transaction.sectionCode : 'manual',
+        csvImportId: typeof transaction?.csvImportId === 'string' ? transaction.csvImportId : '',
         companyId: typeof transaction?.companyId === 'string' ? transaction.companyId : '',
         companyName: typeof transaction?.companyName === 'string' ? transaction.companyName : '',
         incomeSourceId: typeof transaction?.incomeSourceId === 'string' ? transaction.incomeSourceId : '',
@@ -223,9 +262,14 @@ const TransactionModal = ({ transaction, isOpen, onClose, onSave, mode = 'edit',
         payee: '',
         vendorName: '',
         isContractorPayment: false,
+        isReconciled: false,
+        isReviewed: false,
+        paymentMethod: '',
+        checkNumber: '',
+        tags: '',
         notes: '',
         statementId: '',
-        sectionCode: 'manual',
+        csvImportId: '',
         companyId: '',
         companyName: '',
         incomeSourceId: '',
@@ -251,17 +295,25 @@ const TransactionModal = ({ transaction, isOpen, onClose, onSave, mode = 'edit',
       const amount = parseFloat(data.amount);
       const finalAmount = data.type === 'income' ? Math.abs(amount) : -Math.abs(amount);
 
+      // Parse tags from comma-separated string
+      const tags = data.tags ? data.tags.split(',').map(t => t.trim()).filter(Boolean) : [];
+
       const transactionData = {
         ...data,
         amount: finalAmount,
         date: data.date, // Keep as string for API
         statementId: data.statementId || '',
-        sectionCode: data.sectionCode || 'manual',
-        section: data.sectionCode ? getSectionDisplayName(data.sectionCode) : 'Manual Entry',
+        csvImportId: data.csvImportId || '',
         companyId: data.companyId || '',
         companyName: data.companyName || '',
         incomeSourceId: data.type === 'income' ? (data.incomeSourceId || '') : '',
-        incomeSourceName: data.type === 'income' ? (data.incomeSourceName || '') : ''
+        incomeSourceName: data.type === 'income' ? (data.incomeSourceName || '') : '',
+        is1099Payment: data.isContractorPayment || false,
+        isReconciled: data.isReconciled || false,
+        isReviewed: data.isReviewed || false,
+        paymentMethod: data.paymentMethod || '',
+        checkNumber: data.checkNumber || '',
+        tags: tags
       };
 
       await onSave(transactionData);
@@ -369,29 +421,6 @@ const TransactionModal = ({ transaction, isOpen, onClose, onSave, mode = 'edit',
               </div>
             </div>
 
-            {/* Section Selection */}
-            <div>
-              <label className="form-label">
-                Statement Section
-                <span className="text-sm text-gray-500 dark:text-gray-400 ml-2">
-                  (For manual transactions, choose the most appropriate section)
-                </span>
-              </label>
-              <select 
-                {...register('sectionCode')} 
-                className="form-input"
-              >
-                {SECTION_OPTIONS.map((section) => (
-                  <option key={section.code} value={section.code}>
-                    {section.label}
-                  </option>
-                ))}
-              </select>
-              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                This helps categorize your transaction within the statement structure.
-              </p>
-            </div>
-
             {/* Amount */}
             <div>
               <label className="form-label">
@@ -455,7 +484,7 @@ const TransactionModal = ({ transaction, isOpen, onClose, onSave, mode = 'edit',
               <label className="form-label">Category</label>
               <select 
                 {...register('category', { required: 'Category is required' })}
-                className="form-input category-select"
+                className={`form-input category-select ${!watch('category') ? 'text-gray-400 dark:text-gray-500' : ''}`}
               >
                 <option value="">Select a category</option>
                 
@@ -585,8 +614,99 @@ const TransactionModal = ({ transaction, isOpen, onClose, onSave, mode = 'edit',
               value={watch('statementId')}
               onChange={val => setValue('statementId', val, { shouldDirty: true })}
               statements={statements}
-              onRefresh={fetchStatements}
+              onRefresh={refetchStatements}
             />
+
+            {/* CSV Import Link */}
+            <div>
+              <div className="flex items-center justify-between">
+                <label className="form-label">CSV Import</label>
+                <button
+                  type="button"
+                  onClick={() => refetchCsvImports()}
+                  className="text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+                >
+                  Refresh List
+                </button>
+              </div>
+              <select
+                className={`form-input ${!watch('csvImportId') ? 'text-gray-400 dark:text-gray-500' : ''}`}
+                value={watch('csvImportId') || ''}
+                onChange={e => setValue('csvImportId', e.target.value, { shouldDirty: true })}
+              >
+                <option value="">Unlinked (Manual/None)</option>
+                {csvImports.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Payment Method and Check Number */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="form-label">Payment Method</label>
+                <select
+                  {...register('paymentMethod')}
+                  className={`form-input ${!watch('paymentMethod') ? 'text-gray-400 dark:text-gray-500' : ''}`}
+                >
+                  <option value="">Select method...</option>
+                  {Object.values(PAYMENT_METHODS).map(method => (
+                    <option key={method} value={method}>
+                      {method.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="form-label">Check Number</label>
+                <input
+                  type="text"
+                  {...register('checkNumber')}
+                  className="form-input"
+                  placeholder="If paid by check"
+                />
+              </div>
+            </div>
+
+            {/* Tags */}
+            <div>
+              <label className="form-label">
+                Tags
+                <span className="text-gray-500 text-xs ml-2">(comma-separated)</span>
+              </label>
+              <input
+                type="text"
+                {...register('tags')}
+                className="form-input"
+                placeholder="e.g., quarterly, office-supplies, client-project"
+              />
+            </div>
+
+            {/* Status Checkboxes */}
+            <div className="flex flex-wrap gap-6">
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  {...register('isReconciled')}
+                  className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700"
+                />
+                <label className="ml-2 text-sm font-medium text-gray-700 dark:text-gray-200">
+                  Reconciled
+                </label>
+              </div>
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  {...register('isReviewed')}
+                  className="h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500 dark:border-gray-600 dark:bg-gray-700"
+                />
+                <label className="ml-2 text-sm font-medium text-gray-700 dark:text-gray-200">
+                  Reviewed
+                </label>
+              </div>
+            </div>
 
             {/* Notes */}
             <div>

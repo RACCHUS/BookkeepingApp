@@ -220,6 +220,176 @@ const apiClient = {
     }
   },
 
+  // CSV Import methods
+  csv: {
+    /**
+     * Get list of supported bank formats
+     * @returns {Promise<{success: boolean, data: Array<{key: string, name: string}>}>}
+     */
+    getBanks: async () => {
+      return api.get('/csv/banks');
+    },
+
+    /**
+     * Upload CSV file and get preview of parsed transactions
+     * @param {FormData} formData - Form data with csv file, bankFormat, companyId
+     * @returns {Promise<{success: boolean, data: Object}>}
+     */
+    upload: async (formData) => {
+      const user = auth.currentUser;
+      if (!user) throw new Error('User not authenticated');
+      const token = await user.getIdToken();
+      return api.post('/csv/upload', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+          Authorization: `Bearer ${token}`
+        }
+      });
+    },
+
+    /**
+     * Get headers from CSV for custom mapping
+     * @param {FormData} formData - Form data with csv file
+     * @returns {Promise<{success: boolean, data: Object}>}
+     */
+    getHeaders: async (formData) => {
+      const user = auth.currentUser;
+      if (!user) throw new Error('User not authenticated');
+      const token = await user.getIdToken();
+      return api.post('/csv/headers', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+          Authorization: `Bearer ${token}`
+        }
+      });
+    },
+
+    /**
+     * Re-preview CSV with different column mapping
+     * @param {string} uploadId - Upload ID from initial upload
+     * @param {Object} options - { mapping, bankFormat }
+     * @returns {Promise<{success: boolean, data: Object}>}
+     */
+    preview: async (uploadId, options = {}) => {
+      const user = auth.currentUser;
+      if (!user) throw new Error('User not authenticated');
+      const token = await user.getIdToken();
+      return api.post(`/csv/preview/${uploadId}`, options, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+    },
+
+    /**
+     * Confirm import and save transactions to database
+     * @param {string} uploadId - Upload ID from initial upload
+     * @param {Object} options - { companyId, companyName, skipDuplicates }
+     * @returns {Promise<{success: boolean, data: Object}>}
+     */
+    confirm: async (uploadId, options = {}) => {
+      const user = auth.currentUser;
+      if (!user) throw new Error('User not authenticated');
+      const token = await user.getIdToken();
+      return api.post(`/csv/confirm/${uploadId}`, options, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+    },
+
+    /**
+     * Cancel pending CSV import
+     * @param {string} uploadId - Upload ID to cancel
+     * @returns {Promise<{success: boolean}>}
+     */
+    cancel: async (uploadId) => {
+      const user = auth.currentUser;
+      if (!user) throw new Error('User not authenticated');
+      const token = await user.getIdToken();
+      return api.delete(`/csv/cancel/${uploadId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+    },
+
+    // ============================================
+    // CSV Import Management Methods
+    // ============================================
+
+    /**
+     * Get all CSV imports for the user
+     * @param {Object} params - Query params { companyId, status, limit, offset }
+     * @returns {Promise<{success: boolean, data: Array, count: number}>}
+     */
+    getImports: async (params = {}) => {
+      const user = auth.currentUser;
+      if (!user) throw new Error('User not authenticated');
+      const token = await user.getIdToken();
+      return api.get('/csv/imports', {
+        params,
+        headers: { Authorization: `Bearer ${token}` }
+      });
+    },
+
+    /**
+     * Get a single CSV import by ID
+     * @param {string} importId - CSV import ID
+     * @returns {Promise<{success: boolean, data: Object}>}
+     */
+    getImportById: async (importId) => {
+      const user = auth.currentUser;
+      if (!user) throw new Error('User not authenticated');
+      const token = await user.getIdToken();
+      return api.get(`/csv/imports/${importId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+    },
+
+    /**
+     * Get transactions linked to a CSV import
+     * @param {string} importId - CSV import ID
+     * @param {Object} params - Query params { limit, offset }
+     * @returns {Promise<{success: boolean, data: Array, count: number}>}
+     */
+    getImportTransactions: async (importId, params = {}) => {
+      const user = auth.currentUser;
+      if (!user) throw new Error('User not authenticated');
+      const token = await user.getIdToken();
+      return api.get(`/csv/imports/${importId}/transactions`, {
+        params,
+        headers: { Authorization: `Bearer ${token}` }
+      });
+    },
+
+    /**
+     * Delete a CSV import
+     * @param {string} importId - CSV import ID
+     * @param {Object} options - { deleteTransactions: boolean, deleteImportId: boolean }
+     * @returns {Promise<{success: boolean, data: Object}>}
+     */
+    deleteImport: async (importId, options = {}) => {
+      const user = auth.currentUser;
+      if (!user) throw new Error('User not authenticated');
+      const token = await user.getIdToken();
+      return api.delete(`/csv/imports/${importId}`, {
+        data: options,
+        headers: { Authorization: `Bearer ${token}` }
+      });
+    },
+
+    /**
+     * Delete transactions linked to a CSV import
+     * @param {string} importId - CSV import ID
+     * @param {Object} options - { deleteImportId: boolean }
+     * @returns {Promise<{success: boolean, data: Object}>}
+     */
+    deleteImportTransactions: async (importId, options = {}) => {
+      const user = auth.currentUser;
+      if (!user) throw new Error('User not authenticated');
+      const token = await user.getIdToken();
+      return api.delete(`/csv/imports/${importId}/transactions`, {
+        data: options,
+        headers: { Authorization: `Bearer ${token}` }
+      });
+    }
+  },
+
   // Classification methods
   classification: {
     classify: async (transaction) => {
@@ -756,6 +926,110 @@ const apiClient = {
       const token = await user.getIdToken();
       return api.get(`/income-sources/${sourceId}/summary`, {
         params,
+        headers: { Authorization: `Bearer ${token}` }
+      });
+    }
+  },
+
+  // Inventory methods
+  inventory: {
+    getAll: async (params) => {
+      const user = auth.currentUser;
+      if (!user) throw new Error('User not authenticated');
+      const token = await user.getIdToken();
+      return api.get('/inventory', {
+        params,
+        headers: { Authorization: `Bearer ${token}` }
+      });
+    },
+    getById: async (id) => {
+      const user = auth.currentUser;
+      if (!user) throw new Error('User not authenticated');
+      const token = await user.getIdToken();
+      return api.get(`/inventory/${id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+    },
+    create: async (data) => {
+      const user = auth.currentUser;
+      if (!user) throw new Error('User not authenticated');
+      const token = await user.getIdToken();
+      return api.post('/inventory', data, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+    },
+    update: async (id, data) => {
+      const user = auth.currentUser;
+      if (!user) throw new Error('User not authenticated');
+      const token = await user.getIdToken();
+      return api.put(`/inventory/${id}`, data, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+    },
+    delete: async (id) => {
+      const user = auth.currentUser;
+      if (!user) throw new Error('User not authenticated');
+      const token = await user.getIdToken();
+      return api.delete(`/inventory/${id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+    },
+    adjustStock: async (id, data) => {
+      const user = auth.currentUser;
+      if (!user) throw new Error('User not authenticated');
+      const token = await user.getIdToken();
+      return api.post(`/inventory/${id}/adjust`, data, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+    },
+    recordSale: async (id, data) => {
+      const user = auth.currentUser;
+      if (!user) throw new Error('User not authenticated');
+      const token = await user.getIdToken();
+      return api.post(`/inventory/${id}/sale`, data, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+    },
+    recordPurchase: async (id, data) => {
+      const user = auth.currentUser;
+      if (!user) throw new Error('User not authenticated');
+      const token = await user.getIdToken();
+      return api.post(`/inventory/${id}/purchase`, data, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+    },
+    getValuation: async (params) => {
+      const user = auth.currentUser;
+      if (!user) throw new Error('User not authenticated');
+      const token = await user.getIdToken();
+      return api.get('/inventory/report/valuation', {
+        params,
+        headers: { Authorization: `Bearer ${token}` }
+      });
+    },
+    getLowStock: async (params) => {
+      const user = auth.currentUser;
+      if (!user) throw new Error('User not authenticated');
+      const token = await user.getIdToken();
+      return api.get('/inventory/report/low-stock', {
+        params,
+        headers: { Authorization: `Bearer ${token}` }
+      });
+    },
+    getTransactions: async (params) => {
+      const user = auth.currentUser;
+      if (!user) throw new Error('User not authenticated');
+      const token = await user.getIdToken();
+      return api.get('/inventory/transactions', {
+        params,
+        headers: { Authorization: `Bearer ${token}` }
+      });
+    },
+    getCategories: async () => {
+      const user = auth.currentUser;
+      if (!user) throw new Error('User not authenticated');
+      const token = await user.getIdToken();
+      return api.get('/inventory/categories', {
         headers: { Authorization: `Bearer ${token}` }
       });
     }

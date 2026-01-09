@@ -132,66 +132,61 @@ const Dashboard = () => {
       </div>
 
       {/* Content grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Recent transactions - takes up 2 columns */}
-        <div className="lg:col-span-2">
+      <div className="grid grid-cols-1 gap-6">
+        {/* Recent transactions - full width */}
+        <div>
           <div className="card">
             <div className="card-header">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white transition-colors">Recent Transactions</h2>
             </div>
             <div className="card-body p-0">
               {transactions.length > 0 ? (
-                <div className="overflow-x-auto">
-                  <table className="table">
+                <div>
+                  <table className="w-full">
                     <thead className="table-header">
                       <tr>
-                        <th className="table-header-cell">Date</th>
+                        <th className="table-header-cell w-28">Date</th>
                         <th className="table-header-cell">Description</th>
-                        <th className="table-header-cell">Category</th>
-                        <th className="table-header-cell">Amount</th>
+                        <th className="table-header-cell w-32">Category</th>
+                        <th className="table-header-cell w-28 text-right">Amount</th>
                       </tr>
                     </thead>
                     <tbody>
-                  {transactions.map((transaction, index) => (
-                    <tr key={transaction.id} className={index % 2 === 0 ? 'table-row' : 'table-row-alt'}>
-                      <td className="table-cell">
-                        {new Date(transaction.date).toLocaleDateString()}
-                      </td>
-                      <td className="table-cell">
-                        <div>
-                          <p className="font-medium">{transaction.description}</p>
-                          {transaction.payee && (
-                            <p className="text-sm text-gray-500 dark:text-gray-400 transition-colors">{transaction.payee}</p>
-                          )}
-                        </div>
-                      </td>
-                      <td className="table-cell">
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 transition-colors">
-                          {transaction.category}
-                        </span>
-                      </td>
-                      <td className="table-cell">
-                        <span className={`font-medium ${
-                          transaction.type === 'income' ? 'text-green-600' : 'text-red-600'
-                        }`}>
-                          {transaction.type === 'income' ? '+' : '-'}$
-                          {Math.abs(transaction.amount).toLocaleString()}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                      {transactions.map((transaction, index) => (
+                        <tr key={transaction.id} className={index % 2 === 0 ? 'table-row' : 'table-row-alt'}>
+                          <td className="table-cell w-28">
+                            {new Date(transaction.date).toLocaleDateString()}
+                          </td>
+                          <td className="table-cell max-w-0">
+                            <p className="font-medium truncate" title={transaction.description}>{transaction.description}</p>
+                          </td>
+                          <td className="table-cell w-32">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 transition-colors truncate max-w-full">
+                              {transaction.category || 'Uncategorized'}
+                            </span>
+                          </td>
+                          <td className="table-cell w-28 text-right">
+                            <span className={`font-medium ${
+                              transaction.type === 'income' ? 'text-green-600' : 'text-red-600'
+                            }`}>
+                              {transaction.type === 'income' ? '+' : '-'}$
+                              {Math.abs(transaction.amount).toLocaleString()}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="p-8 text-center text-gray-500 dark:text-gray-400 transition-colors">
+                  <DocumentTextIcon className="w-12 h-12 mx-auto mb-4 text-gray-300 dark:text-gray-600 transition-colors" />
+                  <p>No transactions found</p>
+                </div>
+              )}
             </div>
-          ) : (
-            <div className="p-8 text-center text-gray-500 dark:text-gray-400 transition-colors">
-              <DocumentTextIcon className="w-12 h-12 mx-auto mb-4 text-gray-300 dark:text-gray-600 transition-colors" />
-              <p>No transactions found</p>
-            </div>
-          )}
+          </div>
         </div>
-        </div>
-      </div>
       </div>
 
       {/* Quick Reports Section */}

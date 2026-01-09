@@ -30,13 +30,19 @@ import { ExpenseManagement } from './features/Expenses';
 import { ReceiptList } from './features/Receipts';
 import { CheckList } from './features/Checks';
 import { DocumentManagement } from './features/Documents';
+import { CSVUpload } from './features/CSVUpload';
+import { InventoryPage } from './features/Inventory';
+import { TaxFormsDashboard } from './features/TaxForms';
+import { CataloguePage, QuoteList, QuoteForm, InvoiceList, InvoiceForm, PaymentRecorder, RecurringList } from './features/Invoicing';
 
-// Create a client
+// Create a client with optimized caching
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       retry: 1,
       refetchOnWindowFocus: false,
+      refetchOnMount: false, // Don't refetch when component mounts if data exists
+      staleTime: 5 * 60 * 1000, // Data stays fresh for 5 minutes
     },
   },
 });
@@ -148,6 +154,7 @@ function App() {
                   <Route path="transactions" element={<TransactionList />} />
                   <Route path="documents" element={<DocumentManagement />} />
                   <Route path="upload" element={<PDFUpload />} />
+                  <Route path="import-csv" element={<CSVUpload />} />
                   <Route path="uploads" element={<UploadManagement />} />
                   <Route path="classification" element={<Classification />} />
                   <Route path="reports" element={<Reports />} />
@@ -160,6 +167,19 @@ function App() {
                   <Route path="expenses" element={<ExpenseManagement />} />
                   <Route path="receipts" element={<ReceiptList />} />
                   <Route path="checks" element={<CheckList />} />
+                  <Route path="inventory" element={<InventoryPage />} />
+                  <Route path="tax-forms" element={<TaxFormsDashboard />} />
+                  <Route path="catalogue" element={<CataloguePage />} />
+                  <Route path="quotes" element={<QuoteList />} />
+                  <Route path="quotes/new" element={<QuoteForm />} />
+                  <Route path="quotes/:id" element={<QuoteForm />} />
+                  <Route path="quotes/:id/edit" element={<QuoteForm />} />
+                  <Route path="invoices" element={<InvoiceList />} />
+                  <Route path="invoices/new" element={<InvoiceForm />} />
+                  <Route path="invoices/:id" element={<InvoiceForm />} />
+                  <Route path="invoices/:id/edit" element={<InvoiceForm />} />
+                  <Route path="invoices/:id/payment" element={<PaymentRecorder />} />
+                  <Route path="recurring" element={<RecurringList />} />
                 </Route>
                 
                 {/* Catch all route */}

@@ -14,7 +14,7 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     setupFiles: ['./src/__tests__/setupTests.js'],
-    include: ['src/__tests__/**/*.{test,spec}.{js,jsx}'],
+    include: ['src/**/__tests__/**/*.{test,spec}.{js,jsx}', 'src/__tests__/**/*.{test,spec}.{js,jsx}'],
     exclude: ['node_modules', 'dist'],
     // Suppress unhandled rejection warnings for tests that mock rejected promises
     dangerouslyIgnoreUnhandledErrors: true,

@@ -16,6 +16,7 @@ await jest.unstable_mockModule('firebase-admin/firestore', () => ({
 
 // NOW import the service - the mock will be in place
 const { CompanyService } = await import('../../../services/companyService.js');
+import cache from '../../../utils/serverCache.js';
 
 describe('CompanyService', () => {
   let companyService;
@@ -28,6 +29,9 @@ describe('CompanyService', () => {
   beforeEach(() => {
     // Reset all mocks
     jest.clearAllMocks();
+    
+    // Clear cache to prevent test interference
+    cache.clearAll();
 
     // Create mock batch
     mockBatch = {

@@ -53,6 +53,19 @@ export const CompanySchema = {
     addressPatterns: [] // Address patterns to match
   },
   
+  // Payer Information for Tax Forms (1099, W-2)
+  payerInfo: {
+    stateId: '', // State employer ID number
+    controlNumber: '', // For W-2 Box d (optional)
+    
+    // Contact for tax forms
+    contactName: '',
+    contactPhone: '',
+    
+    // State registrations
+    stateRegistrations: [] // Array of { stateCode, stateEmployerId, unemploymentId }
+  },
+  
   // Audit trail
   createdAt: null,
   updatedAt: null,

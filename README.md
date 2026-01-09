@@ -1,319 +1,159 @@
 # Bookkeeping App
 
-A comprehensive bookkeeping application for managing business transactions, tracking expenses and income by IRS tax categories, and generating financial reports. Supports manual transaction entry, CSV import, and PDF document storage for reference.
+A full-featured bookkeeping application for managing transactions, tracking expenses/income by IRS tax categories, generating reports, and creating invoices. Supports CSV import, PDF document storage, and check tracking.
 
 ## Features
 
-### Core Functionality
-- **Transaction Management**: Add, edit, and bulk-update transactions with comprehensive filtering
-- **Income & Expense Tracking**: Separate management for income and expense transactions
-- **Income Sources**: Track customers, clients, and revenue sources with transaction assignment
-- **Multi-Company Support**: Manage multiple companies with separate financial tracking
-- **Employee & Vendor Management**: Track payees and vendors, assign them to transactions
-- **Document Storage**: Upload and store PDFs (bank statements, receipts, checks) for reference
-- **Real-time Updates**: Live dashboard with financial summaries
+### Core
+- **Transactions**: Manual entry, CSV import, bulk editing, IRS category classification
+- **Multi-Company**: Separate financial tracking per company
+- **Payees & Vendors**: Employee/vendor management with 1099 tracking
+- **Documents**: Upload PDFs (bank statements, receipts, checks) with transaction linking
 
-### Tax & Reporting
-- **IRS Category Mapping**: Automatic mapping to Schedule C categories
-- **Tax Reports**: Generate tax-ready summaries by quarter and year
-- **Profit & Loss**: Comprehensive P&L statements
-- **Company-Specific Reports**: Generate reports filtered by company
-- **Payee-Based Reports**: Track expenses and payments by employee/vendor
-- **1099 Tracking**: Flag and track 1099-reportable payments
-- **Export to PDF**: Professional report generation
+### Invoicing & Quotes
+- **Catalogue**: Product/service items with pricing
+- **Quotes**: Create, send, convert to invoices
+- **Invoices**: Full lifecycle (draft → sent → paid), partial payments, PDF generation
+- **Recurring Invoices**: Scheduled auto-generation
 
-### Transaction Entry
-- **Manual Entry**: Add individual transactions with full detail
-- **Bulk Import**: Import transactions from CSV files
-- **Bulk Editing**: Select multiple transactions and update fields in bulk
-- **Category Assignment**: Quick categorization with IRS-compliant categories
+### Reports
+- Profit & Loss, Tax Summary, Expense Summary
+- 1099 Summary, Vendor/Payee Summary
+- Monthly summaries, Checks Paid reports
+- Export to PDF
 
-### Classification Rules
-- **Rule-Based System**: User-defined rules map transaction names to IRS categories
-- **Custom Rules**: Create and manage classification rules for specific payees/descriptions
-- **Manual Assignment**: Unmatched transactions can be manually categorized
+### Additional
+- **Checks**: Track check payments with images
+- **Receipts**: Upload and link receipt images
+- **Inventory**: Basic inventory tracking
+- **Tax Forms**: 1099 preparation support
 
 ## Tech Stack
 
-### Frontend
-- **React 18** with functional components and hooks
-- **Vite** for fast development and building
-- **TailwindCSS** for styling
-- **React Router** for navigation
-- **React Query** for data fetching and caching
-- **React Hook Form** for form management
-- **React Hot Toast** for notifications
-
-### Backend
-- **Node.js** with Express.js framework
-- **Firebase Admin SDK** for authentication and database
-- **Firebase Firestore** for data storage
-- **Firebase Storage** for file uploads
-- **PDFKit** for report generation
-- **Express Validator** for input validation
-
-### Database & Auth
-- **Firebase Authentication** for user management
-- **Firestore** for document-based data storage
-- **Firebase Storage** for file management
-- **Security Rules** for data protection
-
-### Testing
-- **Vitest** for client-side testing (React components, hooks, services)
-- **Jest** for server-side testing (controllers, services, utilities)
-- **React Testing Library** for component testing
-- **1100+ tests** with comprehensive coverage
+| Layer | Technologies |
+|-------|--------------|
+| **Frontend** | React 18, Vite, TailwindCSS, React Query, React Hook Form |
+| **Backend** | Node.js, Express.js, PDFKit |
+| **Database** | Supabase (PostgreSQL), Row Level Security |
+| **Auth** | Supabase Auth (Email/Password, Google) |
+| **Storage** | Supabase Storage (Cloudinary fallback) |
+| **Testing** | Vitest (client), Jest (server), React Testing Library |
 
 ## Project Structure
 
 ```
 BookkeepingApp/
-├── 📁 client/                 # React frontend application
-├── 📁 server/                 # Node.js/Express backend
-├── 📁 shared/                 # Shared utilities and constants  
-├── 📁 docs/                   # Project documentation
-├── 📁 firebase/               # Firebase configuration files
-├── 📁 scripts/                # Automation and deployment scripts
-├── 📁 reports/                # Generated reports and templates
-├── 📁 uploads/                # Runtime file uploads (gitignored)
-├── 📁 .github/                # GitHub workflows and templates
-├── 📁 .vscode/                # VS Code workspace configuration
-├── 📄 package.json            # Root package.json for workspace commands
-├── 📄 README.md               # Project overview and setup
-├── 📄 PROJECT_STRUCTURE.md    # Detailed project structure guide
-├── 📄 LICENSE                 # MIT License
-└── 📄 .env.example            # Environment variables template
+├── client/          # React frontend (Vite)
+├── server/          # Express.js backend
+├── shared/          # Shared constants and utilities
+├── supabase/        # Database migrations
+├── docs/            # Documentation
+├── scripts/         # Automation scripts
+└── reports/         # Report templates and output
 ```
 
-For detailed project structure information, see [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md).
+See [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md) for details.
 
 ## Getting Started
 
 ### Prerequisites
-- Node.js 18+ 
-- npm or yarn
-- Firebase project setup
+- Node.js 18+
+- Supabase project (free tier available)
 
-### Installation
+### Quick Setup
 
-1. **Clone the repository**
+1. **Clone & Install**
    ```bash
    git clone <repository-url>
    cd bookkeeping-app
-   ```
-
-2. **Install dependencies**
-   ```bash
    npm run install:all
    ```
 
-3. **Environment Setup**
+2. **Configure Environment**
    
-   Create `.env` file in the root directory:
+   Root `.env`:
    ```env
-   # Firebase Configuration
-   FIREBASE_API_KEY=your_firebase_api_key
-   FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
-   FIREBASE_PROJECT_ID=your_project_id
-   FIREBASE_STORAGE_BUCKET=your_project.appspot.com
-   FIREBASE_MESSAGING_SENDER_ID=your_sender_id
-   FIREBASE_APP_ID=your_app_id
-
-   # Firebase Admin SDK
-   FIREBASE_ADMIN_PROJECT_ID=your_project_id
-   FIREBASE_ADMIN_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\\nyour_private_key\\n-----END PRIVATE KEY-----\\n"
-   FIREBASE_ADMIN_CLIENT_EMAIL=firebase-adminsdk-xxxxx@your_project.iam.gserviceaccount.com
-
-   # Server Configuration
+   SUPABASE_URL=https://your-project.supabase.co
+   SUPABASE_ANON_KEY=your_anon_key
+   SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
    PORT=5000
    CORS_ORIGIN=http://localhost:3000
    ```
 
-   Create `client/.env.local`:
+   `client/.env.local`:
    ```env
-   VITE_FIREBASE_API_KEY=your_firebase_api_key
-   VITE_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
-   VITE_FIREBASE_PROJECT_ID=your_project_id
-   VITE_FIREBASE_STORAGE_BUCKET=your_project.appspot.com
-   VITE_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
-   VITE_FIREBASE_APP_ID=your_app_id
+   VITE_SUPABASE_URL=https://your-project.supabase.co
+   VITE_SUPABASE_ANON_KEY=your_anon_key
    VITE_API_URL=http://localhost:5000/api
    ```
 
-4. **Firebase Setup**
-   - Create a Firebase project at https://console.firebase.google.com
-   - Enable Authentication (Email/Password and Google)
-   - Create Firestore database
-   - Enable Storage
-   - Download service account key and add credentials to `.env`
+3. **Supabase Setup**
+   - Create project at [supabase.com](https://supabase.com)
+   - Enable Email/Password and Google auth
+   - Run migrations from `supabase/migrations/`
+   - Enable Storage bucket
 
-5. **Start Development Servers**
+4. **Run**
    ```bash
-   npm run dev
+   npm run dev  # Starts client (:3000) and server (:5000)
    ```
 
-   This will start:
-   - Client on http://localhost:3000
-   - Server on http://localhost:5000
-
-6. **Run Tests**
+5. **Test**
    ```bash
-   # Run all server tests (Jest)
-   cd server && npm test
-   
-   # Run all client tests (Vitest)
-   cd client && npm test
-   
-   # Run client tests in watch mode
-   cd client && npm run test:watch
-   
-   # Run client tests with UI
-   cd client && npm run test:ui
+   cd server && npm test   # Jest
+   cd client && npm test   # Vitest
    ```
 
-## Usage
+## API Overview
 
-### 1. Authentication
-- Sign up with email/password or Google
-- Secure authentication with Firebase Auth
+| Resource | Endpoints |
+|----------|-----------|
+| **Transactions** | CRUD, bulk operations, classification, summaries |
+| **Companies** | CRUD, default company management |
+| **Payees** | CRUD, employee/vendor filtering |
+| **Reports** | P&L, tax, expense, 1099, vendor, monthly summaries |
+| **Invoices** | CRUD, payments, PDF generation, email |
+| **Quotes** | CRUD, convert to invoice, PDF, email |
+| **Catalogue** | Product/service items management |
+| **Checks** | CRUD, image upload, bulk operations |
+| **Receipts** | CRUD, image upload |
+| **CSV Import** | Upload, preview, confirm import |
+| **PDF Upload** | Upload, process, link to transactions |
 
-### 2. Transaction Entry
-- **Manual Entry**: Add transactions one at a time with full details
-- **CSV Import**: Bulk import transactions from bank CSV exports
-- **Bulk Edit**: Select multiple transactions to update category, company, payee, etc.
-
-### 3. Document Storage
-- Upload PDF bank statements, receipts, and checks for reference
-- Link transactions to uploaded documents
-- Organize documents by company
-
-### 4. Transaction Management
-- View all transactions with powerful filtering
-- Separate views for Income and Expenses
-- Assign transactions to income sources, payees, vendors
-- Bulk edit capabilities for efficient categorization
-
-### 5. Classification System
-- Automatic categorization using IRS tax categories
-- Rule-based matching of transaction descriptions
-- Custom rules for specific payees
-- Manual category assignment for unmatched transactions
-
-### 6. Reporting
-- Generate Profit & Loss statements
-- Tax-ready expense summaries
-- Employee cost tracking
-- Export to PDF
-
-## API Endpoints
-
-### Authentication
-All API endpoints require Bearer token authentication.
-
-### Transactions
-- `GET /api/transactions` - Get user transactions
-- `POST /api/transactions` - Create new transaction
-- `PUT /api/transactions/:id` - Update transaction
-- `DELETE /api/transactions/:id` - Delete transaction
-- `GET /api/transactions/summary` - Get financial summary
-- `POST /api/transactions/:id/assign-payee` - Assign payee to transaction
-- `POST /api/transactions/bulk-assign-payee` - Bulk assign payee to transactions
-
-### Companies
-- `GET /api/companies` - Get user companies
-- `POST /api/companies` - Create new company
-- `PUT /api/companies/:id` - Update company
-- `DELETE /api/companies/:id` - Delete company
-- `POST /api/companies/:id/set-default` - Set default company
-
-### Payees
-- `GET /api/payees` - Get all payees
-- `GET /api/payees/employees` - Get employee payees
-- `GET /api/payees/vendors` - Get vendor payees
-- `POST /api/payees` - Create new payee
-- `PUT /api/payees/:id` - Update payee
-- `DELETE /api/payees/:id` - Delete payee
-- `GET /api/payees/search` - Search payees
-- `GET /api/payees/transactions-without-payees` - Get transactions without assigned payees
-
-### Upload Management
-- `GET /api/uploads` - Get user uploads
-- `POST /api/pdf/upload` - Upload PDF file
-- `PUT /api/uploads/:id/rename` - Rename upload
-- `DELETE /api/uploads/:id` - Delete upload
-- `GET /api/uploads/:id` - Get upload details
-- `POST /api/uploads/:id/link` - Link transactions to upload
-- `POST /api/uploads/:id/unlink` - Unlink transactions from upload
-
-### Income Sources
-- `GET /api/income-sources` - Get income sources
-- `POST /api/income-sources` - Create income source
-- `PUT /api/income-sources/:id` - Update income source
-- `DELETE /api/income-sources/:id` - Delete income source
-
-### Classification
-- `POST /api/classification/classify` - Classify transaction
-- `POST /api/classification/train` - Train classifier
-- `GET /api/classification/rules` - Get classification rules
-
-### Reports
-- `GET /api/reports/profit-loss` - Generate P&L report
-- `GET /api/reports/expense-summary` - Generate expense report
-- `GET /api/reports/tax-summary` - Generate tax report
+Full API documentation: [docs/API.md](docs/API.md)
 
 ## Security
 
-### Firebase Security Rules
-- Users can only access their own data
-- File uploads restricted to authenticated users
-- Size limits on file uploads
-- Content type validation
-
-### API Security
+- Supabase Row Level Security (RLS) on all tables
 - JWT token authentication
-- Input validation and sanitization
-- Rate limiting
-- CORS protection
-- Helmet security headers
+- Input validation (express-validator)
+- Rate limiting, CORS, Helmet headers
 
 ## Documentation
 
-- **📖 [Project Structure](PROJECT_STRUCTURE.md)** - Detailed project organization guide
-- **📁 [Documentation Directory](docs/)** - Complete documentation including:
-  - API Reference
-  - User Guide  
-  - Setup and Installation
-  - Architecture and Database Design
-  - Development Notes
+See [docs/](docs/) for detailed documentation including setup guides, API reference, and architecture.
 
 ## Contributing
 
-We welcome contributions! Quick start:
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Follow the coding standards in `.github/copilot-instructions.md`
-4. Commit your changes (`git commit -m 'feat: add amazing feature'`)
-5. Push to the branch (`git push origin feature/amazing-feature`)
-6. Open a Pull Request
-
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## Support
-
-For support, email richardgurudeo@gmail.com or create an issue in the repository.
+3. Follow coding standards in `.github/copilot-instructions.md`
+4. Commit changes (`git commit -m 'feat: add amazing feature'`)
+5. Push and open a Pull Request
 
 ## Roadmap
 
-- [ ] CSV import for transactions
 - [ ] QuickBooks integration
 - [ ] Bank API connections (Plaid)
 - [ ] Mobile app
-- [ ] Advanced reporting features
 - [ ] Multi-currency support
 - [ ] Receipt OCR scanning
-- [ ] Tax form generation (1099, W-2)
-- [ ] Inventory tracking
 - [ ] Multi-user/team accounts
-- [ ] Recurring transaction templates
+
+## License
+
+MIT License - see [LICENSE](LICENSE)
+
+## Support
+
+Email: richardgurudeo@gmail.com | [Create an issue](../../issues)

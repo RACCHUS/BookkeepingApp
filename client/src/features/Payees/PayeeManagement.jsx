@@ -28,7 +28,7 @@ const PayeeManagement = () => {
   // Fetch unassigned check transactions
   const { data: unassignedChecks, refetch: refetchUnassigned } = useQuery({
     queryKey: ['unassigned-checks'],
-    queryFn: () => apiClient.payees.getTransactionsWithoutPayees({ sectionCode: 'checks' })
+    queryFn: () => apiClient.payees.getTransactionsWithoutPayees({ paymentMethod: 'check' })
   });
 
   const payeesRaw = payeesData?.payees || payeesData?.employees || payeesData?.vendors;

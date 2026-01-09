@@ -28,6 +28,42 @@ export const PayeeSchema = {
   is1099Required: false, // True if need to send 1099 at year end
   total1099Payments: 0, // Calculated YTD for 1099 threshold tracking
   
+  // Tax Form Generation Fields
+  taxFormInfo: {
+    // Name parsing (IRS requires separate fields)
+    firstName: '',
+    middleInitial: '',
+    lastName: '',
+    suffix: '', // Jr, Sr, III, etc.
+    
+    // Account tracking
+    accountNumber: '', // Payer's account number for recipient (1099 Box)
+    
+    // Withholding tracking (for W-2 and backup withholding)
+    federalWithholding: 0,
+    stateWithholding: 0,
+    localWithholding: 0,
+    
+    // Social Security & Medicare (W-2 specific)
+    socialSecurityWages: 0,
+    socialSecurityTax: 0,
+    medicareWages: 0,
+    medicareTax: 0,
+    
+    // State info
+    stateId: '', // State employer ID
+    stateTaxInfo: [] // Array of { stateCode, stateIncome, stateTaxWithheld }
+  },
+  
+  // W-4 Information (for employees)
+  w4Info: {
+    filingStatus: 'single', // single, married, head_of_household
+    allowances: 0,
+    additionalWithholding: 0,
+    exempt: false,
+    effectiveDate: null
+  },
+  
   // Employee-specific fields
   employeeId: '', // Employee number
   position: '',
@@ -68,6 +104,13 @@ export const PayeeSchema = {
   lastModifiedBy: ''
 };
 
+// Filing status constants for W-4
+export const FILING_STATUS = {
+  SINGLE: 'single',
+  MARRIED: 'married',
+  HEAD_OF_HOUSEHOLD: 'head_of_household'
+};
+
 // Payee type constants
 export const PAYEE_TYPES = {
   EMPLOYEE: 'employee',
@@ -83,8 +126,21 @@ export const EMPLOYEE_STATUS = {
   TERMINATED: 'terminated'
 };
 
+// 1099 filing threshold
+export const FORM_1099_THRESHOLD = 600;
+
+// Tax form types
+export const TAX_FORM_TYPES = {
+  FORM_1099_NEC: '1099-NEC',
+  FORM_1099_MISC: '1099-MISC',
+  FORM_W2: 'W-2'
+};
+
 export default {
   PayeeSchema,
   PAYEE_TYPES,
-  EMPLOYEE_STATUS
+  EMPLOYEE_STATUS,
+  FILING_STATUS,
+  FORM_1099_THRESHOLD,
+  TAX_FORM_TYPES
 };

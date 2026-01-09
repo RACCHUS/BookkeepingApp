@@ -4,6 +4,8 @@ import { toast } from 'react-hot-toast';
 import apiClient from '../../services/api';
 import { formatDate } from '../../utils/dateUtils';
 import { formatCurrency } from '../../utils/currencyUtils';
+import { TransactionModal } from '../../components/forms';
+import { PencilIcon } from '@heroicons/react/24/outline';
 
 const CheckPayeeAssignment = ({ onAssignmentComplete }) => {
   const [viewMode, setViewMode] = useState('unassigned'); // 'unassigned' or 'assigned'
@@ -12,13 +14,17 @@ const CheckPayeeAssignment = ({ onAssignmentComplete }) => {
   const [showNewPayeeForm, setShowNewPayeeForm] = useState(false);
   const [newPayeeName, setNewPayeeName] = useState('');
   const [newPayeeType, setNewPayeeType] = useState('vendor');
+  
+  // Transaction edit modal state
+  const [editingTransaction, setEditingTransaction] = useState(null);
+  const [isTransactionModalOpen, setIsTransactionModalOpen] = useState(false);
 
   const queryClient = useQueryClient();
 
   // Fetch unassigned check transactions
   const { data: transactionsData, isLoading: loadingTransactions, error: transactionsError } = useQuery({
     queryKey: ['unassigned-check-transactions'],
-    queryFn: () => apiClient.payees.getTransactionsWithoutPayees({ sectionCode: 'checks' }),
+    queryFn: () => apiClient.payees.getTransactionsWithoutPayees({ paymentMethod: 'check' }),
     retry: 2,
     onError: (error) => {
       console.error('Error fetching transactions:', error);
@@ -29,7 +35,7 @@ const CheckPayeeAssignment = ({ onAssignmentComplete }) => {
   // Fetch assigned check transactions (for unassign view)
   const { data: assignedData, isLoading: loadingAssigned } = useQuery({
     queryKey: ['assigned-check-transactions'],
-    queryFn: () => apiClient.transactions.getAll({ sectionCode: 'checks', limit: 500 }),
+    queryFn: () => apiClient.transactions.getAll({ paymentMethod: 'check', limit: 500 }),
     retry: 2,
     enabled: viewMode === 'assigned'
   });
@@ -69,6 +75,8 @@ const CheckPayeeAssignment = ({ onAssignmentComplete }) => {
       queryClient.invalidateQueries(['unassigned-check-transactions']);
       queryClient.invalidateQueries(['assigned-check-transactions']);
       queryClient.invalidateQueries(['transactions']);
+      queryClient.invalidateQueries(['recent-transactions']);
+      queryClient.invalidateQueries(['transaction-summary']);
       onAssignmentComplete?.();
     },
     onError: (error) => {
@@ -86,6 +94,8 @@ const CheckPayeeAssignment = ({ onAssignmentComplete }) => {
       queryClient.invalidateQueries(['unassigned-check-transactions']);
       queryClient.invalidateQueries(['assigned-check-transactions']);
       queryClient.invalidateQueries(['transactions']);
+      queryClient.invalidateQueries(['recent-transactions']);
+      queryClient.invalidateQueries(['transaction-summary']);
       onAssignmentComplete?.();
     },
     onError: (error) => {
@@ -126,6 +136,34 @@ const CheckPayeeAssignment = ({ onAssignmentComplete }) => {
       newSelected.add(transactionId);
     }
     setSelectedTransactions(newSelected);
+  };
+
+  // Transaction edit handlers
+  const handleEditTransaction = (transaction) => {
+    setEditingTransaction(transaction);
+    setIsTransactionModalOpen(true);
+  };
+
+  const handleCloseTransactionModal = () => {
+    setEditingTransaction(null);
+    setIsTransactionModalOpen(false);
+  };
+
+  const handleSaveTransaction = async (transactionData) => {
+    try {
+      await apiClient.transactions.update(editingTransaction.id, transactionData);
+      toast.success('Transaction updated successfully');
+      queryClient.invalidateQueries({ queryKey: ['unassigned-check-transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['assigned-check-transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['recent-transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['transaction-summary'] });
+      handleCloseTransactionModal();
+    } catch (error) {
+      console.error('Failed to update transaction:', error);
+      toast.error(error.message || 'Failed to update transaction');
+      throw error;
+    }
   };
 
   const handleAssignPayee = () => {
@@ -418,6 +456,9 @@ const CheckPayeeAssignment = ({ onAssignmentComplete }) => {
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                 Current Payee
               </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                Actions
+              </th>
             </tr>
           </thead>
           <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
@@ -445,17 +486,21 @@ const CheckPayeeAssignment = ({ onAssignmentComplete }) => {
                   <div className="max-w-xs truncate" title={transaction.description}>
                     {transaction.description}
                   </div>
-                  {transaction.sectionCode && (
-                    <div className="text-xs text-gray-500 dark:text-gray-400">
-                      {transaction.sectionCode}
-                    </div>
-                  )}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                   {formatCurrency(transaction.amount)}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                   {transaction.payee || 'No payee assigned'}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm">
+                  <button
+                    onClick={() => handleEditTransaction(transaction)}
+                    className="p-1 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                    title="Edit transaction"
+                  >
+                    <PencilIcon className="h-4 w-4" />
+                  </button>
                 </td>
               </tr>
             ))}
@@ -483,6 +528,15 @@ const CheckPayeeAssignment = ({ onAssignmentComplete }) => {
       </div>
         </>
       )}
+
+      {/* Transaction Edit Modal */}
+      <TransactionModal
+        transaction={editingTransaction}
+        isOpen={isTransactionModalOpen}
+        onClose={handleCloseTransactionModal}
+        onSave={handleSaveTransaction}
+        mode="edit"
+      />
     </div>
   );
 };

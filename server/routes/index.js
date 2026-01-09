@@ -24,6 +24,8 @@ import classificationRoutes from './classificationRoutes.js';
 import pdfRoutes from './pdfRoutes.js';
 import receiptRoutes from './receiptRoutes.js';
 import checkRoutes from './checkRoutes.js';
+import inventoryRoutes from './inventoryRoutes.js';
+import taxFormRoutes from './taxFormRoutes.js';
 
 // Export all routes for easy importing
 export {
@@ -34,7 +36,9 @@ export {
   classificationRoutes,
   pdfRoutes,
   receiptRoutes,
-  checkRoutes
+  checkRoutes,
+  inventoryRoutes,
+  taxFormRoutes
 };
 
 /**
@@ -49,7 +53,9 @@ export default {
   '/api/classification': classificationRoutes,
   '/api/pdf': pdfRoutes,
   '/api/receipts': receiptRoutes,
-  '/api/checks': checkRoutes
+  '/api/checks': checkRoutes,
+  '/api/inventory': inventoryRoutes,
+  '/api/tax-forms': taxFormRoutes
 };
 
 /**

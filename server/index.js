@@ -63,15 +63,35 @@ import checkRoutes from './routes/checkRoutes.js';
 // Import income source routes
 import incomeSourceRoutes from './routes/incomeSourceRoutes.js';
 
+// Import CSV routes
+import csvRoutes from './routes/csvRoutes.js';
+
+// Import inventory routes
+import inventoryRoutes from './routes/inventoryRoutes.js';
+
 // Import scheduler service for automatic cleanup
 import schedulerService from './services/schedulerService.js';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// CORS configuration - supports multiple origins
+const allowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost:3000')
+  .split(',')
+  .map(origin => origin.trim());
+
 // Basic middleware
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
+  origin: function(origin, callback) {
+    // Allow requests with no origin (mobile apps, curl, etc.)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true
 }));
 
@@ -222,6 +242,9 @@ app.use('/api/transactions', optionalAuthMiddleware, transactionRoutes);
 // Add PDF routes with optional auth
 app.use('/api/pdf', optionalAuthMiddleware, pdfRoutes);
 
+// Add CSV routes (individual routes handle their own auth)
+app.use('/api/csv', csvRoutes);
+
 // Add classification routes with optional auth
 app.use('/api/classification', optionalAuthMiddleware, classificationRoutes);
 
@@ -242,6 +265,29 @@ app.use('/api/checks', optionalAuthMiddleware, checkRoutes);
 
 // Add income source routes with optional auth
 app.use('/api/income-sources', optionalAuthMiddleware, incomeSourceRoutes);
+
+// Add inventory routes with optional auth
+app.use('/api/inventory', optionalAuthMiddleware, inventoryRoutes);
+
+// Add tax form routes with optional auth
+import taxFormRoutes from './routes/taxFormRoutes.js';
+app.use('/api/tax-forms', optionalAuthMiddleware, taxFormRoutes);
+
+// Add catalogue routes with optional auth
+import catalogueRoutes from './routes/catalogueRoutes.js';
+app.use('/api/catalogue', optionalAuthMiddleware, catalogueRoutes);
+
+// Add quote routes with optional auth
+import quoteRoutes from './routes/quoteRoutes.js';
+app.use('/api/quotes', optionalAuthMiddleware, quoteRoutes);
+
+// Add invoice routes with optional auth
+import invoiceRoutes from './routes/invoiceRoutes.js';
+app.use('/api/invoices', optionalAuthMiddleware, invoiceRoutes);
+
+// Add recurring invoice routes with optional auth
+import recurringRoutes from './routes/recurringRoutes.js';
+app.use('/api/recurring', optionalAuthMiddleware, recurringRoutes);
 
 // Test endpoint for PDF generation (no auth required)
 app.post('/api/test/pdf', async (req, res) => {

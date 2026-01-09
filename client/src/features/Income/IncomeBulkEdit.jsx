@@ -1,17 +1,18 @@
 import React, { useState, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { 
-  MagnifyingGlassIcon, 
   ArrowPathIcon,
-  CheckIcon,
-  PencilSquareIcon,
-  FunnelIcon,
+  PencilIcon,
   ChevronDownIcon,
-  ChevronUpIcon,
-  XMarkIcon
+  ChevronUpIcon
 } from '@heroicons/react/24/outline';
 import api from '../../services/api';
 import { toast } from 'react-hot-toast';
+import { TransactionModal } from '../../components/forms';
+import TransactionBulkPanel from '../Transactions/TransactionBulkPanel';
+import TransactionFilterPanel from '../Transactions/TransactionFilterPanel';
+import TransactionSortPanel from '../Transactions/TransactionSortPanel';
+import { createDefaultSorts, multiLevelSort } from '@shared/constants/sorting';
 
 // React Query cache settings to prevent excessive Firestore reads
 const QUERY_CONFIG = {
@@ -42,42 +43,35 @@ const IncomeBulkEdit = ({
   const statements = Array.isArray(statementsProp) ? statementsProp : [];
 
   const queryClient = useQueryClient();
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedTransactions, setSelectedTransactions] = useState([]);
+  const [selectedTransactions, setSelectedTransactions] = useState(new Set());
   const [expandedRows, setExpandedRows] = useState(new Set());
   const [isUpdating, setIsUpdating] = useState(false);
-  const [showBulkPanel, setShowBulkPanel] = useState(false);
   
-  // Filters
+  // Transaction edit modal state
+  const [editingTransaction, setEditingTransaction] = useState(null);
+  const [isTransactionModalOpen, setIsTransactionModalOpen] = useState(false);
+  
+  // Filters - using comprehensive filter format
   const [filters, setFilters] = useState({
+    searchTerm: '',
     category: '',
     companyId: '',
     incomeSourceId: '',
     statementId: '',
     hasCategory: '',
-    hasSource: ''
+    hasSource: '',
+    isReconciled: '',
+    isReviewed: '',
+    hasReceipt: '',
+    hasCheckNumber: '',
+    source: '',
+    hasPdfSource: '',
+    amountRange: { min: '', max: '' },
+    dateRange: { start: '', end: '' }
   });
-  
-  // Bulk update fields
-  const [bulkUpdates, setBulkUpdates] = useState({
-    category: '',
-    incomeSourceId: '',
-    incomeSourceName: '',
-    companyId: '',
-    companyName: '',
-    payeeId: '',
-    payeeName: '',
-    vendorId: '',
-    vendorName: '',
-    statementId: '',
-    notes: '',
-    appendNotes: false,
-    description: '',
-    sectionCode: '',
-    type: '', // For changing to expense
-    date: '',
-    amount: ''
-  });
+
+  // Multi-level sorting
+  const [sorts, setSorts] = useState(createDefaultSorts());
 
   // Income categories from IRS Schedule C
   const incomeCategories = [
@@ -122,15 +116,6 @@ const IncomeBulkEdit = ({
     'Uncategorized'
   ];
 
-  // Statement section codes
-  const sectionCodes = [
-    { value: 'deposits', label: 'Deposits' },
-    { value: 'checks', label: 'Checks Paid' },
-    { value: 'electronic', label: 'Electronic Payments' },
-    { value: 'transfers', label: 'Transfers' },
-    { value: 'other', label: 'Other' }
-  ];
-
   // Check if a transaction is income
   const isIncomeTransaction = (tx) => {
     if (tx.type === 'income') return true;
@@ -147,10 +132,8 @@ const IncomeBulkEdit = ({
       }
     }
     
-    if (tx.sectionCode === 'deposits') return true;
-    
-    // Positive amounts might indicate income
-    if (tx.amount > 0 && !tx.sectionCode) return true;
+    // Positive amounts typically indicate income
+    if (tx.amount > 0) return true;
     
     return false;
   };
@@ -177,10 +160,10 @@ const IncomeBulkEdit = ({
   // Apply filters
   const filteredTransactions = transactions.filter(tx => {
     // Search filter
-    const matchesSearch = !searchTerm || 
-      tx.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      tx.payee?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      tx.incomeSourceName?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = !filters.searchTerm || 
+      tx.description?.toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
+      tx.payee?.toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
+      tx.incomeSourceName?.toLowerCase().includes(filters.searchTerm.toLowerCase());
     
     // Category filter
     const matchesCategory = !filters.category || tx.category === filters.category;
@@ -189,7 +172,7 @@ const IncomeBulkEdit = ({
     const matchesCompany = !filters.companyId || tx.companyId === filters.companyId;
     
     // Income source filter
-    const matchesSource = !filters.incomeSourceId || tx.incomeSourceId === filters.incomeSourceId;
+    const matchesIncomeSource = !filters.incomeSourceId || tx.incomeSourceId === filters.incomeSourceId;
     
     // Statement filter
     const matchesStatement = !filters.statementId || tx.statementId === filters.statementId;
@@ -206,10 +189,65 @@ const IncomeBulkEdit = ({
       (filters.hasSource === 'yes' && tx.incomeSourceId) ||
       (filters.hasSource === 'no' && !tx.incomeSourceId);
     
+    // Reconciled filter
+    const matchesReconciled = 
+      filters.isReconciled === '' || 
+      (filters.isReconciled === 'yes' && tx.isReconciled) ||
+      (filters.isReconciled === 'no' && !tx.isReconciled);
+    
+    // Reviewed filter
+    const matchesReviewed = 
+      filters.isReviewed === '' || 
+      (filters.isReviewed === 'yes' && tx.isReviewed) ||
+      (filters.isReviewed === 'no' && !tx.isReviewed);
+    
+    // Has receipt filter
+    const matchesHasReceipt = 
+      filters.hasReceipt === '' || 
+      (filters.hasReceipt === 'yes' && tx.receiptUrl) ||
+      (filters.hasReceipt === 'no' && !tx.receiptUrl);
+    
+    // Has check number filter
+    const matchesHasCheckNumber = 
+      filters.hasCheckNumber === '' || 
+      (filters.hasCheckNumber === 'yes' && tx.checkNumber) ||
+      (filters.hasCheckNumber === 'no' && !tx.checkNumber);
+    
+    // Source filter (transaction source: manual, pdf_import, csv_import, bank_sync)
+    const matchesSource = !filters.source || tx.source === filters.source;
+    
+    // Has PDF/source file filter
+    const matchesHasPdfSource = 
+      filters.hasPdfSource === '' || 
+      (filters.hasPdfSource === 'yes' && (tx.sourceFileId || tx.statementId)) ||
+      (filters.hasPdfSource === 'no' && !tx.sourceFileId && !tx.statementId);
+    
+    // Amount range filter
+    const txAmount = Math.abs(tx.amount || 0);
+    const matchesAmountMin = !filters.amountRange?.min || 
+      txAmount >= parseFloat(filters.amountRange.min);
+    const matchesAmountMax = !filters.amountRange?.max || 
+      txAmount <= parseFloat(filters.amountRange.max);
+    
+    // Date range filter
+    const txDate = tx.date ? new Date(tx.date.toDate ? tx.date.toDate() : tx.date) : null;
+    const matchesDateStart = !filters.dateRange?.start || 
+      (txDate && txDate >= new Date(filters.dateRange.start));
+    const matchesDateEnd = !filters.dateRange?.end || 
+      (txDate && txDate <= new Date(filters.dateRange.end + 'T23:59:59'));
+    
     return matchesSearch && matchesCategory && matchesCompany && 
-           matchesSource && matchesStatement && 
-           matchesHasCategory && matchesHasSource;
+           matchesIncomeSource && matchesStatement && 
+           matchesHasCategory && matchesHasSource &&
+           matchesReconciled && matchesReviewed &&
+           matchesHasReceipt && matchesHasCheckNumber &&
+           matchesSource && matchesHasPdfSource &&
+           matchesAmountMin && matchesAmountMax &&
+           matchesDateStart && matchesDateEnd;
   });
+
+  // Apply multi-level sorting
+  const sortedTransactions = multiLevelSort(filteredTransactions, sorts);
 
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-US', {
@@ -229,19 +267,23 @@ const IncomeBulkEdit = ({
   };
 
   const toggleSelectAll = () => {
-    if (selectedTransactions.length === filteredTransactions.length) {
-      setSelectedTransactions([]);
+    if (selectedTransactions.size === sortedTransactions.length) {
+      setSelectedTransactions(new Set());
     } else {
-      setSelectedTransactions(filteredTransactions.map(tx => tx.id));
+      setSelectedTransactions(new Set(sortedTransactions.map(tx => tx.id)));
     }
   };
 
   const toggleSelect = (id) => {
-    setSelectedTransactions(prev => 
-      prev.includes(id) 
-        ? prev.filter(txId => txId !== id)
-        : [...prev, id]
-    );
+    setSelectedTransactions(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
   };
 
   const toggleExpand = (id) => {
@@ -256,104 +298,42 @@ const IncomeBulkEdit = ({
     });
   };
 
-  const handleBulkUpdateChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    setBulkUpdates(prev => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value
-    }));
+  // Transaction edit modal handlers
+  const handleEditTransaction = (transaction) => {
+    setEditingTransaction(transaction);
+    setIsTransactionModalOpen(true);
+  };
 
-    // Handle linked fields
-    if (name === 'companyId') {
-      const company = companies?.find(c => c.id === value);
-      setBulkUpdates(prev => ({ ...prev, companyName: company?.name || '' }));
-    }
-    if (name === 'payeeId') {
-      const payee = payees?.find(p => p.id === value);
-      setBulkUpdates(prev => ({ ...prev, payeeName: payee?.name || '' }));
-    }
-    if (name === 'vendorId') {
-      const vendor = vendors?.find(v => v.id === value);
-      setBulkUpdates(prev => ({ ...prev, vendorName: vendor?.name || '' }));
-    }
-    if (name === 'incomeSourceId') {
-      const source = incomeSources?.find(s => s.id === value);
-      setBulkUpdates(prev => ({ ...prev, incomeSourceName: source?.name || '' }));
+  const handleCloseTransactionModal = () => {
+    setEditingTransaction(null);
+    setIsTransactionModalOpen(false);
+  };
+
+  const handleSaveTransaction = async (transactionData) => {
+    try {
+      await api.transactions.update(editingTransaction.id, transactionData);
+      queryClient.invalidateQueries({ queryKey: ['transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['recent-transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['transaction-summary'] });
+      toast.success('Transaction updated successfully');
+      handleCloseTransactionModal();
+    } catch (error) {
+      console.error('Failed to update transaction:', error);
+      toast.error('Failed to update transaction');
     }
   };
 
-  const handleFilterChange = (e) => {
-    const { name, value } = e.target;
-    setFilters(prev => ({ ...prev, [name]: value }));
-  };
-
-  const clearFilters = () => {
-    setFilters({
-      category: '',
-      companyId: '',
-      incomeSourceId: '',
-      statementId: '',
-      hasCategory: '',
-      hasSource: ''
-    });
-    setSearchTerm('');
-  };
-
-  const handleBulkUpdate = async () => {
-    if (selectedTransactions.length === 0) {
+  // Bulk update handler for TransactionBulkPanel
+  const handleBulkPanelUpdate = async (updateData) => {
+    if (selectedTransactions.size === 0) {
       toast.error('Please select transactions to update');
-      return;
-    }
-
-    // Build update object with only non-empty fields
-    const updateData = {};
-    
-    if (bulkUpdates.category) updateData.category = bulkUpdates.category;
-    if (bulkUpdates.incomeSourceId) {
-      updateData.incomeSourceId = bulkUpdates.incomeSourceId;
-      updateData.incomeSourceName = bulkUpdates.incomeSourceName;
-    }
-    if (bulkUpdates.companyId) {
-      updateData.companyId = bulkUpdates.companyId;
-      updateData.companyName = bulkUpdates.companyName;
-    }
-    if (bulkUpdates.payeeId) {
-      updateData.payeeId = bulkUpdates.payeeId;
-      updateData.payeeName = bulkUpdates.payeeName;
-    }
-    if (bulkUpdates.vendorId) {
-      updateData.vendorId = bulkUpdates.vendorId;
-      updateData.vendorName = bulkUpdates.vendorName;
-    }
-    if (bulkUpdates.statementId) updateData.statementId = bulkUpdates.statementId;
-    if (bulkUpdates.sectionCode) updateData.sectionCode = bulkUpdates.sectionCode;
-    if (bulkUpdates.type) {
-      updateData.type = bulkUpdates.type;
-      // If converting to expense, clear income source
-      if (bulkUpdates.type === 'expense') {
-        updateData.incomeSourceId = null;
-        updateData.incomeSourceName = null;
-      }
-    }
-    if (bulkUpdates.date) updateData.date = bulkUpdates.date;
-    if (bulkUpdates.amount) updateData.amount = parseFloat(bulkUpdates.amount);
-    if (bulkUpdates.description?.trim()) updateData.description = bulkUpdates.description.trim();
-    
-    // Handle notes (append or replace)
-    if (bulkUpdates.notes?.trim()) {
-      updateData.notes = bulkUpdates.notes.trim();
-      updateData.appendNotes = bulkUpdates.appendNotes;
-    }
-
-    if (Object.keys(updateData).length === 0) {
-      toast.error('Please fill in at least one field to update');
       return;
     }
 
     setIsUpdating(true);
     try {
       // Build transactions array for bulk update
-      const transactionsToUpdate = selectedTransactions.map(id => {
+      const transactionsToUpdate = Array.from(selectedTransactions).map(id => {
         const updatePayload = { id };
         
         // Handle notes append logic
@@ -380,28 +360,8 @@ const IncomeBulkEdit = ({
 
       await api.transactions.bulkUpdate(transactionsToUpdate);
       
-      toast.success(`Updated ${selectedTransactions.length} transaction(s)`);
-      setSelectedTransactions([]);
-      setBulkUpdates({
-        category: '',
-        incomeSourceId: '',
-        incomeSourceName: '',
-        companyId: '',
-        companyName: '',
-        payeeId: '',
-        payeeName: '',
-        vendorId: '',
-        vendorName: '',
-        statementId: '',
-        notes: '',
-        appendNotes: false,
-        description: '',
-        sectionCode: '',
-        type: '',
-        date: '',
-        amount: ''
-      });
-      setShowBulkPanel(false);
+      toast.success(`Updated ${selectedTransactions.size} transaction(s)`);
+      setSelectedTransactions(new Set());
       refetchTransactions();
       onRefresh?.();
     } catch (error) {
@@ -412,7 +372,51 @@ const IncomeBulkEdit = ({
     }
   };
 
-  const hasActiveFilters = Object.values(filters).some(v => v !== '');
+  // Bulk delete handler
+  const handleBulkDelete = async () => {
+    if (selectedTransactions.size === 0) {
+      toast.error('Please select transactions to delete');
+      return;
+    }
+
+    if (!window.confirm(`Are you sure you want to delete ${selectedTransactions.size} transaction(s)? This cannot be undone.`)) {
+      return;
+    }
+
+    setIsUpdating(true);
+    try {
+      await api.transactions.bulkDelete(Array.from(selectedTransactions));
+      toast.success(`Deleted ${selectedTransactions.size} transaction(s)`);
+      setSelectedTransactions(new Set());
+      refetchTransactions();
+      onRefresh?.();
+    } catch (error) {
+      console.error('Error bulk deleting transactions:', error);
+      toast.error('Failed to delete transactions');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const clearFilters = () => {
+    setFilters({
+      searchTerm: '',
+      category: '',
+      companyId: '',
+      incomeSourceId: '',
+      statementId: '',
+      hasCategory: '',
+      hasSource: '',
+      isReconciled: '',
+      isReviewed: '',
+      hasReceipt: '',
+      hasCheckNumber: '',
+      source: '',
+      hasPdfSource: '',
+      amountRange: { min: '', max: '' },
+      dateRange: { start: '', end: '' }
+    });
+  };
 
   // Calculate stats
   const totalIncome = transactions.reduce((sum, tx) => sum + Math.abs(tx.amount || 0), 0);
@@ -441,393 +445,42 @@ const IncomeBulkEdit = ({
         </div>
       </div>
 
-      {/* Header with search and filters */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4">
-        {/* Search Row */}
-        <div className="flex flex-wrap gap-4 items-center mb-4">
-          <div className="flex-1 min-w-[200px] relative">
-            <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search description, payee, source..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 dark:bg-gray-700 dark:text-white"
-            />
-          </div>
-          
-          <button
-            onClick={() => refetchTransactions()}
-            disabled={isLoading}
-            className="flex items-center gap-2 px-4 py-2 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-          >
-            <ArrowPathIcon className={`w-5 h-5 ${isLoading ? 'animate-spin' : ''}`} />
-            Refresh
-          </button>
-        </div>
+      {/* Filter Panel */}
+      <TransactionFilterPanel
+        filters={filters}
+        onFiltersChange={setFilters}
+        onReset={clearFilters}
+        companies={companies}
+        incomeSources={incomeSources}
+        statements={statements}
+        showRefresh={true}
+        onRefresh={refetchTransactions}
+        isLoading={isLoading}
+        variant="income"
+      />
 
-        {/* Filters Row */}
-        <div className="flex flex-wrap gap-3 items-center">
-          <FunnelIcon className="w-5 h-5 text-gray-400" />
-          
-          <select
-            name="category"
-            value={filters.category}
-            onChange={handleFilterChange}
-            className="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 dark:bg-gray-700 dark:text-white"
-          >
-            <option value="">All Categories</option>
-            {incomeCategories.map(cat => (
-              <option key={cat} value={cat}>{cat}</option>
-            ))}
-          </select>
+      {/* Sort Panel */}
+      <TransactionSortPanel
+        sorts={sorts}
+        onSortsChange={setSorts}
+        defaultCollapsed={true}
+      />
 
-          <select
-            name="incomeSourceId"
-            value={filters.incomeSourceId}
-            onChange={handleFilterChange}
-            className="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 dark:bg-gray-700 dark:text-white"
-          >
-            <option value="">All Sources</option>
-            {incomeSources?.map(source => (
-              <option key={source.id} value={source.id}>{source.name}</option>
-            ))}
-          </select>
-
-          <select
-            name="companyId"
-            value={filters.companyId}
-            onChange={handleFilterChange}
-            className="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 dark:bg-gray-700 dark:text-white"
-          >
-            <option value="">All Companies</option>
-            {companies?.map(company => (
-              <option key={company.id} value={company.id}>{company.name}</option>
-            ))}
-          </select>
-
-          <select
-            name="hasCategory"
-            value={filters.hasCategory}
-            onChange={handleFilterChange}
-            className="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 dark:bg-gray-700 dark:text-white"
-          >
-            <option value="">Has Category?</option>
-            <option value="yes">Categorized</option>
-            <option value="no">Uncategorized</option>
-          </select>
-
-          <select
-            name="hasSource"
-            value={filters.hasSource}
-            onChange={handleFilterChange}
-            className="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 dark:bg-gray-700 dark:text-white"
-          >
-            <option value="">Has Source?</option>
-            <option value="yes">Assigned</option>
-            <option value="no">Unassigned</option>
-          </select>
-
-          {hasActiveFilters && (
-            <button
-              onClick={clearFilters}
-              className="flex items-center gap-1 px-3 py-1.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-            >
-              <XMarkIcon className="w-4 h-4" />
-              Clear
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Selection Actions Bar */}
-      {selectedTransactions.length > 0 && (
-        <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <span className="text-green-700 dark:text-green-300 font-medium">
-                {selectedTransactions.length} transaction(s) selected
-              </span>
-              <button
-                onClick={() => setSelectedTransactions([])}
-                className="text-sm text-green-600 dark:text-green-400 hover:underline"
-              >
-                Clear selection
-              </button>
-            </div>
-            
-            <button
-              onClick={() => setShowBulkPanel(!showBulkPanel)}
-              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-            >
-              <PencilSquareIcon className="w-5 h-5" />
-              Bulk Edit
-              {showBulkPanel ? (
-                <ChevronUpIcon className="w-4 h-4" />
-              ) : (
-                <ChevronDownIcon className="w-4 h-4" />
-              )}
-            </button>
-          </div>
-
-          {/* Bulk Edit Panel */}
-          {showBulkPanel && (
-            <div className="mt-4 pt-4 border-t border-green-200 dark:border-green-800">
-              <div className="bg-white dark:bg-gray-800 rounded-lg p-4">
-                <div className="mb-4">
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    Only filled fields will be updated. Empty fields will be left unchanged.
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {/* Category */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Category
-                    </label>
-                    <select
-                      name="category"
-                      value={bulkUpdates.category}
-                      onChange={handleBulkUpdateChange}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 dark:bg-gray-700 dark:text-white"
-                    >
-                      <option value="">Don't change</option>
-                      {incomeCategories.map(cat => (
-                        <option key={cat} value={cat}>{cat}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Income Source */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Income Source
-                    </label>
-                    <select
-                      name="incomeSourceId"
-                      value={bulkUpdates.incomeSourceId}
-                      onChange={handleBulkUpdateChange}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 dark:bg-gray-700 dark:text-white"
-                    >
-                      <option value="">Don't change</option>
-                      {incomeSources?.map(source => (
-                        <option key={source.id} value={source.id}>{source.name}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Company */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Company
-                    </label>
-                    <select
-                      name="companyId"
-                      value={bulkUpdates.companyId}
-                      onChange={handleBulkUpdateChange}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 dark:bg-gray-700 dark:text-white"
-                    >
-                      <option value="">Don't change</option>
-                      {companies?.map(company => (
-                        <option key={company.id} value={company.id}>{company.name}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Payee */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Payee
-                    </label>
-                    <select
-                      name="payeeId"
-                      value={bulkUpdates.payeeId}
-                      onChange={handleBulkUpdateChange}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 dark:bg-gray-700 dark:text-white"
-                    >
-                      <option value="">Don't change</option>
-                      {payees?.map(payee => (
-                        <option key={payee.id} value={payee.id}>{payee.name}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Vendor */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Vendor
-                    </label>
-                    <select
-                      name="vendorId"
-                      value={bulkUpdates.vendorId}
-                      onChange={handleBulkUpdateChange}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 dark:bg-gray-700 dark:text-white"
-                    >
-                      <option value="">Don't change</option>
-                      {vendors?.map(vendor => (
-                        <option key={vendor.id} value={vendor.id}>{vendor.name}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Statement */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Statement
-                    </label>
-                    <select
-                      name="statementId"
-                      value={bulkUpdates.statementId}
-                      onChange={handleBulkUpdateChange}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 dark:bg-gray-700 dark:text-white"
-                    >
-                      <option value="">Don't change</option>
-                      {statements?.map(stmt => (
-                        <option key={stmt.id} value={stmt.id}>{stmt.name || stmt.filename}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Section Code */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Statement Section
-                    </label>
-                    <select
-                      name="sectionCode"
-                      value={bulkUpdates.sectionCode}
-                      onChange={handleBulkUpdateChange}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 dark:bg-gray-700 dark:text-white"
-                    >
-                      <option value="">Don't change</option>
-                      {sectionCodes.map(section => (
-                        <option key={section.value} value={section.value}>{section.label}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Type (change to expense) */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Transaction Type
-                    </label>
-                    <select
-                      name="type"
-                      value={bulkUpdates.type}
-                      onChange={handleBulkUpdateChange}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 dark:bg-gray-700 dark:text-white"
-                    >
-                      <option value="">Don't change</option>
-                      <option value="income">Income</option>
-                      <option value="expense">Expense</option>
-                    </select>
-                  </div>
-
-                  {/* Date */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Date
-                    </label>
-                    <input
-                      type="date"
-                      name="date"
-                      value={bulkUpdates.date}
-                      onChange={handleBulkUpdateChange}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 dark:bg-gray-700 dark:text-white"
-                    />
-                  </div>
-
-                  {/* Amount */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Amount
-                    </label>
-                    <input
-                      type="number"
-                      name="amount"
-                      value={bulkUpdates.amount}
-                      onChange={handleBulkUpdateChange}
-                      step="0.01"
-                      placeholder="Don't change"
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 dark:bg-gray-700 dark:text-white"
-                    />
-                  </div>
-
-                  {/* Description */}
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Description
-                    </label>
-                    <input
-                      type="text"
-                      name="description"
-                      value={bulkUpdates.description}
-                      onChange={handleBulkUpdateChange}
-                      placeholder="Don't change"
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 dark:bg-gray-700 dark:text-white"
-                    />
-                  </div>
-                </div>
-
-                {/* Notes Section */}
-                <div className="mt-4">
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Notes
-                  </label>
-                  <textarea
-                    name="notes"
-                    value={bulkUpdates.notes}
-                    onChange={handleBulkUpdateChange}
-                    rows={2}
-                    placeholder="Don't change"
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 dark:bg-gray-700 dark:text-white"
-                  />
-                  <label className="flex items-center gap-2 mt-2">
-                    <input
-                      type="checkbox"
-                      name="appendNotes"
-                      checked={bulkUpdates.appendNotes}
-                      onChange={handleBulkUpdateChange}
-                      className="rounded border-gray-300 text-green-600 focus:ring-green-500"
-                    />
-                    <span className="text-sm text-gray-600 dark:text-gray-400">
-                      Append to existing notes (instead of replacing)
-                    </span>
-                  </label>
-                </div>
-
-                {/* Action Buttons */}
-                <div className="flex justify-end gap-3 mt-6">
-                  <button
-                    onClick={() => setShowBulkPanel(false)}
-                    className="px-4 py-2 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleBulkUpdate}
-                    disabled={isUpdating}
-                    className="flex items-center gap-2 px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors"
-                  >
-                    {isUpdating ? (
-                      <>
-                        <ArrowPathIcon className="w-5 h-5 animate-spin" />
-                        Updating...
-                      </>
-                    ) : (
-                      <>
-                        <CheckIcon className="w-5 h-5" />
-                        Apply to {selectedTransactions.length} Transaction(s)
-                      </>
-                    )}
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
+      {/* Bulk Edit Panel */}
+      <TransactionBulkPanel
+        selectedCount={selectedTransactions.size}
+        selectedTransactions={selectedTransactions}
+        transactions={sortedTransactions}
+        companies={companies}
+        payees={payees}
+        vendors={vendors}
+        incomeSources={incomeSources}
+        statements={statements}
+        onBulkUpdate={handleBulkPanelUpdate}
+        onBulkDelete={handleBulkDelete}
+        onClearSelection={() => setSelectedTransactions(new Set())}
+        isUpdating={isUpdating}
+      />
 
       {/* Transaction Table */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden">
@@ -835,7 +488,7 @@ const IncomeBulkEdit = ({
           <div className="flex items-center justify-center py-12">
             <ArrowPathIcon className="w-8 h-8 animate-spin text-gray-400" />
           </div>
-        ) : filteredTransactions.length === 0 ? (
+        ) : sortedTransactions.length === 0 ? (
           <div className="text-center py-12 text-gray-500 dark:text-gray-400">
             <p>No income transactions found</p>
           </div>
@@ -847,7 +500,7 @@ const IncomeBulkEdit = ({
                   <th className="px-4 py-3 text-left">
                     <input
                       type="checkbox"
-                      checked={selectedTransactions.length === filteredTransactions.length && filteredTransactions.length > 0}
+                      checked={selectedTransactions.size === sortedTransactions.length && sortedTransactions.length > 0}
                       onChange={toggleSelectAll}
                       className="rounded border-gray-300 text-green-600 focus:ring-green-500"
                     />
@@ -868,18 +521,21 @@ const IncomeBulkEdit = ({
                     Amount
                   </th>
                   <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
+                    Actions
+                  </th>
+                  <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
                     Details
                   </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                {filteredTransactions.map(tx => (
+                {sortedTransactions.map(tx => (
                   <React.Fragment key={tx.id}>
-                    <tr className={`hover:bg-gray-50 dark:hover:bg-gray-700/50 ${selectedTransactions.includes(tx.id) ? 'bg-green-50 dark:bg-green-900/20' : ''}`}>
+                    <tr className={`hover:bg-gray-50 dark:hover:bg-gray-700/50 ${selectedTransactions.has(tx.id) ? 'bg-green-50 dark:bg-green-900/20' : ''}`}>
                       <td className="px-4 py-3">
                         <input
                           type="checkbox"
-                          checked={selectedTransactions.includes(tx.id)}
+                          checked={selectedTransactions.has(tx.id)}
                           onChange={() => toggleSelect(tx.id)}
                           className="rounded border-gray-300 text-green-600 focus:ring-green-500"
                         />
@@ -924,6 +580,15 @@ const IncomeBulkEdit = ({
                       </td>
                       <td className="px-4 py-3 text-center">
                         <button
+                          onClick={() => handleEditTransaction(tx)}
+                          className="p-1 hover:bg-gray-100 dark:hover:bg-gray-600 rounded transition-colors text-gray-400 hover:text-blue-600 dark:hover:text-blue-400"
+                          title="Edit transaction"
+                        >
+                          <PencilIcon className="w-4 h-4" />
+                        </button>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <button
                           onClick={() => toggleExpand(tx.id)}
                           className="p-1 hover:bg-gray-100 dark:hover:bg-gray-600 rounded transition-colors"
                         >
@@ -939,7 +604,7 @@ const IncomeBulkEdit = ({
                     {/* Expanded Row */}
                     {expandedRows.has(tx.id) && (
                       <tr className="bg-gray-50 dark:bg-gray-700/30">
-                        <td colSpan={7} className="px-4 py-4">
+                        <td colSpan={8} className="px-4 py-4">
                           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                             <div>
                               <span className="text-gray-500 dark:text-gray-400">Company:</span>
@@ -952,10 +617,6 @@ const IncomeBulkEdit = ({
                             <div>
                               <span className="text-gray-500 dark:text-gray-400">Statement:</span>
                               <span className="ml-2 text-gray-900 dark:text-white">{tx.statementId || 'None'}</span>
-                            </div>
-                            <div>
-                              <span className="text-gray-500 dark:text-gray-400">Section:</span>
-                              <span className="ml-2 text-gray-900 dark:text-white">{tx.sectionCode || 'None'}</span>
                             </div>
                             {tx.notes && (
                               <div className="col-span-2 md:col-span-4">
@@ -978,16 +639,25 @@ const IncomeBulkEdit = ({
         <div className="px-4 py-3 bg-gray-50 dark:bg-gray-700/50 border-t border-gray-200 dark:border-gray-700">
           <div className="flex justify-between items-center text-sm text-gray-600 dark:text-gray-400">
             <span>
-              Showing {filteredTransactions.length} of {transactions.length} income transactions
+              Showing {sortedTransactions.length} of {transactions.length} income transactions
             </span>
-            {selectedTransactions.length > 0 && (
+            {selectedTransactions.size > 0 && (
               <span className="text-green-600 dark:text-green-400">
-                {selectedTransactions.length} selected
+                {selectedTransactions.size} selected
               </span>
             )}
           </div>
         </div>
       </div>
+
+      {/* Transaction Edit Modal */}
+      <TransactionModal
+        transaction={editingTransaction}
+        isOpen={isTransactionModalOpen}
+        onClose={handleCloseTransactionModal}
+        onSave={handleSaveTransaction}
+        mode="edit"
+      />
     </div>
   );
 };

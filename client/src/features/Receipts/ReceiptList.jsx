@@ -173,6 +173,8 @@ const ReceiptList = () => {
     onSuccess: (data) => {
       queryClient.invalidateQueries(['receipts']);
       queryClient.invalidateQueries(['transactions']);
+      queryClient.invalidateQueries(['recent-transactions']);
+      queryClient.invalidateQueries(['transaction-summary']);
       setShowBulkAdd(false);
       toast.success(`${data.data.successCount} receipts created`);
     },
@@ -185,6 +187,8 @@ const ReceiptList = () => {
     onSuccess: (data) => {
       queryClient.invalidateQueries(['receipts']);
       queryClient.invalidateQueries(['transactions']);
+      queryClient.invalidateQueries(['recent-transactions']);
+      queryClient.invalidateQueries(['transaction-summary']);
       setShowQuickEntry(false);
       toast.success(`${data.data?.successCount || 0} receipts & transactions created`);
     },
@@ -705,6 +709,8 @@ const ReceiptList = () => {
           const result = await receiptService.bulkCreate(receipts);
           queryClient.invalidateQueries(['receipts']);
           queryClient.invalidateQueries(['transactions']);
+          queryClient.invalidateQueries(['recent-transactions']);
+          queryClient.invalidateQueries(['transaction-summary']);
           return result;
         }}
         isLoading={quickEntryMutation.isPending}

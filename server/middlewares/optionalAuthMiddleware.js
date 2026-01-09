@@ -1,18 +1,43 @@
 import { firebaseAdmin, logger } from '../config/index.js';
 
 /**
+ * Check if the request is from localhost
+ * @param {Object} req - Express request object
+ * @returns {boolean} - True if request is from localhost
+ */
+const isLocalhostRequest = (req) => {
+  const host = req.hostname || req.host || '';
+  const forwardedFor = req.headers['x-forwarded-for'];
+  
+  // If there's an X-Forwarded-For header, request went through a proxy (not localhost)
+  if (forwardedFor) {
+    return false;
+  }
+  
+  return host === 'localhost' || host === '127.0.0.1' || host === '::1';
+};
+
+/**
  * Optional authentication middleware that gracefully handles missing Firebase
  * Provides mock user for development when Firebase is unavailable
  * Use this for routes that can work with or without authentication
+ * 
+ * SECURITY: Mock auth requires:
+ * 1. NODE_ENV === 'development'
+ * 2. ALLOW_MOCK_AUTH === 'true' (explicit opt-in)
+ * 3. Request must be from localhost
  */
 const optionalAuthMiddleware = async (req, res, next) => {
   try {
     // Check if we're in development mode
     const isDevelopment = process.env.NODE_ENV === 'development';
+    const allowMockAuth = process.env.ALLOW_MOCK_AUTH === 'true';
+    const isLocalhost = isLocalhostRequest(req);
     
     // Check Firebase availability
     if (!firebaseAdmin) {
-      if (isDevelopment) {
+      // SECURITY: All three conditions must be true for mock auth
+      if (isDevelopment && allowMockAuth && isLocalhost) {
         // Provide mock user for development
         req.user = {
           uid: 'dev-user-123',
@@ -28,12 +53,21 @@ const optionalAuthMiddleware = async (req, res, next) => {
         
         logger.warn('Using mock authentication - Firebase not available', {
           mode: 'development',
-          mockUser: req.user.email
+          mockUser: req.user.email,
+          isLocalhost
         });
         
         return next();
       } else {
-        logger.error('Firebase Admin not available in production mode');
+        // Log why mock auth was denied
+        if (isDevelopment && !allowMockAuth) {
+          logger.error('Mock auth denied: ALLOW_MOCK_AUTH is not set to "true"');
+        } else if (isDevelopment && !isLocalhost) {
+          logger.error('Mock auth denied: Request is not from localhost');
+        } else {
+          logger.error('Firebase Admin not available in production mode');
+        }
+        
         return res.status(503).json({
           error: 'Service Unavailable',
           message: 'Authentication service is temporarily unavailable'

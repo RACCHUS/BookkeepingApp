@@ -3,11 +3,18 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-hot-toast';
 import { apiClient } from '../../services/api.js';
 import { formatCurrency } from '../../utils/currencyUtils';
+import { TransactionModal } from '../../components/forms';
+import { PencilIcon } from '@heroicons/react/24/outline';
 
 const TransactionCompanyAssignment = ({ onAssignmentComplete }) => {
   const [viewMode, setViewMode] = useState('unassigned'); // 'unassigned' or 'assigned'
   const [selectedTransactions, setSelectedTransactions] = useState(new Set());
   const [selectedCompany, setSelectedCompany] = useState('');
+  
+  // Transaction edit modal state
+  const [editingTransaction, setEditingTransaction] = useState(null);
+  const [isTransactionModalOpen, setIsTransactionModalOpen] = useState(false);
+  
   const queryClient = useQueryClient();
 
   // Fetch transactions without company
@@ -102,6 +109,32 @@ const TransactionCompanyAssignment = ({ onAssignmentComplete }) => {
       newSelected.add(transactionId);
     }
     setSelectedTransactions(newSelected);
+  };
+
+  // Transaction edit handlers
+  const handleEditTransaction = (transaction) => {
+    setEditingTransaction(transaction);
+    setIsTransactionModalOpen(true);
+  };
+
+  const handleCloseTransactionModal = () => {
+    setEditingTransaction(null);
+    setIsTransactionModalOpen(false);
+  };
+
+  const handleSaveTransaction = async (transactionData) => {
+    try {
+      await apiClient.transactions.update(editingTransaction.id, transactionData);
+      toast.success('Transaction updated successfully');
+      queryClient.invalidateQueries({ queryKey: ['unassigned-company-transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['assigned-company-transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['transactions'] });
+      handleCloseTransactionModal();
+    } catch (error) {
+      console.error('Failed to update transaction:', error);
+      toast.error(error.message || 'Failed to update transaction');
+      throw error;
+    }
   };
 
   const handleAssignCompany = () => {
@@ -345,6 +378,9 @@ const TransactionCompanyAssignment = ({ onAssignmentComplete }) => {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     Category
                   </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
@@ -372,11 +408,6 @@ const TransactionCompanyAssignment = ({ onAssignmentComplete }) => {
                       <div className="max-w-xs truncate" title={transaction.description}>
                         {transaction.description}
                       </div>
-                      {transaction.sectionCode && (
-                        <div className="text-xs text-gray-500 dark:text-gray-400">
-                          {transaction.sectionCode}
-                        </div>
-                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                       {formatCurrency(transaction.amount)}
@@ -388,6 +419,15 @@ const TransactionCompanyAssignment = ({ onAssignmentComplete }) => {
                     )}
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                       {transaction.category || 'Uncategorized'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      <button
+                        onClick={() => handleEditTransaction(transaction)}
+                        className="p-1 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                        title="Edit transaction"
+                      >
+                        <PencilIcon className="h-4 w-4" />
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -415,6 +455,15 @@ const TransactionCompanyAssignment = ({ onAssignmentComplete }) => {
           </div>
         </>
       )}
+
+      {/* Transaction Edit Modal */}
+      <TransactionModal
+        transaction={editingTransaction}
+        isOpen={isTransactionModalOpen}
+        onClose={handleCloseTransactionModal}
+        onSave={handleSaveTransaction}
+        mode="edit"
+      />
     </div>
   );
 };

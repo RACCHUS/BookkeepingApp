@@ -120,9 +120,6 @@ const ExpenseManagement = () => {
       const expenses = allTransactions.filter(tx => {
         if (tx.type === 'expense') return true;
         if (tx.type === 'income') return false;
-        if (tx.sectionCode && ['checks', 'electronic', 'fees', 'withdrawals'].includes(tx.sectionCode)) {
-          return true;
-        }
         if (tx.amount < 0) return true;
         return false;
       });

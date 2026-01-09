@@ -114,9 +114,10 @@ const PDFUpload = () => {
             }
           : f
       ));
-      // Force refresh transactions list
+      // Force refresh all transaction-related queries
       queryClient.invalidateQueries(['transactions']);
-      queryClient.refetchQueries(['transactions']);
+      queryClient.invalidateQueries(['recent-transactions']);
+      queryClient.invalidateQueries(['transaction-summary']);
     },
     onError: (error, {file, tempId}) => {
       toast.error(`Failed to upload ${file.name}: ${error.response?.data?.message || error.message}`);
@@ -242,9 +243,10 @@ const PDFUpload = () => {
                 : f
             ));
             
-            // Refresh transactions list
+            // Refresh all transaction-related queries
             queryClient.invalidateQueries(['transactions']);
-            queryClient.refetchQueries(['transactions']);
+            queryClient.invalidateQueries(['recent-transactions']);
+            queryClient.invalidateQueries(['transaction-summary']);
           } else {
             toast.error('PDF processed but no transactions were saved.');
             setUploadedFiles(prev => prev.map(f => 
