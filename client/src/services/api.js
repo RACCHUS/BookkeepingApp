@@ -1,8 +1,9 @@
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import { auth } from './firebase';
+import { supabaseClient } from './supabaseClient';
 
-// Create axios instance with base configuration
+// Create axios instance with base configuration (only for PDF/report operations)
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || '/api',
   timeout: 30000,
@@ -1036,5 +1037,31 @@ const apiClient = {
   },
 };
 
-export { api, apiClient };
-export default apiClient;
+// Use Supabase client for primary operations (transactions, companies, payees, etc.)
+// Fall back to Express API only for PDF/report operations that require server-side processing
+const hybridApiClient = {
+  // Use Supabase directly for these
+  transactions: supabaseClient.transactions,
+  companies: supabaseClient.companies,
+  payees: supabaseClient.payees,
+  incomeSources: supabaseClient.incomeSources,
+  receipts: supabaseClient.receipts,
+  checks: supabaseClient.checks,
+  vendors: supabaseClient.vendors,
+  
+  // Keep Express API for server-side operations
+  pdf: apiClient.pdf,
+  reports: apiClient.reports,
+  classification: apiClient.classification,
+  uploads: apiClient.uploads,
+  csv: apiClient.csv,
+  
+  // Keep invoicing on Express for now (uses nodemailer)
+  invoicing: apiClient.invoicing,
+  
+  // Keep inventory on Express for now
+  inventory: apiClient.inventory,
+};
+
+export { api, apiClient, supabaseClient, hybridApiClient };
+export default hybridApiClient;
