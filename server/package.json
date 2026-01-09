@@ -65,7 +65,6 @@
     "pdf-parse": "^1.1.1",
     "pdfjs-dist": "^5.3.31",
     "pdfkit": "^0.14.0",
-    "puppeteer": "^21.6.0",
     "uuid": "^11.1.0",
     "winston": "^3.11.0"
   },
