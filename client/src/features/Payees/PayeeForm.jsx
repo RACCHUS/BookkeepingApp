@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'react-hot-toast';
 import { useQuery } from '@tanstack/react-query';
-import apiClient from '../../services/api';
+import api from '../../services/api';
 
 const PayeeForm = ({ payee, onClose, type = 'vendor' }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -11,10 +11,11 @@ const PayeeForm = ({ payee, onClose, type = 'vendor' }) => {
   // Fetch companies for dropdown
   const { data: companiesData } = useQuery({
     queryKey: ['companies'],
-    queryFn: apiClient.companies.getAll
+    queryFn: api.companies.getAll
   });
 
-  const companies = companiesData?.companies || [];
+  // Supabase returns { success: true, data: { companies: [...] } }
+  const companies = companiesData?.data?.companies || [];
 
   const {
     register,
@@ -81,10 +82,10 @@ const PayeeForm = ({ payee, onClose, type = 'vendor' }) => {
       console.log('Submitting payee data:', cleanData);
 
       if (isEditing) {
-        await apiClient.payees.update(payee.id, cleanData);
+        await api.payees.update(payee.id, cleanData);
         toast.success(`${selectedType} updated successfully`);
       } else {
-        await apiClient.payees.create(cleanData);
+        await api.payees.create(cleanData);
         toast.success(`${selectedType} created successfully`);
       }
       onClose();

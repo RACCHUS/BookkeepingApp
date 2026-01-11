@@ -58,10 +58,14 @@ const CheckList = () => {
   // Fetch companies
   const { data: companiesData } = useQuery({
     queryKey: ['companies'],
-    queryFn: () => companyService.getCompanies(),
+    queryFn: () => companyService.getAll(),
     staleTime: 5 * 60 * 1000
   });
-  const companies = companiesData?.data || [];
+  // Server returns { success: true, data: [...] }
+  // Supabase returns { success: true, data: { companies: [...] } }
+  const companies = Array.isArray(companiesData?.data) 
+    ? companiesData.data 
+    : (companiesData?.data?.companies || []);
 
   // Build query filters
   const queryFilters = useMemo(() => {
@@ -82,7 +86,8 @@ const CheckList = () => {
     queryFn: () => checkService.getChecks(queryFilters),
     staleTime: 30 * 1000
   });
-  const checks = checksData?.data?.checks || [];
+  // Check API returns { data: [...], pagination: {...} } - data is array directly
+  const checks = checksData?.data?.checks || checksData?.data || [];
 
   // Mutations
   const createMutation = useMutation({

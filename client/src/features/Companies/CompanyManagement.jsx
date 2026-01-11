@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-hot-toast';
-import { apiClient } from '../../services/api.js';
+import api from '../../services/api.js';
 import CompanyForm from './CompanyForm.jsx';
 import CompanyList from './CompanyList.jsx';
 import TransactionCompanyAssignment from './TransactionCompanyAssignment.jsx';
@@ -16,7 +16,7 @@ const CompanyManagement = () => {
   // Fetch companies
   const { data: companiesResponse, isLoading, error, refetch } = useQuery({
     queryKey: ['companies'],
-    queryFn: apiClient.companies.getAll,
+    queryFn: api.companies.getAll,
     staleTime: 5 * 60 * 1000, // 5 minutes
     retry: 2, // Retry failed requests
     retryDelay: 1000, // Wait 1 second between retries
@@ -25,18 +25,19 @@ const CompanyManagement = () => {
   // Fetch unassigned transactions count
   const { data: unassignedData, refetch: refetchUnassigned } = useQuery({
     queryKey: ['unassigned-company-transactions'],
-    queryFn: apiClient.companies.getTransactionsWithoutCompany,
+    queryFn: api.companies.getTransactionsWithoutCompany,
     staleTime: 60 * 1000, // 1 minute
   });
 
-  const companiesRaw = companiesResponse?.data;
+  // Supabase returns { success: true, data: { companies: [...] } }
+  const companiesRaw = companiesResponse?.data?.companies;
   const companies = Array.isArray(companiesRaw) ? companiesRaw : [];
   const unassignedTxns = unassignedData?.transactions;
   const unassignedCount = Array.isArray(unassignedTxns) ? unassignedTxns.length : 0;
 
   // Create company mutation
   const createMutation = useMutation({
-    mutationFn: apiClient.companies.create,
+    mutationFn: api.companies.create,
     onSuccess: () => {
       queryClient.invalidateQueries(['companies']);
       toast.success('Company created successfully');
@@ -64,7 +65,7 @@ const CompanyManagement = () => {
 
   // Update company mutation
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }) => apiClient.companies.update(id, data),
+    mutationFn: ({ id, data }) => api.companies.update(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries(['companies']);
       toast.success('Company updated successfully');
@@ -79,7 +80,7 @@ const CompanyManagement = () => {
 
   // Delete company mutation
   const deleteMutation = useMutation({
-    mutationFn: apiClient.companies.delete,
+    mutationFn: api.companies.delete,
     onSuccess: () => {
       queryClient.invalidateQueries(['companies']);
       toast.success('Company deleted successfully');
@@ -92,7 +93,7 @@ const CompanyManagement = () => {
 
   // Set default company mutation
   const setDefaultMutation = useMutation({
-    mutationFn: apiClient.companies.setDefault,
+    mutationFn: api.companies.setDefault,
     onSuccess: () => {
       queryClient.invalidateQueries(['companies']);
       toast.success('Default company updated');
@@ -122,7 +123,15 @@ const CompanyManagement = () => {
       return;
     }
     
-    if (window.confirm(`Are you sure you want to delete "${companyName}"? This action cannot be undone.`)) {
+    // Check if this is the default company
+    const company = companies.find(c => c.id === companyId);
+    const isDefault = company?.isDefault;
+    
+    const confirmMessage = isDefault
+      ? `"${companyName}" is your DEFAULT company. Are you sure you want to delete it? This action cannot be undone.`
+      : `Are you sure you want to delete "${companyName}"? This action cannot be undone.`;
+    
+    if (window.confirm(confirmMessage)) {
       deleteMutation.mutate(companyId);
     }
   };

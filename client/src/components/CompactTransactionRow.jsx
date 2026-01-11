@@ -38,6 +38,7 @@ const CompactTransactionRow = memo(({
   deletingId,
   // Dynamic columns based on active filters/sorts
   visibleColumns = [],
+  columnWidths = {},
   statement,
   getPaymentMethodDisplay
 }) => {
@@ -88,45 +89,101 @@ const CompactTransactionRow = memo(({
 
   // Render a compact badge for dynamic columns
   const renderDynamicColumn = (columnName) => {
+    // Helper to render empty placeholder
+    const renderEmpty = () => (
+      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium text-gray-400 dark:text-gray-500 italic">
+        —
+      </span>
+    );
+
     switch (columnName) {
       case 'category':
         return transaction.category ? (
-          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 truncate max-w-[120px]" title={transaction.category}>
+          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 truncate max-w-full" title={transaction.category}>
             {transaction.category}
           </span>
-        ) : null;
+        ) : renderEmpty();
       
       case 'payee':
-        return transaction.payee ? (
-          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 truncate max-w-[100px]" title={transaction.payee}>
+        const payeeValue = transaction.payee || transaction.payeeName;
+        return payeeValue ? (
+          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 truncate max-w-full" title={payeeValue}>
             <UserIcon className="w-3 h-3 mr-1 flex-shrink-0" />
-            {transaction.payee}
+            {payeeValue}
           </span>
-        ) : null;
+        ) : renderEmpty();
       
       case 'company':
       case 'companyId':
         return transaction.companyName ? (
-          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 truncate max-w-[100px]" title={transaction.companyName}>
+          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 truncate max-w-full" title={transaction.companyName}>
             <BuildingOfficeIcon className="w-3 h-3 mr-1 flex-shrink-0" />
             {transaction.companyName}
           </span>
-        ) : null;
+        ) : renderEmpty();
       
       case 'source':
         return transaction.source ? (
           <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300">
             {transaction.source}
           </span>
-        ) : null;
+        ) : renderEmpty();
       
+      case 'vendor':
+      case 'vendorName':
+        return transaction.vendorName ? (
+          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300 truncate max-w-full" title={transaction.vendorName}>
+            <BuildingOfficeIcon className="w-3 h-3 mr-1 flex-shrink-0" />
+            {transaction.vendorName}
+          </span>
+        ) : renderEmpty();
+      
+      case 'incomeSource':
+      case 'incomeSourceName':
+        return transaction.incomeSourceName ? (
+          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 truncate max-w-full" title={transaction.incomeSourceName}>
+            💵
+            {transaction.incomeSourceName}
+          </span>
+        ) : renderEmpty();
+      
+      case 'sectionCode':
+        return transaction.sectionCode ? (
+          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
+            {transaction.sectionCode}
+          </span>
+        ) : renderEmpty();
+      
+      case 'paymentMethod':
+        return transaction.paymentMethod ? (
+          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-cyan-100 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-300">
+            {getPaymentMethodDisplay ? getPaymentMethodDisplay(transaction.paymentMethod) : transaction.paymentMethod}
+          </span>
+        ) : renderEmpty();
+
+      case 'taxYear':
+        // Extract year from transaction date
+        const year = transaction.date ? new Date(transaction.date).getFullYear() : null;
+        return year ? (
+          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300">
+            📊 {year}
+          </span>
+        ) : renderEmpty();
+
+      case 'subcategory':
+        return transaction.subcategory ? (
+          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-pink-100 dark:bg-pink-900/30 text-pink-700 dark:text-pink-300 truncate max-w-full" title={transaction.subcategory}>
+            {transaction.subcategory}
+          </span>
+        ) : renderEmpty();
+
       case 'statementId':
         return statement ? (
-          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 truncate max-w-[100px]" title={statement.name}>
+          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 truncate max-w-full" title={statement.name}>
             <DocumentTextIcon className="w-3 h-3 mr-1 flex-shrink-0" />
             {statement.name?.replace(/^\[(PDF|CSV)\]\s*/, '').slice(0, 15)}
           </span>
-        ) : null;
+        ) : renderEmpty();
       
       case 'hasReceipt':
         return transaction.receiptId ? (
@@ -134,17 +191,114 @@ const CompactTransactionRow = memo(({
             <ReceiptPercentIcon className="w-3 h-3 mr-1" />
             Receipt
           </span>
-        ) : null;
+        ) : renderEmpty();
       
       case 'hasCheckNumber':
+      case 'checkNumber':
         return transaction.checkNumber ? (
           <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300">
             #{transaction.checkNumber}
           </span>
-        ) : null;
+        ) : renderEmpty();
+
+      case 'referenceNumber':
+        return transaction.referenceNumber ? (
+          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 truncate max-w-full" title={transaction.referenceNumber}>
+            {transaction.referenceNumber}
+          </span>
+        ) : renderEmpty();
+
+      case 'employee':
+      case 'employeeName':
+        return transaction.employeeName ? (
+          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300 truncate max-w-full" title={transaction.employeeName}>
+            <UserIcon className="w-3 h-3 mr-1 flex-shrink-0" />
+            {transaction.employeeName}
+          </span>
+        ) : renderEmpty();
+
+      case 'quarterlyPeriod':
+        return transaction.quarterlyPeriod ? (
+          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300">
+            {transaction.quarterlyPeriod}
+          </span>
+        ) : renderEmpty();
+
+      case 'isTaxDeductible':
+        return (
+          <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+            transaction.isTaxDeductible !== false
+              ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300'
+              : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
+          }`}>
+            {transaction.isTaxDeductible !== false ? '✓ Yes' : '✗ No'}
+          </span>
+        );
+
+      case 'businessPurpose':
+        return transaction.businessPurpose ? (
+          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 truncate max-w-full" title={transaction.businessPurpose}>
+            {transaction.businessPurpose}
+          </span>
+        ) : renderEmpty();
+
+      case 'clientProject':
+        return transaction.clientProject ? (
+          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 truncate max-w-full" title={transaction.clientProject}>
+            {transaction.clientProject}
+          </span>
+        ) : renderEmpty();
+
+      case 'location':
+        return transaction.location ? (
+          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 truncate max-w-full" title={transaction.location}>
+            📍 {transaction.location}
+          </span>
+        ) : renderEmpty();
+
+      case 'isRecurring':
+        return transaction.isRecurring ? (
+          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300">
+            🔄 Yes
+          </span>
+        ) : renderEmpty();
+
+      case 'isReimbursable':
+        return transaction.isReimbursable ? (
+          <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+            transaction.reimbursementStatus === 'paid'
+              ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300'
+              : transaction.reimbursementStatus === 'approved'
+              ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+              : 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300'
+          }`}>
+            💰 {transaction.reimbursementStatus || 'Pending'}
+          </span>
+        ) : renderEmpty();
+
+      case 'isContractorPayment':
+        return transaction.isContractorPayment ? (
+          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300">
+            1099
+          </span>
+        ) : renderEmpty();
+
+      case 'createdAt':
+        return transaction.createdAt ? (
+          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400">
+            {new Date(transaction.createdAt).toLocaleDateString()}
+          </span>
+        ) : renderEmpty();
+
+      case 'notes':
+        return transaction.notes ? (
+          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 truncate max-w-full" title={transaction.notes}>
+            📝 {transaction.notes.slice(0, 20)}{transaction.notes.length > 20 ? '...' : ''}
+          </span>
+        ) : renderEmpty();
       
       default:
-        return null;
+        return renderEmpty();
     }
   };
 
@@ -182,38 +336,53 @@ const CompactTransactionRow = memo(({
         )}
 
         {/* Date */}
-        <div className="w-16 flex-shrink-0 text-xs text-gray-500 dark:text-gray-400">
+        <div 
+          className="flex-shrink-0 text-xs text-gray-500 dark:text-gray-400"
+          style={{ width: columnWidths.date || 64 }}
+        >
           {formatDate(transaction.date)}
         </div>
 
         {/* Type badge */}
-        <div className={`w-16 flex-shrink-0 text-center text-xs font-medium px-1.5 py-0.5 rounded ${getTypeColor(transaction.type)}`}>
+        <div 
+          className={`flex-shrink-0 text-center text-xs font-medium px-1.5 py-0.5 rounded ${getTypeColor(transaction.type)}`}
+          style={{ width: columnWidths.type || 64 }}
+        >
           {transaction.type?.charAt(0).toUpperCase() + transaction.type?.slice(1) || 'Other'}
         </div>
 
-        {/* Description - takes remaining space */}
-        <div className="flex-1 min-w-0 mx-3">
+        {/* Description - flexible but with minimum width */}
+        <div 
+          className="flex-shrink-0 mx-2"
+          style={{ width: columnWidths.description || 200 }}
+        >
           <p className="text-sm text-gray-900 dark:text-white truncate" title={transaction.description}>
             {transaction.description || 'No description'}
           </p>
         </div>
 
-        {/* Dynamic columns based on active filters */}
-        <div className="flex items-center gap-1.5 flex-shrink-0 mr-3">
-          {visibleColumns.map(col => {
-            const element = renderDynamicColumn(col);
-            return element ? <React.Fragment key={col}>{element}</React.Fragment> : null;
-          })}
-        </div>
+        {/* Dynamic columns based on active filters - each with width from columnWidths */}
+        {visibleColumns.map(col => (
+          <div 
+            key={col} 
+            className="flex-shrink-0 flex items-center justify-center px-2"
+            style={{ width: columnWidths[col] || 128 }}
+          >
+            {renderDynamicColumn(col)}
+          </div>
+        ))}
 
         {/* Amount */}
-        <div className={`w-24 flex-shrink-0 text-right text-sm font-medium ${
+        <div 
+          className={`flex-shrink-0 text-right text-sm font-medium ${
           transaction.type === 'income' 
             ? 'text-green-600 dark:text-green-400' 
             : transaction.type === 'expense'
             ? 'text-red-600 dark:text-red-400'
             : 'text-gray-900 dark:text-white'
-        }`}>
+        }`}
+          style={{ width: columnWidths.amount || 112 }}
+        >
           {transaction.type === 'income' ? '+' : transaction.type === 'expense' ? '-' : ''}
           {formatCurrency(transaction.amount)}
         </div>

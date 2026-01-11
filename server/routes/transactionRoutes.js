@@ -59,25 +59,25 @@ const createTransactionValidation = [
 
 const updateTransactionValidation = [
   param('id').isLength({ min: 1 }).withMessage(`Transaction ${COMMON_VALIDATION.OBJECT_ID_MESSAGE}`),
-  body('date').optional().isISO8601().withMessage(`Date ${COMMON_VALIDATION.DATE_MESSAGE}`),
+  body('date').optional({ values: 'falsy' }).isISO8601().withMessage(`Date ${COMMON_VALIDATION.DATE_MESSAGE}`),
   body('amount').optional().isNumeric().withMessage(`Amount ${COMMON_VALIDATION.NUMERIC_MESSAGE}`),
   body('description')
-    .optional()
+    .optional({ values: 'falsy' })
     .isLength({ 
       min: TRANSACTION_CONSTANTS.LIMITS.DESCRIPTION_MIN, 
       max: TRANSACTION_CONSTANTS.LIMITS.DESCRIPTION_MAX 
     })
     .withMessage(`Description must be less than ${TRANSACTION_CONSTANTS.LIMITS.DESCRIPTION_MAX} characters`),
   body('category')
-    .optional()
+    .optional({ values: 'falsy' })
     .isLength({ min: TRANSACTION_CONSTANTS.LIMITS.CATEGORY_MIN })
     .withMessage('Category cannot be empty'),
   body('type')
-    .optional()
+    .optional({ values: 'falsy' })
     .isIn(TRANSACTION_CONSTANTS.TYPES)
     .withMessage(`Type must be one of: ${TRANSACTION_CONSTANTS.TYPES.join(', ')}`),
   body('sectionCode')
-    .optional()
+    .optional({ values: 'falsy' })
     .isIn(TRANSACTION_CONSTANTS.SECTION_CODES)
     .withMessage(`Section code must be one of: ${TRANSACTION_CONSTANTS.SECTION_CODES.join(', ')}`),
   handleValidationErrors

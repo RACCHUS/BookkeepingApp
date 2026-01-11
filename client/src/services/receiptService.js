@@ -1,22 +1,58 @@
 /**
- * Receipt Service - Frontend API client for receipt management
- * @description Provides API methods for receipts CRUD, batch operations, and file uploads
+ * Receipt Service - Supabase Version
+ * Provides API methods for receipts CRUD, batch operations, and file uploads
  */
 
-import axios from 'axios';
+import { supabase } from './supabase';
 import { auth } from './firebase';
 
-const API_BASE = import.meta.env.VITE_API_URL || '/api';
+/**
+ * Get the current user's Firebase UID
+ * Waits for auth to be ready if needed
+ */
+const getUserId = async () => {
+  if (auth.currentUser) {
+    return auth.currentUser.uid;
+  }
+  
+  return new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      unsubscribe();
+      reject(new Error('Authentication timeout - please refresh the page'));
+    }, 5000);
+    
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      clearTimeout(timeout);
+      unsubscribe();
+      if (user) {
+        resolve(user.uid);
+      } else {
+        reject(new Error('User not authenticated'));
+      }
+    });
+  });
+};
 
 /**
- * Get authorization headers with Firebase token
+ * Transform database row to frontend format
  */
-const getAuthHeaders = async () => {
-  const user = auth.currentUser;
-  if (!user) throw new Error('User not authenticated');
-  const token = await user.getIdToken();
+const transformReceipt = (row) => {
+  if (!row) return null;
   return {
-    Authorization: `Bearer ${token}`
+    id: row.id,
+    date: row.date,
+    amount: parseFloat(row.amount) || 0,
+    vendor: row.vendor,
+    vendorId: row.vendor_id,
+    category: row.category,
+    description: row.description,
+    notes: row.notes,
+    imageUrl: row.image_url,
+    transactionId: row.transaction_id,
+    companyId: row.company_id,
+    isReconciled: row.is_reconciled,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
   };
 };
 
@@ -31,325 +67,252 @@ const receiptService = {
    * @returns {Promise<Object>} Created receipt
    */
   createReceipt: async (receiptData, file = null) => {
-    const headers = await getAuthHeaders();
+    const userId = await getUserId();
+    let imageUrl = null;
     
+    // Upload image if provided
     if (file) {
-      // Use FormData for file upload
-      const formData = new FormData();
-      formData.append('image', file);
-      Object.keys(receiptData).forEach(key => {
-        if (receiptData[key] !== null && receiptData[key] !== undefined && receiptData[key] !== '') {
-          formData.append(key, receiptData[key]);
-        }
-      });
+      const ext = file.name.split('.').pop();
+      const path = `receipts/${userId}/${Date.now()}.${ext}`;
+      const { error: uploadError } = await supabase.storage
+        .from('receipts')
+        .upload(path, file);
+      if (uploadError) throw uploadError;
       
-      const response = await axios.post(`${API_BASE}/receipts`, formData, {
-        headers: {
-          ...headers,
-          'Content-Type': 'multipart/form-data'
-        }
-      });
-      return response.data;
-    } else {
-      // JSON request without file
-      const response = await axios.post(`${API_BASE}/receipts`, receiptData, {
-        headers: {
-          ...headers,
-          'Content-Type': 'application/json'
-        }
-      });
-      return response.data;
+      const { data: urlData } = supabase.storage
+        .from('receipts')
+        .getPublicUrl(path);
+      imageUrl = urlData.publicUrl;
     }
+    
+    const { data, error } = await supabase
+      .from('receipts')
+      .insert({
+        user_id: userId,
+        date: receiptData.date,
+        amount: receiptData.amount,
+        vendor: receiptData.vendor,
+        vendor_id: receiptData.vendorId,
+        category: receiptData.category,
+        description: receiptData.description,
+        notes: receiptData.notes,
+        image_url: imageUrl || receiptData.imageUrl,
+        transaction_id: receiptData.transactionId,
+        company_id: receiptData.companyId,
+        is_reconciled: receiptData.isReconciled || false,
+      })
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return { success: true, data: transformReceipt(data) };
   },
 
   /**
-   * Get paginated list of receipts with filters
-   * @param {Object} filters - Filter options
-   * @param {Object} sort - Sort options { field, order }
-   * @param {Object} pagination - Pagination { limit, offset }
-   * @returns {Promise<Object>} { data: receipts[], pagination }
+   * Get all receipts with optional filters
    */
-  getReceipts: async (filters = {}, sort = {}, pagination = {}) => {
-    const headers = await getAuthHeaders();
+  getReceipts: async (options = {}) => {
+    const userId = await getUserId();
     
-    const params = {
-      ...filters,
-      sortBy: sort.field,
-      sortOrder: sort.order,
-      limit: pagination.limit,
-      offset: pagination.offset
+    let query = supabase
+      .from('receipts')
+      .select('*', { count: 'exact' })
+      .eq('user_id', userId)
+      .order('date', { ascending: false });
+    
+    if (options.companyId) query = query.eq('company_id', options.companyId);
+    if (options.category) query = query.eq('category', options.category);
+    if (options.vendorId) query = query.eq('vendor_id', options.vendorId);
+    if (options.startDate) query = query.gte('date', options.startDate);
+    if (options.endDate) query = query.lte('date', options.endDate);
+    if (options.isReconciled !== undefined) query = query.eq('is_reconciled', options.isReconciled);
+    
+    const limit = options.limit || 100;
+    const offset = options.offset || 0;
+    query = query.range(offset, offset + limit - 1);
+    
+    const { data, error, count } = await query;
+    if (error) throw error;
+    
+    return {
+      success: true,
+      data: (data || []).map(transformReceipt),
+      total: count || 0,
     };
+  },
+
+  /**
+   * Get a single receipt by ID
+   */
+  getReceipt: async (id) => {
+    const userId = await getUserId();
     
-    // Remove undefined/null params
-    Object.keys(params).forEach(key => {
-      if (params[key] === undefined || params[key] === null) {
-        delete params[key];
-      }
-    });
+    const { data, error } = await supabase
+      .from('receipts')
+      .select('*')
+      .eq('id', id)
+      .eq('user_id', userId)
+      .single();
     
-    const response = await axios.get(`${API_BASE}/receipts`, {
-      headers,
-      params
-    });
-    return response.data;
+    if (error) throw error;
+    return { success: true, data: transformReceipt(data) };
   },
 
   /**
-   * Get receipt by ID
-   * @param {string} receiptId - Receipt ID
-   * @returns {Promise<Object>} Receipt data
+   * Update a receipt
    */
-  getReceiptById: async (receiptId) => {
-    const headers = await getAuthHeaders();
-    const response = await axios.get(`${API_BASE}/receipts/${receiptId}`, {
-      headers
-    });
-    return response.data;
-  },
-
-  /**
-   * Update receipt
-   * @param {string} receiptId - Receipt ID
-   * @param {Object} updates - Fields to update
-   * @returns {Promise<Object>} Updated receipt
-   */
-  updateReceipt: async (receiptId, updates) => {
-    const headers = await getAuthHeaders();
-    const response = await axios.put(`${API_BASE}/receipts/${receiptId}`, updates, {
-      headers
-    });
-    return response.data;
-  },
-
-  /**
-   * Delete receipt
-   * @param {string} receiptId - Receipt ID
-   * @param {Object} options - { deleteTransaction: boolean }
-   * @returns {Promise<Object>} Success response
-   */
-  deleteReceipt: async (receiptId, options = {}) => {
-    const headers = await getAuthHeaders();
-    const params = {};
-    if (options.deleteTransaction !== undefined) {
-      params.deleteTransaction = options.deleteTransaction;
+  updateReceipt: async (id, updates, file = null) => {
+    const userId = await getUserId();
+    let imageUrl = updates.imageUrl;
+    
+    // Upload new image if provided
+    if (file) {
+      const ext = file.name.split('.').pop();
+      const path = `receipts/${userId}/${Date.now()}.${ext}`;
+      const { error: uploadError } = await supabase.storage
+        .from('receipts')
+        .upload(path, file);
+      if (uploadError) throw uploadError;
+      
+      const { data: urlData } = supabase.storage
+        .from('receipts')
+        .getPublicUrl(path);
+      imageUrl = urlData.publicUrl;
     }
-    const response = await axios.delete(`${API_BASE}/receipts/${receiptId}`, {
-      headers,
-      params
-    });
-    return response.data;
+    
+    const dbUpdates = {};
+    if (updates.date !== undefined) dbUpdates.date = updates.date;
+    if (updates.amount !== undefined) dbUpdates.amount = updates.amount;
+    if (updates.vendor !== undefined) dbUpdates.vendor = updates.vendor;
+    if (updates.vendorId !== undefined) dbUpdates.vendor_id = updates.vendorId;
+    if (updates.category !== undefined) dbUpdates.category = updates.category;
+    if (updates.description !== undefined) dbUpdates.description = updates.description;
+    if (updates.notes !== undefined) dbUpdates.notes = updates.notes;
+    if (imageUrl !== undefined) dbUpdates.image_url = imageUrl;
+    if (updates.transactionId !== undefined) dbUpdates.transaction_id = updates.transactionId;
+    if (updates.companyId !== undefined) dbUpdates.company_id = updates.companyId;
+    if (updates.isReconciled !== undefined) dbUpdates.is_reconciled = updates.isReconciled;
+    
+    const { data, error } = await supabase
+      .from('receipts')
+      .update(dbUpdates)
+      .eq('id', id)
+      .eq('user_id', userId)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return { success: true, data: transformReceipt(data) };
+  },
+
+  /**
+   * Delete a receipt
+   */
+  deleteReceipt: async (id) => {
+    const userId = await getUserId();
+    
+    const { error } = await supabase
+      .from('receipts')
+      .delete()
+      .eq('id', id)
+      .eq('user_id', userId);
+    
+    if (error) throw error;
+    return { success: true };
   },
 
   /**
    * Batch update multiple receipts
-   * @param {string[]} receiptIds - Array of receipt IDs
-   * @param {Object} updates - Fields to update
-   * @returns {Promise<Object>} { successful, failed }
    */
   batchUpdateReceipts: async (receiptIds, updates) => {
-    const headers = await getAuthHeaders();
-    const response = await axios.put(`${API_BASE}/receipts/batch`, {
-      receiptIds,
-      updates
-    }, {
-      headers
-    });
-    return response.data;
-  },
-
-  /**
-   * Batch delete multiple receipts
-   * @param {string[]} receiptIds - Array of receipt IDs
-   * @returns {Promise<Object>} { successful, failed }
-   */
-  batchDeleteReceipts: async (receiptIds) => {
-    const headers = await getAuthHeaders();
-    const response = await axios.delete(`${API_BASE}/receipts/batch`, {
-      headers,
-      data: { receiptIds }
-    });
-    return response.data;
-  },
-
-  /**
-   * Attach receipt to transaction
-   * @param {string} receiptId - Receipt ID
-   * @param {string} transactionId - Transaction ID
-   * @returns {Promise<Object>} Updated receipt
-   */
-  attachToTransaction: async (receiptId, transactionId) => {
-    const headers = await getAuthHeaders();
-    const response = await axios.post(`${API_BASE}/receipts/${receiptId}/attach`, {
-      transactionId
-    }, {
-      headers
-    });
-    return response.data;
-  },
-
-  /**
-   * Detach receipt from transaction
-   * @param {string} receiptId - Receipt ID
-   * @returns {Promise<Object>} Updated receipt
-   */
-  detachFromTransaction: async (receiptId) => {
-    const headers = await getAuthHeaders();
-    const response = await axios.post(`${API_BASE}/receipts/${receiptId}/detach`, {}, {
-      headers
-    });
-    return response.data;
-  },
-
-  /**
-   * Bulk link multiple receipts to a single transaction
-   * @param {string[]} receiptIds - Array of receipt IDs
-   * @param {string} transactionId - Transaction ID to link to
-   * @returns {Promise<Object>} { successful, failed }
-   */
-  bulkLinkToTransaction: async (receiptIds, transactionId) => {
-    const headers = await getAuthHeaders();
-    const response = await axios.post(`${API_BASE}/receipts/bulk-link`, {
-      receiptIds,
-      transactionId
-    }, { headers });
-    return response.data;
-  },
-
-  /**
-   * Bulk unlink multiple receipts from their transactions
-   * @param {string[]} receiptIds - Array of receipt IDs
-   * @returns {Promise<Object>} { successful, failed }
-   */
-  bulkUnlinkFromTransactions: async (receiptIds) => {
-    const headers = await getAuthHeaders();
-    const response = await axios.post(`${API_BASE}/receipts/bulk-unlink`, {
-      receiptIds
-    }, { headers });
-    return response.data;
-  },
-
-  /**
-   * Link a receipt to multiple transactions at once
-   * @param {string} receiptId - Receipt ID
-   * @param {string[]} transactionIds - Array of transaction IDs
-   * @returns {Promise<Object>} Updated receipt with results
-   */
-  linkToMultipleTransactions: async (receiptId, transactionIds) => {
-    const headers = await getAuthHeaders();
-    const response = await axios.post(`${API_BASE}/receipts/${receiptId}/link-multiple`, {
-      transactionIds
-    }, { headers });
-    return response.data;
-  },
-
-  /**
-   * Add a single transaction link to receipt (multi-transaction support)
-   * @param {string} receiptId - Receipt ID
-   * @param {string} transactionId - Transaction ID to add
-   * @returns {Promise<Object>} Updated receipt
-   */
-  addTransactionLink: async (receiptId, transactionId) => {
-    const headers = await getAuthHeaders();
-    const response = await axios.post(`${API_BASE}/receipts/${receiptId}/add-link/${transactionId}`, {}, {
-      headers
-    });
-    return response.data;
-  },
-
-  /**
-   * Remove a single transaction link from receipt
-   * @param {string} receiptId - Receipt ID
-   * @param {string} transactionId - Transaction ID to remove
-   * @returns {Promise<Object>} Updated receipt
-   */
-  removeTransactionLink: async (receiptId, transactionId) => {
-    const headers = await getAuthHeaders();
-    const response = await axios.delete(`${API_BASE}/receipts/${receiptId}/remove-link/${transactionId}`, {
-      headers
-    });
-    return response.data;
-  },
-
-  /**
-   * Upload or replace image for existing receipt
-   * @param {string} receiptId - Receipt ID
-   * @param {File} file - Image file
-   * @param {Function} onProgress - Progress callback
-   * @returns {Promise<Object>} Updated receipt
-   */
-  uploadImage: async (receiptId, file, onProgress = null) => {
-    const headers = await getAuthHeaders();
-    const formData = new FormData();
-    formData.append('image', file);
+    const userId = await getUserId();
     
-    const response = await axios.post(`${API_BASE}/receipts/${receiptId}/upload`, formData, {
-      headers: {
-        ...headers,
-        'Content-Type': 'multipart/form-data'
-      },
-      onUploadProgress: onProgress ? (progressEvent) => {
-        const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-        onProgress(percentCompleted);
-      } : undefined
-    });
-    return response.data;
+    const dbUpdates = {};
+    if (updates.category !== undefined) dbUpdates.category = updates.category;
+    if (updates.companyId !== undefined) dbUpdates.company_id = updates.companyId;
+    if (updates.isReconciled !== undefined) dbUpdates.is_reconciled = updates.isReconciled;
+    
+    const { data, error } = await supabase
+      .from('receipts')
+      .update(dbUpdates)
+      .in('id', receiptIds)
+      .eq('user_id', userId)
+      .select();
+    
+    if (error) throw error;
+    return { success: true, data: (data || []).map(transformReceipt) };
   },
 
   /**
-   * Delete image from receipt (keep receipt record)
-   * @param {string} receiptId - Receipt ID
-   * @returns {Promise<Object>} Updated receipt
+   * Link a receipt to a transaction
    */
-  deleteImage: async (receiptId) => {
-    const headers = await getAuthHeaders();
-    const response = await axios.delete(`${API_BASE}/receipts/${receiptId}/image`, {
-      headers
-    });
-    return response.data;
+  linkToTransaction: async (receiptId, transactionId) => {
+    return receiptService.updateReceipt(receiptId, { transactionId });
   },
 
   /**
    * Get receipt statistics
-   * @returns {Promise<Object>} Statistics
    */
-  getReceiptStats: async () => {
-    const headers = await getAuthHeaders();
-    const response = await axios.get(`${API_BASE}/receipts/stats`, {
-      headers
-    });
-    return response.data;
+  getStats: async (options = {}) => {
+    const userId = await getUserId();
+    
+    let query = supabase
+      .from('receipts')
+      .select('amount, category, is_reconciled')
+      .eq('user_id', userId);
+    
+    if (options.companyId) query = query.eq('company_id', options.companyId);
+    if (options.startDate) query = query.gte('date', options.startDate);
+    if (options.endDate) query = query.lte('date', options.endDate);
+    
+    const { data, error } = await query;
+    if (error) throw error;
+    
+    const stats = {
+      totalCount: data.length,
+      totalAmount: 0,
+      reconciledCount: 0,
+      unreconciledCount: 0,
+      byCategory: {},
+    };
+    
+    for (const receipt of data) {
+      stats.totalAmount += parseFloat(receipt.amount) || 0;
+      if (receipt.is_reconciled) {
+        stats.reconciledCount++;
+      } else {
+        stats.unreconciledCount++;
+      }
+      const cat = receipt.category || 'Uncategorized';
+      stats.byCategory[cat] = (stats.byCategory[cat] || 0) + 1;
+    }
+    
+    return { success: true, data: stats };
   },
 
   /**
-   * Bulk create receipts from transactions
-   * @param {Array} transactions - Array of transaction objects
-   * @returns {Promise<Object>} { successCount, failCount, receipts, failed }
-   */
-  bulkCreateFromTransactions: async (transactions) => {
-    const headers = await getAuthHeaders();
-    const response = await axios.post(`${API_BASE}/receipts/bulk-from-transactions`, {
-      transactions
-    }, {
-      headers
-    });
-    return response.data;
-  },
-
-  /**
-   * Bulk create receipts (with automatic transaction creation for each)
-   * PRIMARY use case: Quickly enter multiple cash/off-statement purchases
-   * @param {Array} receipts - Array of receipt data objects
-   * @returns {Promise<Object>} { results, allSucceeded, someSucceeded, successCount, failCount }
+   * Bulk create receipts
    */
   bulkCreate: async (receipts) => {
-    const headers = await getAuthHeaders();
-    const response = await axios.post(`${API_BASE}/receipts/bulk`, {
-      receipts
-    }, {
-      headers
-    });
-    return response.data;
-  }
+    const userId = await getUserId();
+    const results = [];
+    
+    for (const receipt of receipts) {
+      try {
+        const result = await receiptService.createReceipt(receipt);
+        results.push({ success: true, data: result.data });
+      } catch (error) {
+        results.push({ success: false, error: error.message });
+      }
+    }
+    
+    return {
+      success: true,
+      results,
+      successCount: results.filter(r => r.success).length,
+      failCount: results.filter(r => !r.success).length,
+    };
+  },
 };
 
 export default receiptService;

@@ -20,7 +20,7 @@ vi.mock('react-hot-toast', () => ({
 
 // Mock API client
 vi.mock('../../services/api', () => ({
-  apiClient: {
+  default: {
     csv: {
       getImports: vi.fn(),
       getImportById: vi.fn(),
@@ -33,7 +33,7 @@ vi.mock('../../services/api', () => ({
   },
 }));
 
-import { apiClient } from '../../services/api';
+import api from '../../services/api';
 import { toast } from 'react-hot-toast';
 import ManageCSVImports from '../../features/Documents/ManageCSVImports';
 
@@ -99,19 +99,19 @@ describe('ManageCSVImports', () => {
     });
 
     // Default mock responses
-    apiClient.csv.getImports.mockResolvedValue({
+    api.csv.getImports.mockResolvedValue({
       success: true,
       data: mockImports,
       count: mockImports.length,
     });
 
-    apiClient.csv.getImportTransactions.mockResolvedValue({
+    api.csv.getImportTransactions.mockResolvedValue({
       success: true,
       data: mockTransactions,
       count: mockTransactions.length,
     });
 
-    apiClient.companies.getAll.mockResolvedValue({
+    api.companies.getAll.mockResolvedValue({
       companies: [
         { id: 'company-1', name: 'Test Company' },
         { id: 'company-2', name: 'Another Business' },
@@ -170,7 +170,7 @@ describe('ManageCSVImports', () => {
     });
 
     it('should show empty state when no imports', async () => {
-      apiClient.csv.getImports.mockResolvedValue({
+      api.csv.getImports.mockResolvedValue({
         success: true,
         data: [],
         count: 0,
@@ -188,7 +188,7 @@ describe('ManageCSVImports', () => {
     it('should show loading state while fetching', async () => {
       // Create a promise that doesn't resolve immediately
       let resolvePromise;
-      apiClient.csv.getImports.mockReturnValue(
+      api.csv.getImports.mockReturnValue(
         new Promise((resolve) => {
           resolvePromise = resolve;
         })
@@ -231,7 +231,7 @@ describe('ManageCSVImports', () => {
     });
 
     it('should handle successful delete', async () => {
-      apiClient.csv.deleteImport.mockResolvedValue({
+      api.csv.deleteImport.mockResolvedValue({
         success: true,
         data: { deletedTransactionCount: 0 },
       });
@@ -259,7 +259,7 @@ describe('ManageCSVImports', () => {
     });
 
     it('should show error toast on delete failure', async () => {
-      apiClient.csv.deleteImport.mockRejectedValue({
+      api.csv.deleteImport.mockRejectedValue({
         response: { data: { message: 'Failed to delete import' } },
       });
 
@@ -297,7 +297,7 @@ describe('ManageCSVImports', () => {
 
   describe('Error Handling', () => {
     it('should display error message on fetch failure', async () => {
-      apiClient.csv.getImports.mockRejectedValue(new Error('Network error'));
+      api.csv.getImports.mockRejectedValue(new Error('Network error'));
 
       renderComponent();
 
@@ -315,7 +315,7 @@ describe('ManageCSVImports', () => {
       renderComponent();
 
       await waitFor(() => {
-        expect(apiClient.csv.getImports).toHaveBeenCalled();
+        expect(api.csv.getImports).toHaveBeenCalled();
       });
     });
   });

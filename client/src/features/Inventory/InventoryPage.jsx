@@ -19,7 +19,7 @@ import {
   useDeleteInventoryItem,
   useLowStockItems
 } from '../../hooks/useInventory';
-import { apiClient } from '../../services/api';
+import api from '../../services/api';
 import { useQuery } from '@tanstack/react-query';
 
 const InventoryPage = () => {
@@ -40,18 +40,32 @@ const InventoryPage = () => {
   // Fetch companies for filter dropdown
   const { data: companiesResponse } = useQuery({
     queryKey: ['companies'],
-    queryFn: apiClient.companies.getAll,
+    queryFn: api.companies.getAll,
     staleTime: 5 * 60 * 1000
   });
-  const companies = companiesResponse?.data || [];
+  // Server returns { success: true, data: [...] }
+  // Supabase returns { success: true, data: { companies: [...] } }
+  const companiesRaw = Array.isArray(companiesResponse?.data) 
+    ? companiesResponse.data 
+    : companiesResponse?.data?.companies;
+  const companies = Array.isArray(companiesRaw) ? companiesRaw : [];
 
   // Fetch inventory items
   const { data: itemsResponse, isLoading, error, refetch } = useInventoryItems(filters);
-  const items = itemsResponse?.data || [];
+  // Server returns { success: true, data: [...] }
+  // Supabase returns { success: true, data: { items: [...], total: N } }
+  const itemsRaw = Array.isArray(itemsResponse?.data) 
+    ? itemsResponse.data 
+    : itemsResponse?.data?.items;
+  const items = Array.isArray(itemsRaw) ? itemsRaw : [];
 
   // Fetch low stock items
   const { data: lowStockResponse } = useLowStockItems({ companyId: filters.companyId });
-  const lowStockItems = lowStockResponse?.data || [];
+  // Same pattern for low stock items
+  const lowStockRaw = Array.isArray(lowStockResponse?.data) 
+    ? lowStockResponse.data 
+    : lowStockResponse?.data?.items;
+  const lowStockItems = Array.isArray(lowStockRaw) ? lowStockRaw : [];
 
   // Mutations
   const createMutation = useCreateInventoryItem();

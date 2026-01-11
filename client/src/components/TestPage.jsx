@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { apiClient } from '../services/api';
+import api from '../services/api';
 
 const TestPage = () => {
   const [testResult, setTestResult] = useState(null);
@@ -21,7 +21,7 @@ const TestPage = () => {
   const testAuthenticatedApi = async () => {
     setLoading(true);
     try {
-      const response = await apiClient.transactions.getAll({ limit: 1 });
+      const response = await api.transactions.getAll({ limit: 1 });
       setTestResult({ 
         success: true, 
         data: response.data,

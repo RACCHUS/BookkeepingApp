@@ -1,10 +1,10 @@
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import StatementSelector from '../Statements/StatementSelector';
 import { CompanySelector } from '../../components/common';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-hot-toast';
-import { apiClient } from '../../services/api';
+import api from '../../services/api';
 import receiptService from '../../services/receiptService';
 import checkService from '../../services/checkService';
 import { useAuth } from '../../context/AuthContext';
@@ -109,7 +109,11 @@ const TransactionList = () => {
     companyId: '',
     statementId: '',
     payee: '',
+    payeeId: '',
     vendor: '',
+    vendorId: '',
+    incomeSourceId: '',
+    csvImportId: '',
     hasCategory: '',
     hasNotes: '',
     is1099: '',
@@ -132,6 +136,230 @@ const TransactionList = () => {
   
   // Multi-level sorting state
   const [sorts, setSorts] = useState(createDefaultSorts());
+
+  // All available columns with default order and visibility
+  // IMPORTANT: These must match fields from transformTransaction() in supabaseClient.js
+  const defaultColumns = [
+    // Primary classification
+    { id: 'category', label: 'Category', visible: true },
+    { id: 'subcategory', label: 'Subcategory', visible: false },
+    // Parties
+    { id: 'company', label: 'Company', visible: true },
+    { id: 'payee', label: 'Payee', visible: true },
+    { id: 'vendor', label: 'Vendor', visible: true },
+    { id: 'incomeSource', label: 'Income Source', visible: false },
+    // Payment details
+    { id: 'paymentMethod', label: 'Payment Method', visible: false },
+    { id: 'checkNumber', label: 'Check #', visible: false },
+    { id: 'referenceNumber', label: 'Reference #', visible: false },
+    // Source & Import
+    { id: 'source', label: 'Source', visible: false },
+    { id: 'sectionCode', label: 'Section Code', visible: false },
+    { id: 'bankName', label: 'Bank', visible: false },
+    // Status & Flags
+    { id: 'isReconciled', label: 'Reconciled', visible: false },
+    { id: 'isReviewed', label: 'Reviewed', visible: false },
+    { id: 'is1099Payment', label: '1099 Payment', visible: false },
+    // Audit
+    { id: 'createdAt', label: 'Created', visible: false },
+    { id: 'notes', label: 'Notes', visible: false },
+  ];
+
+  // Load saved column preferences from localStorage
+  const loadColumnPreferences = () => {
+    try {
+      const saved = localStorage.getItem('transactionColumnPrefs');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        // Merge saved preferences with defaults (in case new columns were added)
+        const savedIds = new Set(parsed.map(c => c.id));
+        const merged = [
+          ...parsed,
+          ...defaultColumns.filter(c => !savedIds.has(c.id))
+        ];
+        return merged;
+      }
+    } catch (e) {
+      console.warn('Failed to load column preferences:', e);
+    }
+    return defaultColumns;
+  };
+
+  const [columns, setColumns] = useState(loadColumnPreferences);
+
+  // Save column preferences when they change
+  const saveColumnPreferences = (newColumns) => {
+    try {
+      localStorage.setItem('transactionColumnPrefs', JSON.stringify(newColumns));
+    } catch (e) {
+      console.warn('Failed to save column preferences:', e);
+    }
+  };
+
+  // Toggle column visibility
+  const toggleColumnVisibility = (columnId) => {
+    setColumns(prev => {
+      const updated = prev.map(col => 
+        col.id === columnId ? { ...col, visible: !col.visible } : col
+      );
+      saveColumnPreferences(updated);
+      return updated;
+    });
+  };
+
+  // Reorder columns via drag and drop
+  const [draggedColumn, setDraggedColumn] = useState(null);
+  
+  const handleColumnDragStart = (e, columnId) => {
+    setDraggedColumn(columnId);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleColumnDragOver = (e, targetColumnId) => {
+    e.preventDefault();
+    if (!draggedColumn || draggedColumn === targetColumnId) return;
+    
+    setColumns(prev => {
+      const dragIndex = prev.findIndex(c => c.id === draggedColumn);
+      const targetIndex = prev.findIndex(c => c.id === targetColumnId);
+      if (dragIndex === -1 || targetIndex === -1) return prev;
+      
+      const updated = [...prev];
+      const [removed] = updated.splice(dragIndex, 1);
+      updated.splice(targetIndex, 0, removed);
+      return updated;
+    });
+  };
+
+  const handleColumnDragEnd = () => {
+    if (draggedColumn) {
+      saveColumnPreferences(columns);
+    }
+    setDraggedColumn(null);
+  };
+
+  // Get visible columns in order
+  const visibleColumns = useMemo(() => {
+    return columns.filter(col => col.visible).map(col => col.id);
+  }, [columns]);
+
+  // Helper to handle column header click for sorting
+  const handleColumnSort = (field) => {
+    setSorts(currentSorts => {
+      const existingSort = currentSorts.find(s => s.field === field);
+      if (!existingSort) {
+        // Not sorted by this field - add as primary sort (ascending)
+        return [{ field, direction: 'asc' }, ...currentSorts.filter(s => s.field !== field)];
+      } else if (existingSort.direction === 'asc') {
+        // Currently ascending - switch to descending
+        return currentSorts.map(s => s.field === field ? { ...s, direction: 'desc' } : s);
+      } else {
+        // Currently descending - remove this sort
+        const filtered = currentSorts.filter(s => s.field !== field);
+        return filtered.length > 0 ? filtered : [{ field: 'date', direction: 'desc' }];
+      }
+    });
+  };
+
+  // Get sort indicator for a field
+  const getSortIndicator = (field) => {
+    const sortIndex = sorts.findIndex(s => s.field === field);
+    if (sortIndex === -1) return null;
+    const sort = sorts[sortIndex];
+    return {
+      direction: sort.direction,
+      priority: sortIndex + 1
+    };
+  };
+
+  // Render sort indicator component
+  const SortIndicator = ({ field }) => {
+    const indicator = getSortIndicator(field);
+    if (!indicator) return <span className="ml-1 text-gray-300 dark:text-gray-600">↕</span>;
+    return (
+      <span className="ml-1 text-blue-500 dark:text-blue-400">
+        {indicator.direction === 'asc' ? '↑' : '↓'}
+        {sorts.length > 1 && <sup className="text-[9px]">{indicator.priority}</sup>}
+      </span>
+    );
+  };
+  
+  // Column widths state (in pixels) - resizable
+  const defaultColumnWidths = {
+    date: 64,
+    type: 64,
+    description: 200,
+    category: 128,
+    subcategory: 128,
+    company: 128,
+    companyId: 128,
+    payee: 128,
+    payeeId: 128,
+    taxYear: 80,
+    incomeSource: 128,
+    incomeSourceId: 128,
+    vendor: 128,
+    vendorName: 128,
+    sectionCode: 100,
+    paymentMethod: 110,
+    createdAt: 100,
+    amount: 112,
+  };
+  const [columnWidths, setColumnWidths] = useState(defaultColumnWidths);
+  const resizingRef = useRef(null);
+
+  // Handle column resize
+  const handleResizeStart = (e, columnKey) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const startX = e.clientX;
+    const startWidth = columnWidths[columnKey] || defaultColumnWidths[columnKey] || 128;
+    
+    resizingRef.current = { columnKey, startX, startWidth };
+    
+    const handleMouseMove = (moveEvent) => {
+      if (!resizingRef.current) return;
+      const diff = moveEvent.clientX - resizingRef.current.startX;
+      const newWidth = Math.max(50, resizingRef.current.startWidth + diff); // Min 50px
+      setColumnWidths(prev => ({ ...prev, [resizingRef.current.columnKey]: newWidth }));
+    };
+    
+    const handleMouseUp = () => {
+      resizingRef.current = null;
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+    
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+  };
+
+  // Resizable column header component with optional drag support
+  const ResizableHeader = ({ columnKey, children, className, onClick, draggable, onDragStart, onDragOver, onDragEnd }) => (
+    <div 
+      className={`flex-shrink-0 relative ${className}`}
+      style={{ width: columnWidths[columnKey] || defaultColumnWidths[columnKey] || 128 }}
+      draggable={draggable}
+      onDragStart={onDragStart}
+      onDragOver={onDragOver}
+      onDragEnd={onDragEnd}
+    >
+      <div 
+        className="cursor-pointer hover:text-gray-700 dark:hover:text-gray-200 select-none pr-3"
+        onClick={onClick}
+      >
+        {children}
+      </div>
+      <div
+        className="absolute right-0 top-0 bottom-0 w-[3px] cursor-col-resize bg-gray-300 dark:bg-gray-600 hover:bg-blue-400 dark:hover:bg-blue-500 active:bg-blue-500 dark:active:bg-blue-400 rounded-full opacity-60 hover:opacity-100"
+        onMouseDown={(e) => handleResizeStart(e, columnKey)}
+      />
+    </div>
+  );
   
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -162,8 +390,8 @@ const TransactionList = () => {
   // Fetch available statements (both PDF and CSV) for filter dropdown
   const fetchStatements = () => {
     Promise.all([
-      apiClient.pdf.getUploads().catch(() => ({ data: [] })),
-      apiClient.csv.getImports({ status: 'completed' }).catch(() => ({ data: [] }))
+      api.pdf.getUploads().catch(() => ({ data: [] })),
+      api.csv.getImports({ status: 'completed' }).catch(() => ({ data: [] }))
     ])
       .then(([pdfRes, csvRes]) => {
         // Process PDF uploads
@@ -258,36 +486,56 @@ const TransactionList = () => {
   // All query and mutation hooks must be declared before any conditional logic
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['transactions', queryParams],
-    queryFn: () => apiClient.transactions.getAll(queryParams),
+    queryFn: () => api.transactions.getAll(queryParams),
     enabled: !!user && !authLoading, // Only run query when user is authenticated and auth is not loading
+    refetchOnMount: 'always', // Always refetch when navigating to transactions page
   });
 
   // Fetch companies for bulk transaction entry
   const { data: companiesData } = useQuery({
     queryKey: ['companies'],
-    queryFn: () => apiClient.companies.getAll(),
+    queryFn: () => api.companies.getAll(),
     enabled: !!user && !authLoading,
   });
 
-  const companies = companiesData?.data?.companies || companiesData?.companies || [];
+  // Server returns { success: true, data: [...] } 
+  // Supabase returns { success: true, data: { companies: [...] } }
+  // Handle both formats
+  const companies = Array.isArray(companiesData?.data) 
+    ? companiesData.data 
+    : (companiesData?.data?.companies || []);
 
   // Fetch payees for bulk edit panel
   const { data: payeesData } = useQuery({
     queryKey: ['payees'],
-    queryFn: () => apiClient.payees?.getAll?.() || Promise.resolve({ data: [] }),
+    queryFn: () => api.payees?.getAll?.() || Promise.resolve({ data: [] }),
     enabled: !!user && !authLoading,
   });
 
-  const payees = payeesData?.data?.payees || payeesData?.data || [];
+  // Server returns { success: true, payees: [...] }
+  // Supabase returns { success: true, data: { payees: [...] } }
+  const payees = payeesData?.payees || payeesData?.data?.payees || [];
+
+  // Fetch vendors (payees with type 'vendor') for bulk edit panel
+  const { data: vendorsData } = useQuery({
+    queryKey: ['vendors-for-transactions'],
+    queryFn: () => api.payees?.getVendors?.() || Promise.resolve({ data: { vendors: [] } }),
+    enabled: !!user && !authLoading,
+  });
+
+  // getVendors returns { vendors: [...], data: { vendors: [...] } }
+  const vendors = vendorsData?.vendors || vendorsData?.data?.vendors || [];
 
   // Fetch income sources for bulk edit panel
   const { data: incomeSourcesData } = useQuery({
     queryKey: ['income-sources'],
-    queryFn: () => apiClient.incomeSources?.getAll?.() || Promise.resolve({ data: [] }),
+    queryFn: () => api.incomeSources?.getAll?.() || Promise.resolve({ data: [] }),
     enabled: !!user && !authLoading,
   });
 
-  const incomeSources = incomeSourcesData?.data?.sources || incomeSourcesData?.data || [];
+  // Server returns { success: true, sources: [...] }
+  // Supabase returns { success: true, data: { incomeSources: [...] } }
+  const incomeSources = incomeSourcesData?.sources || incomeSourcesData?.data?.incomeSources || [];
 
   // Fetch receipts for bulk edit panel
   const { data: receiptsData } = useQuery({
@@ -310,7 +558,7 @@ const TransactionList = () => {
   // Fetch CSV imports for bulk edit panel
   const { data: csvImportsData } = useQuery({
     queryKey: ['csv-imports'],
-    queryFn: () => apiClient.csv.getImports(),
+    queryFn: () => api.csv.getImports(),
     enabled: !!user && !authLoading,
   });
 
@@ -323,7 +571,7 @@ const TransactionList = () => {
 
   // Delete mutation
   const deleteMutation = useMutation({
-    mutationFn: (transactionId) => apiClient.transactions.delete(transactionId),
+    mutationFn: (transactionId) => api.transactions.delete(transactionId),
     onSuccess: (data, transactionId) => {
       toast.success('Transaction deleted successfully');
       // Refresh all transaction-related queries
@@ -342,7 +590,7 @@ const TransactionList = () => {
 
   // Create mutation
   const createMutation = useMutation({
-    mutationFn: (transactionData) => apiClient.transactions.create(transactionData),
+    mutationFn: (transactionData) => api.transactions.create(transactionData),
     onSuccess: () => {
       // Refresh the transactions list so new transaction appears with correct Firestore id
       queryClient.invalidateQueries(['transactions']);
@@ -358,7 +606,7 @@ const TransactionList = () => {
 
   // Update mutation
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }) => apiClient.transactions.update(id, data),
+    mutationFn: ({ id, data }) => api.transactions.update(id, data),
     onSuccess: () => {
       // Refresh all transaction-related queries
       queryClient.invalidateQueries(['transactions']);
@@ -374,7 +622,7 @@ const TransactionList = () => {
 
   // Bulk update mutation
   const bulkUpdateMutation = useMutation({
-    mutationFn: (transactions) => apiClient.transactions.bulkUpdate(transactions),
+    mutationFn: (transactions) => api.transactions.bulkUpdate(transactions),
     onSuccess: () => {
       // Refresh all transaction-related queries
       queryClient.invalidateQueries(['transactions']);
@@ -394,7 +642,7 @@ const TransactionList = () => {
 
   // Bulk create mutation for quick transaction entry
   const bulkCreateMutation = useMutation({
-    mutationFn: (transactions) => apiClient.transactions.bulkCreate(transactions),
+    mutationFn: (transactions) => api.transactions.bulkCreate(transactions),
     onSuccess: (response) => {
       const { results, successCount, failedCount } = response?.data || {};
       if (failedCount === 0) {
@@ -418,7 +666,7 @@ const TransactionList = () => {
 
   // Update mutation for inline editing
   const inlineUpdateMutation = useMutation({
-    mutationFn: ({ id, data }) => apiClient.transactions.update(id, data),
+    mutationFn: ({ id, data }) => api.transactions.update(id, data),
     onSuccess: () => {
       // Refresh all transaction-related queries
       queryClient.invalidateQueries(['transactions']);
@@ -438,7 +686,7 @@ const TransactionList = () => {
 
   // Link transactions to upload mutation
   const linkToUploadMutation = useMutation({
-    mutationFn: ({ uploadId, transactionIds }) => apiClient.pdf.linkTransactions(uploadId, transactionIds),
+    mutationFn: ({ uploadId, transactionIds }) => api.pdf.linkTransactions(uploadId, transactionIds),
     onSuccess: (data) => {
       const linkedCount = data?.data?.linkedCount || 0;
       toast.success(`Linked ${linkedCount} transactions to upload`);
@@ -598,7 +846,7 @@ const TransactionList = () => {
     try {
       // For now, delete one by one (can be optimized with a bulk delete endpoint)
       const deletePromises = Array.from(selectedTransactions).map(id => 
-        apiClient.transactions.delete(id)
+        api.transactions.delete(id)
       );
       
       await Promise.all(deletePromises);
@@ -743,10 +991,15 @@ const TransactionList = () => {
     }
 
     // Payee filter
-    if (f.payee) {
-      if (f.payee === '__no_payee') {
-        filtered = filtered.filter(tx => !tx.payee || tx.payee.trim() === '');
+    if (f.payee || f.payeeId) {
+      const payeeFilter = f.payeeId || f.payee;
+      if (payeeFilter === '__no_payee') {
+        filtered = filtered.filter(tx => !tx.payeeId && (!tx.payee || tx.payee.trim() === ''));
+      } else if (f.payeeId) {
+        // Filter by payee ID
+        filtered = filtered.filter(tx => String(tx.payeeId) === String(f.payeeId));
       } else {
+        // Filter by payee name (text search)
         filtered = filtered.filter(tx => 
           tx.payee?.toLowerCase().includes(f.payee.toLowerCase())
         );
@@ -754,13 +1007,36 @@ const TransactionList = () => {
     }
 
     // Vendor filter
-    if (f.vendor) {
-      if (f.vendor === '__no_vendor') {
-        filtered = filtered.filter(tx => !tx.vendorName || tx.vendorName.trim() === '');
+    if (f.vendor || f.vendorId) {
+      const vendorFilter = f.vendorId || f.vendor;
+      if (vendorFilter === '__no_vendor') {
+        filtered = filtered.filter(tx => !tx.vendorId && (!tx.vendorName || tx.vendorName.trim() === ''));
+      } else if (f.vendorId) {
+        // Filter by vendor ID
+        filtered = filtered.filter(tx => String(tx.vendorId) === String(f.vendorId));
       } else {
+        // Filter by vendor name (text search)
         filtered = filtered.filter(tx => 
           tx.vendorName?.toLowerCase().includes(f.vendor.toLowerCase())
         );
+      }
+    }
+
+    // Income source filter
+    if (f.incomeSourceId) {
+      if (f.incomeSourceId === '__no_source') {
+        filtered = filtered.filter(tx => !tx.incomeSourceId);
+      } else {
+        filtered = filtered.filter(tx => String(tx.incomeSourceId) === String(f.incomeSourceId));
+      }
+    }
+
+    // CSV Import filter
+    if (f.csvImportId) {
+      if (f.csvImportId === '__no_import') {
+        filtered = filtered.filter(tx => !tx.csvImportId);
+      } else {
+        filtered = filtered.filter(tx => String(tx.csvImportId) === String(f.csvImportId));
       }
     }
 
@@ -799,9 +1075,9 @@ const TransactionList = () => {
     // 1099 filter
     if (f.is1099) {
       if (f.is1099 === 'yes') {
-        filtered = filtered.filter(tx => tx.is1099Payment || tx.isContractorPayment);
+        filtered = filtered.filter(tx => tx.is1099Payment === true);
       } else if (f.is1099 === 'no') {
-        filtered = filtered.filter(tx => !tx.is1099Payment && !tx.isContractorPayment);
+        filtered = filtered.filter(tx => !tx.is1099Payment);
       }
     }
 
@@ -826,18 +1102,19 @@ const TransactionList = () => {
     // Review status filter
     if (f.isReviewed) {
       if (f.isReviewed === 'yes') {
-        filtered = filtered.filter(tx => tx.isManuallyReviewed === true);
+        filtered = filtered.filter(tx => tx.isReviewed === true);
       } else if (f.isReviewed === 'no') {
-        filtered = filtered.filter(tx => !tx.isManuallyReviewed);
+        filtered = filtered.filter(tx => !tx.isReviewed);
       }
     }
 
-    // Has receipt filter
+    // Has receipt filter (check receipts array for matching transaction IDs)
     if (f.hasReceipt) {
+      const txIdsWithReceipts = new Set(receipts.map(r => r.transactionId).filter(Boolean));
       if (f.hasReceipt === 'yes') {
-        filtered = filtered.filter(tx => tx.receiptUrl);
+        filtered = filtered.filter(tx => txIdsWithReceipts.has(tx.id));
       } else if (f.hasReceipt === 'no') {
-        filtered = filtered.filter(tx => !tx.receiptUrl);
+        filtered = filtered.filter(tx => !txIdsWithReceipts.has(tx.id));
       }
     }
 
@@ -858,9 +1135,9 @@ const TransactionList = () => {
     // Has PDF/source file filter
     if (f.hasPdfSource) {
       if (f.hasPdfSource === 'yes') {
-        filtered = filtered.filter(tx => tx.sourceFileId || tx.statementId);
+        filtered = filtered.filter(tx => tx.uploadId || tx.statementId || tx.sourceFile);
       } else if (f.hasPdfSource === 'no') {
-        filtered = filtered.filter(tx => !tx.sourceFileId && !tx.statementId);
+        filtered = filtered.filter(tx => !tx.uploadId && !tx.statementId && !tx.sourceFile);
       }
     }
 
@@ -874,35 +1151,7 @@ const TransactionList = () => {
 
     // Apply multi-level sorting
     return multiLevelSort(filtered, sorts);
-  }, [data?.data?.transactions, transactionFilters, statements, sorts]);
-
-  // Compute visible columns based on active filters and sorts
-  // These columns will be shown inline in the compact row view
-  const visibleColumns = useMemo(() => {
-    const columns = new Set();
-    const f = transactionFilters;
-    
-    // Add columns for active filters
-    if (f.category) columns.add('category');
-    if (f.companyId) columns.add('company');
-    if (f.payee) columns.add('payee');
-    if (f.vendor) columns.add('vendor');
-    if (f.statementId) columns.add('statementId');
-    if (f.source) columns.add('source');
-    if (f.hasReceipt === 'yes') columns.add('hasReceipt');
-    if (f.hasCheckNumber === 'yes') columns.add('hasCheckNumber');
-    
-    // Add columns for active sorts (first 2 levels only to avoid clutter)
-    sorts.slice(0, 2).forEach(sort => {
-      if (sort.field && sort.field !== 'date' && sort.field !== 'amount' && sort.field !== 'description' && sort.field !== 'type') {
-        if (sort.field === 'companyName') columns.add('company');
-        else if (sort.field === 'payeeName' || sort.field === 'payee') columns.add('payee');
-        else columns.add(sort.field);
-      }
-    });
-    
-    return Array.from(columns);
-  }, [transactionFilters, sorts]);
+  }, [data?.data?.transactions, transactionFilters, statements, sorts, receipts]);
 
   // Available categories for filters - moved before conditional returns
   const availableCategories = useMemo(() => {
@@ -1039,7 +1288,11 @@ const TransactionList = () => {
       companyId: '',
       statementId: '',
       payee: '',
+      payeeId: '',
       vendor: '',
+      vendorId: '',
+      incomeSourceId: '',
+      csvImportId: '',
       hasCategory: '',
       hasNotes: '',
       is1099: '',
@@ -1111,7 +1364,7 @@ const TransactionList = () => {
           transactions={filteredTransactions}
           companies={companies}
           payees={payees}
-          vendors={availableVendors}
+          vendors={vendors}
           incomeSources={incomeSources}
           statements={statements}
           receipts={receipts}
@@ -1189,6 +1442,8 @@ const TransactionList = () => {
         payees={availablePayees}
         vendors={availableVendors}
         statements={statements}
+        incomeSources={incomeSources}
+        csvImports={csvImports}
         showRefresh={true}
         onRefresh={refetch}
         isLoading={isLoading}
@@ -1206,8 +1461,41 @@ const TransactionList = () => {
         defaultCollapsed={true}
       />
 
+      {/* Column Visibility Controls */}
+      <div className="mb-4 bg-white dark:bg-gray-800 rounded-lg shadow p-3">
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">
+            Columns <span className="text-gray-400 dark:text-gray-500 font-normal">(drag to reorder)</span>
+          </h3>
+          <button
+            onClick={() => {
+              setColumns(defaultColumns);
+              saveColumnPreferences(defaultColumns);
+            }}
+            className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
+          >
+            Reset to Default
+          </button>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {columns.map((col) => (
+            <button
+              key={col.id}
+              onClick={() => toggleColumnVisibility(col.id)}
+              className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
+                col.visible
+                  ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 border border-blue-300 dark:border-blue-700'
+                  : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-600'
+              }`}
+            >
+              {col.visible ? '✓ ' : ''}{col.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Transactions Table */}
-      <div className="bg-white dark:bg-gray-800 shadow overflow-hidden sm:rounded-md transition-colors mb-6">
+      <div className="bg-white dark:bg-gray-800 shadow sm:rounded-md transition-colors mb-6 overflow-x-auto">
         {filteredTransactions.length === 0 ? (
           <div className="text-center py-12">
             <p className="text-gray-500 dark:text-gray-400">No transactions found.</p>
@@ -1217,6 +1505,7 @@ const TransactionList = () => {
           </div>
         ) : (
           <>
+          <div className="min-w-max">
             {/* Select All Header */}
             {isSelectMode && (
               <div className="px-4 py-3 bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
@@ -1236,21 +1525,37 @@ const TransactionList = () => {
             
             {/* Column Headers */}
             <div className="flex items-center px-3 py-2 bg-gray-100 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-              <div className="w-6 mr-2"></div> {/* Expand button spacer */}
-              {isSelectMode && <div className="w-4 mr-3"></div>} {/* Checkbox spacer */}
-              <div className="w-16 flex-shrink-0">Date</div>
-              <div className="w-16 flex-shrink-0 text-center">Type</div>
-              <div className="flex-1 mx-3">Description</div>
-              {visibleColumns.length > 0 && (
-                <div className="flex items-center gap-1.5 flex-shrink-0 mr-3">
-                  {visibleColumns.map(col => (
-                    <span key={col} className="px-2 py-0.5 text-xs">
-                      {col.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase()).replace('Id', '').trim()}
-                    </span>
-                  ))}
-                </div>
-              )}
-              <div className="w-24 flex-shrink-0 text-right">Amount</div>
+              <div className="w-6 mr-2 flex-shrink-0"></div> {/* Expand button spacer */}
+              {isSelectMode && <div className="w-4 mr-3 flex-shrink-0"></div>} {/* Checkbox spacer */}
+              <ResizableHeader columnKey="date" onClick={() => handleColumnSort('date')}>
+                Date<SortIndicator field="date" />
+              </ResizableHeader>
+              <ResizableHeader columnKey="type" className="text-center" onClick={() => handleColumnSort('type')}>
+                Type<SortIndicator field="type" />
+              </ResizableHeader>
+              <ResizableHeader columnKey="description" className="mx-2" onClick={() => handleColumnSort('description')}>
+                Description<SortIndicator field="description" />
+              </ResizableHeader>
+              {visibleColumns.map(col => (
+                <ResizableHeader 
+                  key={col} 
+                  columnKey={col} 
+                  className={`text-center ${draggedColumn === col ? 'opacity-50' : ''}`}
+                  onClick={() => handleColumnSort(col)}
+                  draggable
+                  onDragStart={(e) => handleColumnDragStart(e, col)}
+                  onDragOver={(e) => handleColumnDragOver(e, col)}
+                  onDragEnd={handleColumnDragEnd}
+                >
+                  <span className="cursor-grab active:cursor-grabbing">
+                    {columns.find(c => c.id === col)?.label || col.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase()).replace('Id', '').trim()}
+                  </span>
+                  <SortIndicator field={col} />
+                </ResizableHeader>
+              ))}
+              <ResizableHeader columnKey="amount" className="text-right" onClick={() => handleColumnSort('amount')}>
+                Amount<SortIndicator field="amount" />
+              </ResizableHeader>
               <div className="w-20 ml-2 flex-shrink-0 text-right">Actions</div>
             </div>
             
@@ -1276,6 +1581,7 @@ const TransactionList = () => {
                   onDelete={handleDelete}
                   deletingId={deletingId}
                   visibleColumns={visibleColumns}
+                  columnWidths={columnWidths}
                   statement={statement}
                   getPaymentMethodDisplay={getPaymentMethodDisplay}
                 />
@@ -1287,6 +1593,7 @@ const TransactionList = () => {
               </li>
             )}
           </ul>
+          </div>
           
           {/* Pagination Controls */}
           {totalCount > 0 && (
@@ -1348,6 +1655,7 @@ const TransactionList = () => {
         }}
         isLoading={bulkEntryLoading || bulkCreateMutation.isPending}
         companies={companies}
+        payees={payees}
       />
     </div>
   );

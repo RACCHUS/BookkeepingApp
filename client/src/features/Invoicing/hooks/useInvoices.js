@@ -10,16 +10,29 @@ import toast from 'react-hot-toast';
 
 export function useInvoices(options = {}) {
   return useQuery({
-    queryKey: ['invoices', options],
-    queryFn: () => invoiceService.getInvoices(options),
-    staleTime: 2 * 60 * 1000,
+    queryKey: ['invoices', 'list', options],
+    queryFn: async () => {
+      const response = await invoiceService.getInvoices(options);
+      // Transform to expected format: { invoices: [...], total: ... }
+      return {
+        invoices: response?.data || [],
+        total: response?.total || 0,
+      };
+    },
+    staleTime: 30 * 1000, // 30 seconds
   });
 }
 
 export function useInvoice(id) {
   return useQuery({
-    queryKey: ['invoices', id],
-    queryFn: () => invoiceService.getInvoice(id),
+    queryKey: ['invoices', 'detail', id],
+    queryFn: async () => {
+      const response = await invoiceService.getInvoice(id);
+      // Transform to expected format: { invoice: {...} }
+      return {
+        invoice: response?.data || null,
+      };
+    },
     enabled: !!id,
   });
 }
@@ -27,8 +40,12 @@ export function useInvoice(id) {
 export function useInvoiceSummary(options = {}) {
   return useQuery({
     queryKey: ['invoices', 'summary', options],
-    queryFn: () => invoiceService.getInvoiceSummary(options),
-    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      const response = await invoiceService.getInvoiceSummary(options);
+      // Return the summary data directly
+      return response?.data || {};
+    },
+    staleTime: 30 * 1000, // 30 seconds
   });
 }
 
@@ -38,7 +55,8 @@ export function useCreateInvoice() {
   return useMutation({
     mutationFn: (invoiceData) => invoiceService.createInvoice(invoiceData),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      // Invalidate all invoice-related queries
+      queryClient.invalidateQueries({ queryKey: ['invoices'], refetchType: 'all' });
       toast.success('Invoice created successfully');
     },
     onError: (error) => {
@@ -53,8 +71,8 @@ export function useCreateInvoiceFromQuote() {
   return useMutation({
     mutationFn: ({ quoteId, paymentTerms }) => invoiceService.createInvoiceFromQuote(quoteId, paymentTerms),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['invoices'] });
-      queryClient.invalidateQueries({ queryKey: ['quotes'] });
+      queryClient.invalidateQueries({ queryKey: ['invoices'], refetchType: 'all' });
+      queryClient.invalidateQueries({ queryKey: ['quotes'], refetchType: 'all' });
       toast.success('Invoice created from quote');
     },
     onError: (error) => {
@@ -67,9 +85,9 @@ export function useUpdateInvoice() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: ({ id, updates }) => invoiceService.updateInvoice(id, updates),
+    mutationFn: ({ id, updates, data }) => invoiceService.updateInvoice(id, updates || data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      queryClient.invalidateQueries({ queryKey: ['invoices'], refetchType: 'all' });
       toast.success('Invoice updated successfully');
     },
     onError: (error) => {
@@ -82,9 +100,15 @@ export function useDeleteInvoice() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: ({ id, permanent }) => invoiceService.deleteInvoice(id, permanent),
-    onSuccess: (_, { permanent }) => {
-      queryClient.invalidateQueries({ queryKey: ['invoices'] });
+    // Accept either just id or { id, permanent } object
+    mutationFn: (params) => {
+      const id = typeof params === 'object' ? params.id : params;
+      const permanent = typeof params === 'object' ? params.permanent : true;
+      return invoiceService.deleteInvoice(id, permanent);
+    },
+    onSuccess: (_, params) => {
+      const permanent = typeof params === 'object' ? params.permanent : true;
+      queryClient.invalidateQueries({ queryKey: ['invoices'], refetchType: 'all' });
       toast.success(permanent ? 'Invoice deleted' : 'Invoice voided');
     },
     onError: (error) => {
@@ -99,7 +123,7 @@ export function useRecordPayment() {
   return useMutation({
     mutationFn: ({ invoiceId, paymentData }) => invoiceService.recordPayment(invoiceId, paymentData),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      queryClient.invalidateQueries({ queryKey: ['invoices'], refetchType: 'all' });
       toast.success('Payment recorded');
     },
     onError: (error) => {

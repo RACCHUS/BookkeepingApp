@@ -66,7 +66,15 @@ const IncomeSourcesPage = () => {
     queryFn: async () => {
       try {
         const response = await api.incomeSources.getAll();
-        const sources = response?.sources || response?.data?.sources;
+        console.log('Income sources response:', response);
+        // Handle multiple response formats
+        const sources = response?.data?.incomeSources || 
+                       response?.incomeSources || 
+                       response?.data?.sources || 
+                       response?.sources ||
+                       response?.data ||
+                       [];
+        console.log('Extracted sources:', sources);
         return Array.isArray(sources) ? sources : [];
       } catch (err) {
         console.error('Error fetching income sources:', err);
@@ -103,11 +111,13 @@ const IncomeSourcesPage = () => {
   };
 
   const handleAddSource = () => {
+    console.log('handleAddSource called, setting showForm to true');
     setEditingSource(null);
     setShowForm(true);
   };
 
   const handleEditSource = (source) => {
+    console.log('handleEditSource called with:', source);
     setEditingSource(source);
     setShowForm(true);
   };
@@ -280,6 +290,7 @@ const IncomeSourcesPage = () => {
         {/* Content */}
         {activeTab === 'sources' && (
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow">
+            {console.log('Rendering sources tab, showForm:', showForm)}
             {showForm && (
               <IncomeSourceForm
                 source={editingSource}

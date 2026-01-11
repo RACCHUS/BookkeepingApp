@@ -33,7 +33,7 @@ import { DocumentManagement } from './features/Documents';
 import { CSVUpload } from './features/CSVUpload';
 import { InventoryPage } from './features/Inventory';
 import { TaxFormsDashboard } from './features/TaxForms';
-import { CataloguePage, QuoteList, QuoteForm, InvoiceList, InvoiceForm, PaymentRecorder, RecurringList } from './features/Invoicing';
+import { CataloguePage, QuoteList, QuoteForm, InvoiceList, InvoiceForm, PaymentRecorder, RecurringList, RecurringForm } from './features/Invoicing';
 
 // Create a client with optimized caching
 const queryClient = new QueryClient({
@@ -154,7 +154,6 @@ function App() {
                   <Route path="transactions" element={<TransactionList />} />
                   <Route path="documents" element={<DocumentManagement />} />
                   <Route path="upload" element={<PDFUpload />} />
-                  <Route path="import-csv" element={<CSVUpload />} />
                   <Route path="uploads" element={<UploadManagement />} />
                   <Route path="classification" element={<Classification />} />
                   <Route path="reports" element={<Reports />} />
@@ -180,6 +179,8 @@ function App() {
                   <Route path="invoices/:id/edit" element={<InvoiceForm />} />
                   <Route path="invoices/:id/payment" element={<PaymentRecorder />} />
                   <Route path="recurring" element={<RecurringList />} />
+                  <Route path="recurring/new" element={<RecurringForm />} />
+                  <Route path="recurring/:id/edit" element={<RecurringForm />} />
                 </Route>
                 
                 {/* Catch all route */}

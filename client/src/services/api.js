@@ -102,7 +102,14 @@ const apiClient = {
         headers: { Authorization: `Bearer ${token}` }
       });
     },
-    bulkUpdate: (transactions) => api.patch('/transactions/bulk', { transactions }),
+    bulkUpdate: async (transactions) => {
+      const user = auth.currentUser;
+      if (!user) throw new Error('User not authenticated');
+      const token = await user.getIdToken();
+      return api.patch('/transactions/bulk', { transactions }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+    },
     bulkCreate: async (transactions) => {
       const user = auth.currentUser;
       if (!user) throw new Error('User not authenticated');
@@ -1070,6 +1077,38 @@ const hybridApiClient = {
       if (error) throw error;
       return { success: true, data: data || [] };
     },
+    getUncategorized: async () => {
+      const user = auth.currentUser;
+      if (!user) throw new Error('User not authenticated');
+      
+      const { data, error } = await supabase
+        .from('transactions')
+        .select('*')
+        .eq('user_id', user.uid)
+        .or('category.is.null,category.eq.');
+      if (error) throw error;
+      return { success: true, data: data || [] };
+    },
+    createRule: async (rule) => {
+      const user = auth.currentUser;
+      if (!user) throw new Error('User not authenticated');
+      
+      const { data, error } = await supabase
+        .from('classification_rules')
+        .insert({ ...rule, user_id: user.uid })
+        .select()
+        .single();
+      if (error) throw error;
+      return { success: true, data };
+    },
+    deleteRule: async (ruleId) => {
+      const { error } = await supabase
+        .from('classification_rules')
+        .delete()
+        .eq('id', ruleId);
+      if (error) throw error;
+      return { success: true };
+    },
   },
   
   // File uploads handled via Supabase Storage
@@ -1158,35 +1197,210 @@ const hybridApiClient = {
       const user = auth.currentUser;
       if (!user) throw new Error('User not authenticated');
       
+      console.log('Inventory getAll - user.uid:', user.uid);
+      
       let query = supabase
         .from('inventory_items')
         .select('*', { count: 'exact' })
         .eq('user_id', user.uid)
         .order('name');
+      
+      // Apply filters
+      if (params.companyId) {
+        query = query.eq('company_id', params.companyId);
+      }
+      if (params.category) {
+        query = query.eq('category', params.category);
+      }
+      if (params.search) {
+        query = query.or(`name.ilike.%${params.search}%,sku.ilike.%${params.search}%`);
+      }
         
       const { data, error, count } = await query;
-      if (error) throw error;
+      
+      if (error) {
+        console.error('Inventory getAll error:', error);
+        throw error;
+      }
+      
       return { success: true, data: { items: data || [], total: count } };
     },
+    
+    getById: async (id) => {
+      const user = auth.currentUser;
+      if (!user) throw new Error('User not authenticated');
+      
+      const { data, error } = await supabase
+        .from('inventory_items')
+        .select('*')
+        .eq('id', id)
+        .eq('user_id', user.uid)
+        .single();
+      
+      if (error) throw error;
+      return { success: true, data };
+    },
+    
+    getLowStock: async (params = {}) => {
+      const user = auth.currentUser;
+      if (!user) throw new Error('User not authenticated');
+      
+      // Get items where quantity <= reorder_level
+      let query = supabase
+        .from('inventory_items')
+        .select('*')
+        .eq('user_id', user.uid)
+        .eq('is_active', true);
+      
+      if (params.companyId) {
+        query = query.eq('company_id', params.companyId);
+      }
+      
+      const { data, error } = await query;
+      if (error) throw error;
+      
+      // Filter for low stock items (quantity <= reorder_level)
+      const lowStockItems = (data || []).filter(item => item.quantity <= item.reorder_level);
+      
+      return { success: true, data: { items: lowStockItems } };
+    },
+    
+    getTransactions: async (params = {}) => {
+      const user = auth.currentUser;
+      if (!user) throw new Error('User not authenticated');
+      
+      let query = supabase
+        .from('inventory_transactions')
+        .select('*, inventory_items(id, name, sku)')
+        .eq('user_id', user.uid)
+        .order('date', { ascending: false });
+      
+      if (params.itemId) {
+        query = query.eq('item_id', params.itemId);
+      }
+      if (params.companyId) {
+        query = query.eq('company_id', params.companyId);
+      }
+      if (params.type) {
+        query = query.eq('type', params.type);
+      }
+      if (params.startDate) {
+        query = query.gte('date', params.startDate);
+      }
+      if (params.endDate) {
+        query = query.lte('date', params.endDate);
+      }
+      
+      const limit = params.limit || 100;
+      const offset = params.offset || 0;
+      query = query.range(offset, offset + limit - 1);
+      
+      const { data, error } = await query;
+      if (error) throw error;
+      
+      return { success: true, data: { transactions: data || [] } };
+    },
+    
+    getValuation: async (params = {}) => {
+      const user = auth.currentUser;
+      if (!user) throw new Error('User not authenticated');
+      
+      let query = supabase
+        .from('inventory_items')
+        .select('*')
+        .eq('user_id', user.uid)
+        .eq('is_active', true);
+      
+      if (params.companyId) {
+        query = query.eq('company_id', params.companyId);
+      }
+      
+      const { data, error } = await query;
+      if (error) throw error;
+      
+      // Calculate valuation
+      const items = data || [];
+      const totalValue = items.reduce((sum, item) => sum + (item.quantity * item.unit_cost), 0);
+      const totalRetailValue = items.reduce((sum, item) => sum + (item.quantity * item.selling_price), 0);
+      
+      return { 
+        success: true, 
+        data: { 
+          items, 
+          totalCostValue: totalValue,
+          totalRetailValue,
+          itemCount: items.length
+        } 
+      };
+    },
+    
+    getCategories: async () => {
+      const user = auth.currentUser;
+      if (!user) throw new Error('User not authenticated');
+      
+      const { data, error } = await supabase
+        .from('inventory_items')
+        .select('category')
+        .eq('user_id', user.uid)
+        .not('category', 'is', null);
+      
+      if (error) throw error;
+      
+      // Get unique categories
+      const categories = [...new Set((data || []).map(item => item.category).filter(Boolean))];
+      
+      return { success: true, data: { categories } };
+    },
+    
     create: async (itemData) => {
       const user = auth.currentUser;
       if (!user) throw new Error('User not authenticated');
       
       const { data, error } = await supabase
         .from('inventory_items')
-        .insert({ ...itemData, user_id: user.uid })
+        .insert({ 
+          user_id: user.uid,
+          sku: itemData.sku || null,
+          name: itemData.name,
+          description: itemData.description || null,
+          category: itemData.category || null,
+          unit_cost: itemData.unitCost || 0,
+          selling_price: itemData.sellingPrice || 0,
+          quantity: itemData.quantity || 0,
+          reorder_level: itemData.reorderLevel || 0,
+          unit: itemData.unit || 'each',
+          supplier: itemData.supplier || null,
+          company_id: itemData.companyId || null,
+          is_active: true
+        })
         .select()
         .single();
       if (error) throw error;
       return { success: true, data };
     },
+    
     update: async (id, itemData) => {
       const user = auth.currentUser;
       if (!user) throw new Error('User not authenticated');
       
+      // Transform camelCase to snake_case for database
+      const updateData = {};
+      if (itemData.sku !== undefined) updateData.sku = itemData.sku;
+      if (itemData.name !== undefined) updateData.name = itemData.name;
+      if (itemData.description !== undefined) updateData.description = itemData.description;
+      if (itemData.category !== undefined) updateData.category = itemData.category;
+      if (itemData.unitCost !== undefined) updateData.unit_cost = itemData.unitCost;
+      if (itemData.sellingPrice !== undefined) updateData.selling_price = itemData.sellingPrice;
+      if (itemData.quantity !== undefined) updateData.quantity = itemData.quantity;
+      if (itemData.reorderLevel !== undefined) updateData.reorder_level = itemData.reorderLevel;
+      if (itemData.unit !== undefined) updateData.unit = itemData.unit;
+      if (itemData.supplier !== undefined) updateData.supplier = itemData.supplier;
+      if (itemData.companyId !== undefined) updateData.company_id = itemData.companyId;
+      if (itemData.isActive !== undefined) updateData.is_active = itemData.isActive;
+      
       const { data, error } = await supabase
         .from('inventory_items')
-        .update(itemData)
+        .update(updateData)
         .eq('id', id)
         .eq('user_id', user.uid)
         .select()
@@ -1194,6 +1408,7 @@ const hybridApiClient = {
       if (error) throw error;
       return { success: true, data };
     },
+    
     delete: async (id) => {
       const user = auth.currentUser;
       if (!user) throw new Error('User not authenticated');
@@ -1205,6 +1420,76 @@ const hybridApiClient = {
         .eq('user_id', user.uid);
       if (error) throw error;
       return { success: true };
+    },
+    
+    adjustStock: async (itemId, adjustmentData) => {
+      const user = auth.currentUser;
+      if (!user) throw new Error('User not authenticated');
+      
+      // Create inventory transaction
+      const { data, error } = await supabase
+        .from('inventory_transactions')
+        .insert({
+          user_id: user.uid,
+          item_id: itemId,
+          type: adjustmentData.type || 'adjustment',
+          quantity: adjustmentData.quantity,
+          unit_cost: adjustmentData.unitCost || 0,
+          notes: adjustmentData.notes || null,
+          date: new Date().toISOString()
+        })
+        .select()
+        .single();
+      
+      if (error) throw error;
+      
+      // The trigger will update the inventory_items quantity
+      return { success: true, data };
+    },
+    
+    recordSale: async (itemId, saleData) => {
+      const user = auth.currentUser;
+      if (!user) throw new Error('User not authenticated');
+      
+      // Create a sale transaction (negative quantity)
+      const { data, error } = await supabase
+        .from('inventory_transactions')
+        .insert({
+          user_id: user.uid,
+          item_id: itemId,
+          type: 'sale',
+          quantity: -Math.abs(saleData.quantity), // Negative for stock out
+          transaction_id: saleData.transactionId || null,
+          date: new Date().toISOString()
+        })
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return { success: true, data };
+    },
+    
+    recordPurchase: async (itemId, purchaseData) => {
+      const user = auth.currentUser;
+      if (!user) throw new Error('User not authenticated');
+      
+      // Create a purchase transaction (positive quantity)
+      const { data, error } = await supabase
+        .from('inventory_transactions')
+        .insert({
+          user_id: user.uid,
+          item_id: itemId,
+          type: 'purchase',
+          quantity: Math.abs(purchaseData.quantity), // Positive for stock in
+          unit_cost: purchaseData.unitCost || 0,
+          transaction_id: purchaseData.transactionId || null,
+          date: new Date().toISOString()
+        })
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return { success: true, data };
     },
   },
 };

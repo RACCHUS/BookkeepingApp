@@ -12,7 +12,7 @@ import {
   BuildingOfficeIcon,
   BanknotesIcon
 } from '@heroicons/react/24/outline';
-import { apiClient } from '../../services/api';
+import api from '../../services/api';
 
 /**
  * BulkAddChecksModal - Create check records from existing transactions
@@ -34,7 +34,7 @@ const BulkAddChecksModal = ({ isOpen, onClose, onSubmit, isLoading }) => {
   // Fetch transactions
   const { data: transactionsData, isLoading: loadingTransactions } = useQuery({
     queryKey: ['transactions', 'for-checks'],
-    queryFn: () => apiClient.transactions.getAll({ limit: 500 }),
+    queryFn: () => api.transactions.getAll({ limit: 500 }),
     enabled: isOpen
   });
 

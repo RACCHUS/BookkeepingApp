@@ -6,7 +6,7 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-hot-toast';
-import { apiClient } from '../../services/api';
+import api from '../../services/api'; // Use hybridApiClient (default export)
 import { LoadingSpinner } from '../../components/ui';
 import {
   TrashIcon,
@@ -283,7 +283,7 @@ const CSVImportRow = ({ importRecord, onViewTransactions, onDelete, onDeleteTran
 const ViewTransactionsModal = ({ isOpen, onClose, importId, fileName }) => {
   const { data, isLoading, error } = useQuery({
     queryKey: ['csv-import-transactions', importId],
-    queryFn: () => apiClient.csv.getImportTransactions(importId, { limit: 100 }),
+    queryFn: () => api.csv.getImportTransactions(importId, { limit: 100 }),
     enabled: isOpen && !!importId,
   });
 
@@ -365,37 +365,40 @@ const ManageCSVImports = () => {
   // Fetch CSV imports
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['csv-imports', { showDeleted }],
-    queryFn: () => apiClient.csv.getImports({ 
+    queryFn: () => api.csv.getImports({ 
       status: showDeleted ? 'all' : 'completed',
       limit: 100 
     }),
+    refetchOnMount: 'always', // Always refetch when component mounts
   });
 
   // Delete import mutation
   const deleteImportMutation = useMutation({
-    mutationFn: ({ importId, options }) => apiClient.csv.deleteImport(importId, options),
+    mutationFn: ({ importId }) => api.csv.deleteImport(importId),
     onSuccess: (result) => {
       toast.success(result.message || 'CSV import deleted');
-      queryClient.invalidateQueries({ queryKey: ['csv-imports'] });
-      queryClient.invalidateQueries({ queryKey: ['transactions'] });
       setDeleteModal({ isOpen: false, record: null, type: 'import' });
+      // Refetch the list to show updated data
+      refetch();
+      queryClient.invalidateQueries({ queryKey: ['transactions'], refetchType: 'all' });
     },
     onError: (error) => {
-      toast.error(error.response?.data?.message || 'Failed to delete import');
+      toast.error(error.response?.data?.message || error.message || 'Failed to delete import');
     },
   });
 
   // Delete transactions mutation
   const deleteTransactionsMutation = useMutation({
-    mutationFn: ({ importId, options }) => apiClient.csv.deleteImportTransactions(importId, options),
+    mutationFn: ({ importId, options }) => api.csv.deleteImportTransactions(importId, options),
     onSuccess: (result) => {
       toast.success(result.message || 'Transactions deleted');
-      queryClient.invalidateQueries({ queryKey: ['csv-imports'] });
-      queryClient.invalidateQueries({ queryKey: ['transactions'] });
       setDeleteModal({ isOpen: false, record: null, type: 'transactions' });
+      // Refetch the list to show updated data
+      refetch();
+      queryClient.invalidateQueries({ queryKey: ['transactions'], refetchType: 'all' });
     },
     onError: (error) => {
-      toast.error(error.response?.data?.message || 'Failed to delete transactions');
+      toast.error(error.response?.data?.message || error.message || 'Failed to delete transactions');
     },
   });
 

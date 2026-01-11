@@ -11,7 +11,6 @@ import {
   PencilIcon
 } from '@heroicons/react/24/outline';
 import api from '../../services/api';
-import { apiClient } from '../../services/api';
 import { toast } from 'react-hot-toast';
 import { TransactionModal } from '../../components/forms';
 
@@ -191,7 +190,7 @@ const IncomeAssignment = ({ sources: sourcesProp = [] }) => {
 
   const handleSaveTransaction = async (transactionData) => {
     try {
-      await apiClient.transactions.update(editingTransaction.id, transactionData);
+      await api.transactions.update(editingTransaction.id, transactionData);
       toast.success('Transaction updated successfully');
       refetchTransactions();
       handleCloseTransactionModal();

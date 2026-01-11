@@ -12,7 +12,7 @@ import {
   CurrencyDollarIcon,
   BuildingOfficeIcon
 } from '@heroicons/react/24/outline';
-import { apiClient } from '../../services/api';
+import api from '../../services/api';
 
 /**
  * BulkAddReceiptsModal - Quick bulk add receipts from transactions
@@ -33,7 +33,7 @@ const BulkAddReceiptsModal = ({ isOpen, onClose, onSubmit, isLoading }) => {
   // Fetch transactions
   const { data: transactionsData, isLoading: loadingTransactions } = useQuery({
     queryKey: ['transactions', 'for-receipts'],
-    queryFn: () => apiClient.transactions.getAll({ limit: 500 }),
+    queryFn: () => api.transactions.getAll({ limit: 500 }),
     enabled: isOpen
   });
 

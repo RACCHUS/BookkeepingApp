@@ -35,28 +35,37 @@ export function MissingInfoAlert({ payees = [], formType, onEditPayee }) {
           </p>
           
           <ul className="mt-3 space-y-2">
-            {payees.slice(0, 5).map((item) => (
-              <li key={item.payeeId} className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <UserIcon className="h-4 w-4 text-amber-600 dark:text-amber-400 mr-2" />
-                  <span className="text-sm text-amber-800 dark:text-amber-200 font-medium">
-                    {item.payeeName}
-                  </span>
-                  <span className="text-xs text-amber-600 dark:text-amber-400 ml-2">
-                    Missing: {item.missing?.join(', ')}
-                  </span>
-                </div>
-                {onEditPayee && (
-                  <button
-                    onClick={() => onEditPayee(item.payee)}
-                    className="text-xs text-amber-700 dark:text-amber-300 hover:text-amber-900 
-                             dark:hover:text-amber-100 underline"
-                  >
-                    Edit
-                  </button>
-                )}
-              </li>
-            ))}
+            {payees.slice(0, 5).map((item) => {
+              // Handle different field names and missing field types
+              const payeeId = item.payeeId || item.id;
+              const payeeName = item.payeeName || item.name;
+              const missingFields = Array.isArray(item.missing) 
+                ? item.missing.join(', ') 
+                : (item.missing || 'Unknown');
+              
+              return (
+                <li key={payeeId} className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <UserIcon className="h-4 w-4 text-amber-600 dark:text-amber-400 mr-2" />
+                    <span className="text-sm text-amber-800 dark:text-amber-200 font-medium">
+                      {payeeName}
+                    </span>
+                    <span className="text-xs text-amber-600 dark:text-amber-400 ml-2">
+                      Missing: {missingFields}
+                    </span>
+                  </div>
+                  {onEditPayee && (
+                    <button
+                      onClick={() => onEditPayee(item.payee || item)}
+                      className="text-xs text-amber-700 dark:text-amber-300 hover:text-amber-900 
+                               dark:hover:text-amber-100 underline"
+                    >
+                      Edit
+                    </button>
+                  )}
+                </li>
+              );
+            })}
           </ul>
           
           {payees.length > 5 && (

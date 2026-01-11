@@ -81,7 +81,9 @@ const TransactionBulkPanel = ({
     companyId: '',
     companyName: '',
     payee: '',
+    payeeId: '',
     vendorName: '',
+    vendorId: '',
     incomeSourceId: '',
     incomeSourceName: '',
     statementId: '',
@@ -162,9 +164,11 @@ const TransactionBulkPanel = ({
     }
     if (fieldsToUpdate.payee) {
       updates.payee = updateValues.payee || null;
+      updates.payeeId = updateValues.payeeId || null;
     }
     if (fieldsToUpdate.vendorName) {
       updates.vendorName = updateValues.vendorName || null;
+      updates.vendorId = updateValues.vendorId || null;
     }
     if (fieldsToUpdate.incomeSourceId) {
       updates.incomeSourceId = updateValues.incomeSourceId || null;
@@ -253,7 +257,9 @@ const TransactionBulkPanel = ({
       companyId: '',
       companyName: '',
       payee: '',
+      payeeId: '',
       vendorName: '',
+      vendorId: '',
       incomeSourceId: '',
       incomeSourceName: '',
       statementId: '',
@@ -497,14 +503,27 @@ const TransactionBulkPanel = ({
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Payee
                 </label>
-                <input
-                  type="text"
-                  name="payee"
-                  value={updateValues.payee}
-                  onChange={handleValueChange}
-                  placeholder="Enter payee name"
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
-                />
+                {payees?.length > 0 ? (
+                  <select
+                    name="payeeId"
+                    value={updateValues.payeeId}
+                    onChange={(e) => {
+                      const selectedPayee = payees.find(p => p.id === e.target.value);
+                      handleValueChange({ target: { name: 'payee', value: selectedPayee?.name || '' }});
+                      handleValueChange({ target: { name: 'payeeId', value: e.target.value }});
+                    }}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">No payee / Clear</option>
+                    {payees.filter(p => p.isActive !== false).map(p => (
+                      <option key={p.id} value={p.id}>{p.name} {p.type ? `(${p.type})` : ''}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <div className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-600 text-gray-500 dark:text-gray-400 text-sm">
+                    No payees available. <a href="/payees" className="text-blue-600 hover:underline">Add payees first</a>
+                  </div>
+                )}
               </div>
             )}
 
@@ -514,14 +533,27 @@ const TransactionBulkPanel = ({
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Vendor
                 </label>
-                <input
-                  type="text"
-                  name="vendorName"
-                  value={updateValues.vendorName}
-                  onChange={handleValueChange}
-                  placeholder="Enter vendor name"
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
-                />
+                {vendors?.length > 0 ? (
+                  <select
+                    name="vendorId"
+                    value={updateValues.vendorId}
+                    onChange={(e) => {
+                      const selectedVendor = vendors.find(v => v.id === e.target.value);
+                      handleValueChange({ target: { name: 'vendorName', value: selectedVendor?.name || '' }});
+                      handleValueChange({ target: { name: 'vendorId', value: e.target.value }});
+                    }}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">No vendor / Clear</option>
+                    {vendors.filter(v => v.isActive !== false).map(v => (
+                      <option key={v.id} value={v.id}>{v.name}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <div className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-600 text-gray-500 dark:text-gray-400 text-sm">
+                    No vendors available. <a href="/vendors" className="text-blue-600 hover:underline">Add a vendor</a>
+                  </div>
+                )}
               </div>
             )}
 

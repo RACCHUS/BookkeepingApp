@@ -57,8 +57,9 @@ export function CataloguePage() {
   const deleteMutation = useDeleteCatalogueItem();
   const duplicateMutation = useDuplicateCatalogueItem();
 
-  const items = data?.items || [];
-  const categories = categoriesData?.categories || [];
+  // API returns { success: true, data: { items: [...], total: N } }
+  const items = data?.data?.items || data?.items || [];
+  const categories = categoriesData?.data?.categories || categoriesData?.categories || [];
 
   const handleEdit = (item) => {
     setEditingItem(item);
@@ -281,11 +282,10 @@ export function CataloguePage() {
                       </button>
                       <button
                         onClick={() => setDeleteConfirm(item)}
-                        className="p-1 text-gray-400 hover:text-red-600 dark:hover:text-red-400"
+                        className="p-1 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
                         title="Delete"
                       >
-                        <TrashIcon className="w-5 h-5" />
-                      </button>
+                        <TrashIcon className="w-5 h-5" />                      </button>
                     </div>
                   </td>
                 </tr>

@@ -6,7 +6,7 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from 'react-hot-toast';
-import apiClient from '../../services/api';
+import api from '../../services/api';
 import VendorList from './VendorList';
 import VendorForm from './VendorForm';
 import { CheckVendorAssignment } from '../Checks';
@@ -20,14 +20,14 @@ const VendorManagement = () => {
   // Fetch vendors
   const { data: vendorsData, isLoading, refetch } = useQuery({
     queryKey: ['vendors'],
-    queryFn: () => apiClient.payees.getVendors()
+    queryFn: () => api.payees.getVendors()
   });
 
   // Fetch checks without vendors for badge count (no payee AND no vendor = unassigned)
   const { data: checksData } = useQuery({
     queryKey: ['checks-without-vendors'],
     queryFn: async () => {
-      const result = await apiClient.transactions.getAll({ sectionCode: 'checks', limit: 200 });
+      const result = await api.transactions.getAll({ sectionCode: 'checks', limit: 200 });
       const transactions = result?.data?.transactions || [];
       // Filter to those without vendor AND without payee
       return transactions.filter(t => 
@@ -43,12 +43,13 @@ const VendorManagement = () => {
     queryFn: async () => {
       const { default: receiptService } = await import('../../services/receiptService');
       const result = await receiptService.getReceipts({}, {}, { limit: 100 });
-      const receipts = result?.receipts || [];
+      // Receipt API returns { success: true, data: [...], total: N }
+      const receipts = result?.data || result?.receipts || [];
       return receipts.filter(r => !r.vendor || r.vendor.trim() === '');
     }
   });
 
-  const vendorsRaw = vendorsData?.data?.payees || vendorsData?.payees;
+  const vendorsRaw = vendorsData?.data?.vendors || vendorsData?.vendors || vendorsData?.data?.payees || vendorsData?.payees;
   const vendors = Array.isArray(vendorsRaw) ? vendorsRaw : [];
   const unassignedCheckCount = Array.isArray(checksData) ? checksData.length : 0;
   const unassignedReceiptCount = Array.isArray(receiptsData) ? receiptsData.length : 0;
@@ -75,7 +76,7 @@ const VendorManagement = () => {
     }
 
     try {
-      await apiClient.payees.delete(vendorId);
+      await api.payees.delete(vendorId);
       toast.success('Vendor deleted successfully');
       refetch();
     } catch (error) {

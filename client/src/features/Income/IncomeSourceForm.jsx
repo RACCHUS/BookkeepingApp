@@ -7,7 +7,7 @@ import { XMarkIcon } from '@heroicons/react/24/outline';
 const IncomeSourceForm = ({ source, onSave, onCancel, isLoading }) => {
   const [formData, setFormData] = useState({
     name: '',
-    sourceType: 'customer',
+    sourceType: 'client',  // Changed from 'customer' to match DB constraint
     category: '',
     description: '',
     contactEmail: '',
@@ -133,9 +133,10 @@ const IncomeSourceForm = ({ source, onSave, onCancel, isLoading }) => {
                 errors.sourceType ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
               }`}
             >
-              <option value="customer">Customer</option>
+              <option value="client">Client/Customer</option>
               <option value="service">Service</option>
               <option value="product">Product</option>
+              <option value="investment">Investment</option>
               <option value="other">Other</option>
             </select>
             {errors.sourceType && (

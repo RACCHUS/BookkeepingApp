@@ -8,7 +8,7 @@ import { useDropzone } from 'react-dropzone';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
-import { apiClient } from '../../services/api';
+import api from '../../services/api'; // Use default export (hybridApiClient)
 import { LoadingSpinner } from '../../components/ui';
 import { CompanySelector } from '../../components/common';
 import {
@@ -39,7 +39,7 @@ const CSVUpload = () => {
   // Fetch supported banks
   const { data: banksData } = useQuery({
     queryKey: ['csv-banks'],
-    queryFn: () => apiClient.csv.getBanks(),
+    queryFn: () => api.csv.getBanks(),
     staleTime: 24 * 60 * 60 * 1000, // Cache for 24 hours
   });
 
@@ -48,7 +48,7 @@ const CSVUpload = () => {
   // Upload mutation - now uses client-side parsing
   const uploadMutation = useMutation({
     mutationFn: (file) => {
-      return apiClient.csv.upload(file, {
+      return api.csv.upload(file, {
         bankFormat: selectedBank,
         companyId: selectedCompany,
         companyName: selectedCompanyData?.name || '',
@@ -78,7 +78,7 @@ const CSVUpload = () => {
   // Confirm import mutation - now inserts directly to Supabase
   const confirmMutation = useMutation({
     mutationFn: () => {
-      return apiClient.csv.confirmImport(previewData.transactions, {
+      return api.csv.confirmImport(previewData.transactions, {
         skipDuplicates,
         companyId: selectedCompany,
         fileName: previewData.fileName || 'import.csv',
@@ -96,10 +96,12 @@ const CSVUpload = () => {
         }
         toast.success(message);
         
-        // Invalidate all transaction-related queries
-        queryClient.invalidateQueries({ queryKey: ['transactions'] });
-        queryClient.invalidateQueries({ queryKey: ['recent-transactions'] });
-        queryClient.invalidateQueries({ queryKey: ['transaction-summary'] });
+        // Invalidate and refetch all transaction-related queries
+        queryClient.invalidateQueries({ queryKey: ['transactions'], refetchType: 'all' });
+        queryClient.invalidateQueries({ queryKey: ['recent-transactions'], refetchType: 'all' });
+        queryClient.invalidateQueries({ queryKey: ['transaction-summary'], refetchType: 'all' });
+        queryClient.invalidateQueries({ queryKey: ['csv-imports'], refetchType: 'all' });
+        queryClient.invalidateQueries({ queryKey: ['csv-imports-for-modal'], refetchType: 'all' });
       } else {
         toast.error(response.message || 'Failed to import transactions');
       }
@@ -201,8 +203,9 @@ const CSVUpload = () => {
           disabled={uploadState !== 'idle'}
           className="block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500"
         >
+          <option key="auto" value="auto">Auto-Detect Bank Format</option>
           {banks.map((bank) => (
-            <option key={bank.key} value={bank.key}>
+            <option key={bank.id} value={bank.id}>
               {bank.name}
             </option>
           ))}

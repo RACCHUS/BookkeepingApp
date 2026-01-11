@@ -31,9 +31,8 @@ const INVENTORY_CONSTANTS = {
  */
 export const createItemValidation = [
   body('sku')
+    .optional()
     .trim()
-    .notEmpty()
-    .withMessage('SKU is required')
     .isLength({ max: INVENTORY_CONSTANTS.LIMITS.SKU_MAX })
     .withMessage(`SKU must be less than ${INVENTORY_CONSTANTS.LIMITS.SKU_MAX} characters`),
   body('name')

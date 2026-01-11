@@ -60,8 +60,9 @@ const InventoryItemForm = ({
   const validate = () => {
     const newErrors = {};
 
-    if (!formData.sku.trim()) {
-      newErrors.sku = 'SKU is required';
+    // SKU is optional - if provided, just validate length
+    if (formData.sku && formData.sku.length > 50) {
+      newErrors.sku = 'SKU must be less than 50 characters';
     }
 
     if (!formData.name.trim()) {
@@ -150,7 +151,7 @@ const InventoryItemForm = ({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  SKU <span className="text-red-500">*</span>
+                  SKU <span className="text-gray-400 text-xs">(optional)</span>
                 </label>
                 <input
                   type="text"

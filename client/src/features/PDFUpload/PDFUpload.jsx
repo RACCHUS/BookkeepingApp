@@ -3,7 +3,7 @@ import { useDropzone } from 'react-dropzone';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
-import { apiClient } from '../../services/api';
+import api from '../../services/api';
 import { LoadingSpinner } from '../../components/ui';
 import { CompanySelector } from '../../components/common';
 import {
@@ -27,11 +27,16 @@ const PDFUpload = () => {
   // Fetch companies to check if any exist
   const { data: companiesResponse } = useQuery({
     queryKey: ['companies'],
-    queryFn: apiClient.companies.getAll,
+    queryFn: api.companies.getAll,
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
-  const companies = companiesResponse?.data || [];
+  // Server returns { success: true, data: [...] }
+  // Supabase returns { success: true, data: { companies: [...] } }
+  const companiesRaw = Array.isArray(companiesResponse?.data) 
+    ? companiesResponse.data 
+    : companiesResponse?.data?.companies;
+  const companies = Array.isArray(companiesRaw) ? companiesRaw : [];
   const hasCompanies = companies.length > 0;
 
   // Auto-select default company when companies are loaded
@@ -76,7 +81,7 @@ const PDFUpload = () => {
           formData.append('companyName', selectedCompanyData.name);
         }
       }
-      return apiClient.pdf.upload(formData);
+      return api.pdf.upload(formData);
     },
     onSuccess: (data, {file, tempId}) => {
       console.log('🔍 Upload success response:', data);
@@ -131,7 +136,7 @@ const PDFUpload = () => {
 
   // Process PDF mutation
   const processMutation = useMutation({
-    mutationFn: ({uploadId, shouldCreateTransactions}) => apiClient.pdf.process(uploadId, { 
+    mutationFn: ({uploadId, shouldCreateTransactions}) => api.pdf.process(uploadId, { 
       autoSave: shouldCreateTransactions !== false,
       createTransactions: shouldCreateTransactions !== false
     }),
@@ -185,7 +190,7 @@ const PDFUpload = () => {
   // Mutation for updating upload company information
   const updateUploadCompanyMutation = useMutation({
     mutationFn: ({ uploadId, companyId, companyName }) => 
-      apiClient.pdf.updateUploadCompany(uploadId, { companyId, companyName }),
+      api.pdf.updateUploadCompany(uploadId, { companyId, companyName }),
     onSuccess: (response, { uploadId, companyId, companyName }) => {
       // Update the local file state
       setUploadedFiles(prev => prev.map(file => 
@@ -210,7 +215,7 @@ const PDFUpload = () => {
         attempts++;
         console.log(`🔄 Polling attempt ${attempts} for process ${processId}`);
         
-        const statusData = await apiClient.pdf.getStatus(processId);
+        const statusData = await api.pdf.getStatus(processId);
         console.log('🔄 Status response:', statusData);
         
         const status = statusData.data?.status || statusData.status;

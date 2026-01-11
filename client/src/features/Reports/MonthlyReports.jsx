@@ -7,7 +7,7 @@
 import React, { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from 'react-hot-toast';
-import { apiClient } from '../../services/api.js';
+import api from '../../services/api.js';
 import { useAuth } from '../../context/AuthContext';
 import { LoadingSpinner } from '../../components/ui';
 import { SmartDateSelector } from '../../components/forms';
@@ -40,7 +40,7 @@ const formatCurrency = (amount) => {
 const BarChart = ({ data, incomeKey, expenseKey, labelKey, height = 300 }) => {
   if (!data || data.length === 0) {
     return (
-      <div className="flex items-center justify-center h-48 text-gray-500">
+      <div className="flex items-center justify-center h-48 text-gray-500 dark:text-gray-400">
         No data available for chart
       </div>
     );
@@ -73,7 +73,7 @@ const BarChart = ({ data, incomeKey, expenseKey, labelKey, height = 300 }) => {
                   title={`Expenses: ${formatCurrency(item[expenseKey] || 0)}`}
                 />
               </div>
-              <div className="text-xs text-gray-500 mt-2 text-center whitespace-nowrap">
+              <div className="text-xs text-gray-500 dark:text-gray-400 mt-2 text-center whitespace-nowrap">
                 {item[labelKey]}
               </div>
             </div>
@@ -84,11 +84,11 @@ const BarChart = ({ data, incomeKey, expenseKey, labelKey, height = 300 }) => {
       <div className="flex justify-center space-x-6 mt-4">
         <div className="flex items-center">
           <div className="w-3 h-3 bg-green-500 rounded mr-2" />
-          <span className="text-sm text-gray-600">Income</span>
+          <span className="text-sm text-gray-600 dark:text-gray-300">Income</span>
         </div>
         <div className="flex items-center">
           <div className="w-3 h-3 bg-red-400 rounded mr-2" />
-          <span className="text-sm text-gray-600">Expenses</span>
+          <span className="text-sm text-gray-600 dark:text-gray-300">Expenses</span>
         </div>
       </div>
     </div>
@@ -131,24 +131,24 @@ const MonthlyCategoryTable = ({ title, months, type }) => {
     return null;
   }
 
-  const colorClass = type === 'income' ? 'text-green-600' : 'text-red-600';
-  const headerBg = type === 'income' ? 'bg-green-50' : 'bg-red-50';
+  const colorClass = type === 'income' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400';
+  const headerBg = type === 'income' ? 'bg-green-50 dark:bg-green-900/20' : 'bg-red-50 dark:bg-red-900/20';
 
   return (
-    <div className="bg-white rounded-lg shadow overflow-hidden">
-      <div className="px-4 py-3 border-b border-gray-200">
-        <h3 className="font-semibold text-gray-900">{title}</h3>
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
+      <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+        <h3 className="font-semibold text-gray-900 dark:text-white">{title}</h3>
       </div>
       <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
+        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+          <thead className="bg-gray-50 dark:bg-gray-700">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Month</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
-              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Amount</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Month</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Category</th>
+              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Amount</th>
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
+          <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
             {months.map((month, monthIndex) => {
               const categories = type === 'income' ? month.income?.categories : month.expenses?.categories;
               const monthTotal = type === 'income' ? month.income?.total : month.expenses?.total;
@@ -156,22 +156,22 @@ const MonthlyCategoryTable = ({ title, months, type }) => {
 
               if (categoryEntries.length === 0) {
                 return (
-                  <tr key={monthIndex} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 text-sm font-medium text-gray-900">{month.monthLabel}</td>
-                    <td className="px-4 py-3 text-sm text-gray-500 italic">No {type} transactions</td>
-                    <td className="px-4 py-3 text-sm text-right text-gray-400">-</td>
+                  <tr key={monthIndex} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                    <td className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-white">{month.monthLabel}</td>
+                    <td className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400 italic">No {type} transactions</td>
+                    <td className="px-4 py-3 text-sm text-right text-gray-400 dark:text-gray-500">-</td>
                   </tr>
                 );
               }
 
               return categoryEntries.map(([category, amount], catIndex) => (
-                <tr key={`${monthIndex}-${catIndex}`} className="hover:bg-gray-50">
+                <tr key={`${monthIndex}-${catIndex}`} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                   {catIndex === 0 ? (
-                    <td className="px-4 py-3 text-sm font-medium text-gray-900" rowSpan={categoryEntries.length}>
+                    <td className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-white" rowSpan={categoryEntries.length}>
                       {month.monthLabel}
                     </td>
                   ) : null}
-                  <td className="px-4 py-3 text-sm text-gray-700">{category}</td>
+                  <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">{category}</td>
                   <td className={`px-4 py-3 text-sm text-right ${colorClass}`}>{formatCurrency(amount)}</td>
                 </tr>
               ));
@@ -181,16 +181,16 @@ const MonthlyCategoryTable = ({ title, months, type }) => {
               const monthTotal = type === 'income' ? month.income?.total : month.expenses?.total;
               return (
                 <tr key={`total-${monthIndex}`} className={`${headerBg} font-semibold`}>
-                  <td className="px-4 py-2 text-sm text-gray-900">{month.monthLabel} Total</td>
-                  <td className="px-4 py-2 text-sm text-gray-500"></td>
+                  <td className="px-4 py-2 text-sm text-gray-900 dark:text-white">{month.monthLabel} Total</td>
+                  <td className="px-4 py-2 text-sm text-gray-500 dark:text-gray-400"></td>
                   <td className={`px-4 py-2 text-sm text-right ${colorClass}`}>{formatCurrency(monthTotal || 0)}</td>
                 </tr>
               );
             })}
             {/* Grand Total */}
-            <tr className="bg-gray-100 font-bold">
-              <td className="px-4 py-3 text-sm text-gray-900">Grand Total</td>
-              <td className="px-4 py-3 text-sm text-gray-500"></td>
+            <tr className="bg-gray-100 dark:bg-gray-700 font-bold">
+              <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">Grand Total</td>
+              <td className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400"></td>
               <td className={`px-4 py-3 text-sm text-right ${colorClass}`}>
                 {formatCurrency(Object.values(categoryTotals).reduce((sum, val) => sum + val, 0))}
               </td>
@@ -233,24 +233,24 @@ const MonthlyPayeeTable = ({ title, months, type }) => {
     return null;
   }
 
-  const colorClass = type === 'income' ? 'text-green-600' : 'text-red-600';
-  const headerBg = type === 'income' ? 'bg-green-50' : 'bg-red-50';
+  const colorClass = type === 'income' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400';
+  const headerBg = type === 'income' ? 'bg-green-50 dark:bg-green-900/20' : 'bg-red-50 dark:bg-red-900/20';
 
   return (
-    <div className="bg-white rounded-lg shadow overflow-hidden">
-      <div className="px-4 py-3 border-b border-gray-200">
-        <h3 className="font-semibold text-gray-900">{title}</h3>
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
+      <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+        <h3 className="font-semibold text-gray-900 dark:text-white">{title}</h3>
       </div>
       <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
+        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+          <thead className="bg-gray-50 dark:bg-gray-700">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Month</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Payee</th>
-              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Amount</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Month</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Payee</th>
+              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Amount</th>
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
+          <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
             {months.map((month, monthIndex) => {
               const byPayee = type === 'income' ? month.income?.byPayee : month.expense?.byPayee;
               const monthTotal = type === 'income' ? month.income?.amount : month.expense?.amount;
@@ -258,22 +258,22 @@ const MonthlyPayeeTable = ({ title, months, type }) => {
 
               if (payeeEntries.length === 0) {
                 return (
-                  <tr key={monthIndex} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 text-sm font-medium text-gray-900">{month.monthLabel}</td>
-                    <td className="px-4 py-3 text-sm text-gray-500 italic">No {type} checks</td>
-                    <td className="px-4 py-3 text-sm text-right text-gray-400">-</td>
+                  <tr key={monthIndex} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                    <td className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-white">{month.monthLabel}</td>
+                    <td className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400 italic">No {type} checks</td>
+                    <td className="px-4 py-3 text-sm text-right text-gray-400 dark:text-gray-500">-</td>
                   </tr>
                 );
               }
 
               return payeeEntries.map(([payee, amount], payeeIndex) => (
-                <tr key={`${monthIndex}-${payeeIndex}`} className="hover:bg-gray-50">
+                <tr key={`${monthIndex}-${payeeIndex}`} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                   {payeeIndex === 0 ? (
-                    <td className="px-4 py-3 text-sm font-medium text-gray-900" rowSpan={payeeEntries.length}>
+                    <td className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-white" rowSpan={payeeEntries.length}>
                       {month.monthLabel}
                     </td>
                   ) : null}
-                  <td className="px-4 py-3 text-sm text-gray-700 max-w-xs truncate" title={payee}>{payee}</td>
+                  <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300 max-w-xs truncate" title={payee}>{payee}</td>
                   <td className={`px-4 py-3 text-sm text-right ${colorClass}`}>{formatCurrency(amount)}</td>
                 </tr>
               ));
@@ -283,16 +283,16 @@ const MonthlyPayeeTable = ({ title, months, type }) => {
               const monthTotal = type === 'income' ? month.income?.amount : month.expense?.amount;
               return (
                 <tr key={`total-${monthIndex}`} className={`${headerBg} font-semibold`}>
-                  <td className="px-4 py-2 text-sm text-gray-900">{month.monthLabel} Total</td>
-                  <td className="px-4 py-2 text-sm text-gray-500"></td>
+                  <td className="px-4 py-2 text-sm text-gray-900 dark:text-white">{month.monthLabel} Total</td>
+                  <td className="px-4 py-2 text-sm text-gray-500 dark:text-gray-400"></td>
                   <td className={`px-4 py-2 text-sm text-right ${colorClass}`}>{formatCurrency(monthTotal || 0)}</td>
                 </tr>
               );
             })}
             {/* Grand Total */}
-            <tr className="bg-gray-100 font-bold">
-              <td className="px-4 py-3 text-sm text-gray-900">Grand Total</td>
-              <td className="px-4 py-3 text-sm text-gray-500"></td>
+            <tr className="bg-gray-100 dark:bg-gray-700 font-bold">
+              <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">Grand Total</td>
+              <td className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400"></td>
               <td className={`px-4 py-3 text-sm text-right ${colorClass}`}>
                 {formatCurrency(Object.values(payeeTotals).reduce((sum, val) => sum + val, 0))}
               </td>
@@ -307,20 +307,20 @@ const MonthlyPayeeTable = ({ title, months, type }) => {
 /**
  * Summary Card Component
  */
-const SummaryCard = ({ icon: Icon, title, value, subValue, trend, colorClass = 'text-gray-900' }) => {
+const SummaryCard = ({ icon: Icon, title, value, subValue, trend, colorClass = 'text-gray-900 dark:text-white' }) => {
   const bgColorClass = (colorClass || 'text-gray-900').replace('text-', 'bg-').replace('900', '100').replace('600', '100').replace('400', '100');
   
   return (
-    <div className="bg-white rounded-lg shadow p-4">
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center">
-          <div className={`p-2 rounded-lg ${bgColorClass}`}>
-            <Icon className={`h-5 w-5 ${colorClass || 'text-gray-900'}`} />
+          <div className={`p-2 rounded-lg ${bgColorClass} dark:bg-opacity-20`}>
+            <Icon className={`h-5 w-5 ${colorClass || 'text-gray-900 dark:text-white'}`} />
           </div>
           <div className="ml-3">
-            <p className="text-sm text-gray-500">{title}</p>
-            <p className={`text-xl font-bold ${colorClass || 'text-gray-900'}`}>{value}</p>
-            {subValue && <p className="text-xs text-gray-400">{subValue}</p>}
+            <p className="text-sm text-gray-500 dark:text-gray-400">{title}</p>
+            <p className={`text-xl font-bold ${colorClass || 'text-gray-900 dark:text-white'}`}>{value}</p>
+            {subValue && <p className="text-xs text-gray-400 dark:text-gray-500">{subValue}</p>}
           </div>
         </div>
         {trend !== undefined && trend !== null && (
@@ -367,7 +367,7 @@ const MonthlyReports = () => {
       if (selectedCompany && selectedCompany !== 'all') {
         params.companyId = selectedCompany;
       }
-      return apiClient.reports.getMonthlySummary(params);
+      return api.reports.getMonthlySummary(params);
     },
     enabled: !!user && !!dateRange.start && !!dateRange.end
   });
@@ -388,7 +388,7 @@ const MonthlyReports = () => {
       if (selectedCompany && selectedCompany !== 'all') {
         params.companyId = selectedCompany;
       }
-      return apiClient.reports.getMonthlyChecks(params);
+      return api.reports.getMonthlyChecks(params);
     },
     enabled: !!user && !!dateRange.start && !!dateRange.end && activeTab === 'checks'
   });
@@ -430,10 +430,10 @@ const MonthlyReports = () => {
       let filename;
 
       if (type === 'summary') {
-        response = await apiClient.reports.generateMonthlySummaryPDF(params);
+        response = await api.reports.generateMonthlySummaryPDF(params);
         filename = `monthly-summary-${dateRange.start}-to-${dateRange.end}.pdf`;
       } else {
-        response = await apiClient.reports.generateMonthlyChecksPDF(params);
+        response = await api.reports.generateMonthlyChecksPDF(params);
         filename = `monthly-checks-${dateRange.start}-to-${dateRange.end}.pdf`;
       }
 
@@ -472,12 +472,12 @@ const MonthlyReports = () => {
     <div className="p-6 max-w-7xl mx-auto">
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Monthly Reports</h1>
-        <p className="text-gray-600">View month-by-month financial summaries and check payments</p>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Monthly Reports</h1>
+        <p className="text-gray-600 dark:text-gray-400">View month-by-month financial summaries and check payments</p>
       </div>
 
       {/* Controls */}
-      <div className="bg-white rounded-lg shadow p-4 mb-6">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 mb-6">
         <div className="flex flex-wrap items-center gap-4">
           <div className="flex-1 min-w-64">
             <SmartDateSelector
@@ -496,7 +496,7 @@ const MonthlyReports = () => {
           <div className="flex gap-2">
             <button
               onClick={handleRefresh}
-              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg"
+              className="p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
               title="Refresh"
             >
               <ArrowPathIcon className="h-5 w-5" />
@@ -514,14 +514,14 @@ const MonthlyReports = () => {
       </div>
 
       {/* Tab Navigation */}
-      <div className="border-b border-gray-200 mb-6">
+      <div className="border-b border-gray-200 dark:border-gray-700 mb-6">
         <nav className="-mb-px flex space-x-8">
           <button
             onClick={() => setActiveTab('summary')}
             className={`py-2 px-1 border-b-2 font-medium text-sm ${
               activeTab === 'summary'
-                ? 'border-blue-500 text-blue-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600'
             }`}
           >
             <ChartBarIcon className="h-5 w-5 inline-block mr-2" />
@@ -531,8 +531,8 @@ const MonthlyReports = () => {
             onClick={() => setActiveTab('checks')}
             className={`py-2 px-1 border-b-2 font-medium text-sm ${
               activeTab === 'checks'
-                ? 'border-blue-500 text-blue-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600'
             }`}
           >
             <CreditCardIcon className="h-5 w-5 inline-block mr-2" />
@@ -550,7 +550,7 @@ const MonthlyReports = () => {
 
       {/* Error State */}
       {error && !isLoading && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-lg p-4 text-red-700 dark:text-red-300">
           Failed to load report data. Please try again.
         </div>
       )}
@@ -587,8 +587,8 @@ const MonthlyReports = () => {
           </div>
 
           {/* Monthly Chart */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="font-semibold text-gray-900 mb-4">Monthly Income vs Expenses</h3>
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <h3 className="font-semibold text-gray-900 dark:text-white mb-4">Monthly Income vs Expenses</h3>
             <BarChart
               data={summaryChartData}
               incomeKey="income"
@@ -599,31 +599,31 @@ const MonthlyReports = () => {
           </div>
 
           {/* Monthly Data Table */}
-          <div className="bg-white rounded-lg shadow overflow-hidden">
-            <div className="px-4 py-3 border-b border-gray-200">
-              <h3 className="font-semibold text-gray-900">Monthly Breakdown</h3>
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
+            <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+              <h3 className="font-semibold text-gray-900 dark:text-white">Monthly Breakdown</h3>
             </div>
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead className="bg-gray-50 dark:bg-gray-700">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Month</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Income</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Expenses</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Net Income</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Transactions</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Month</th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Income</th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Expenses</th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Net Income</th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Transactions</th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+                <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                   {summaryData.data.months?.map((month, index) => (
-                    <tr key={index} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 text-sm font-medium text-gray-900">{month.monthLabel}</td>
-                      <td className="px-4 py-3 text-sm text-right text-green-600">{formatCurrency(month.income.total)}</td>
-                      <td className="px-4 py-3 text-sm text-right text-red-600">{formatCurrency(month.expenses.total)}</td>
-                      <td className={`px-4 py-3 text-sm text-right font-medium ${month.netIncome >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    <tr key={index} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                      <td className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-white">{month.monthLabel}</td>
+                      <td className="px-4 py-3 text-sm text-right text-green-600 dark:text-green-400">{formatCurrency(month.income.total)}</td>
+                      <td className="px-4 py-3 text-sm text-right text-red-600 dark:text-red-400">{formatCurrency(month.expenses.total)}</td>
+                      <td className={`px-4 py-3 text-sm text-right font-medium ${month.netIncome >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                         {formatCurrency(month.netIncome)}
                       </td>
-                      <td className="px-4 py-3 text-sm text-right text-gray-500">{month.transactionCount}</td>
+                      <td className="px-4 py-3 text-sm text-right text-gray-500 dark:text-gray-400">{month.transactionCount}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -660,7 +660,7 @@ const MonthlyReports = () => {
               icon={BanknotesIcon}
               title="Total Amount"
               value={formatCurrency(checksData.data.totals?.totalAmount || 0)}
-              colorClass="text-gray-900"
+              colorClass="text-gray-900 dark:text-white"
             />
             <SummaryCard
               icon={ArrowTrendingUpIcon}
@@ -677,8 +677,8 @@ const MonthlyReports = () => {
           </div>
 
           {/* Monthly Chart */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="font-semibold text-gray-900 mb-4">Monthly Check Payments</h3>
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <h3 className="font-semibold text-gray-900 dark:text-white mb-4">Monthly Check Payments</h3>
             <BarChart
               data={checksChartData}
               incomeKey="income"
@@ -689,29 +689,29 @@ const MonthlyReports = () => {
           </div>
 
           {/* Monthly Data Table */}
-          <div className="bg-white rounded-lg shadow overflow-hidden">
-            <div className="px-4 py-3 border-b border-gray-200">
-              <h3 className="font-semibold text-gray-900">Monthly Checks Breakdown</h3>
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
+            <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+              <h3 className="font-semibold text-gray-900 dark:text-white">Monthly Checks Breakdown</h3>
             </div>
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead className="bg-gray-50 dark:bg-gray-700">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Month</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase"># Checks</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Income</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Expense</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Total</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Month</th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase"># Checks</th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Income</th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Expense</th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Total</th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+                <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                   {checksData.data.months?.map((month, index) => (
-                    <tr key={index} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 text-sm font-medium text-gray-900">{month.monthLabel}</td>
-                      <td className="px-4 py-3 text-sm text-right text-gray-500">{month.totalChecks}</td>
-                      <td className="px-4 py-3 text-sm text-right text-green-600">{formatCurrency(month.income.amount)}</td>
-                      <td className="px-4 py-3 text-sm text-right text-red-600">{formatCurrency(month.expense.amount)}</td>
-                      <td className="px-4 py-3 text-sm text-right font-medium text-gray-900">{formatCurrency(month.totalAmount)}</td>
+                    <tr key={index} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                      <td className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-white">{month.monthLabel}</td>
+                      <td className="px-4 py-3 text-sm text-right text-gray-500 dark:text-gray-400">{month.totalChecks}</td>
+                      <td className="px-4 py-3 text-sm text-right text-green-600 dark:text-green-400">{formatCurrency(month.income.amount)}</td>
+                      <td className="px-4 py-3 text-sm text-right text-red-600 dark:text-red-400">{formatCurrency(month.expense.amount)}</td>
+                      <td className="px-4 py-3 text-sm text-right font-medium text-gray-900 dark:text-white">{formatCurrency(month.totalAmount)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -733,10 +733,10 @@ const MonthlyReports = () => {
 
           {/* Empty State */}
           {checksData.data.months?.length === 0 && (
-            <div className="bg-gray-50 rounded-lg p-8 text-center">
-              <CreditCardIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No Checks Found</h3>
-              <p className="text-gray-600">No check records found for the selected date range.</p>
+            <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-8 text-center">
+              <CreditCardIcon className="h-12 w-12 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No Checks Found</h3>
+              <p className="text-gray-600 dark:text-gray-400">No check records found for the selected date range.</p>
             </div>
           )}
         </div>
@@ -744,10 +744,10 @@ const MonthlyReports = () => {
 
       {/* Empty State for Summary */}
       {activeTab === 'summary' && !isLoading && !error && summaryData?.data?.months?.length === 0 && (
-        <div className="bg-gray-50 rounded-lg p-8 text-center">
-          <ChartBarIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No Data Found</h3>
-          <p className="text-gray-600">No transactions found for the selected date range.</p>
+        <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-8 text-center">
+          <ChartBarIcon className="h-12 w-12 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No Data Found</h3>
+          <p className="text-gray-600 dark:text-gray-400">No transactions found for the selected date range.</p>
         </div>
       )}
     </div>

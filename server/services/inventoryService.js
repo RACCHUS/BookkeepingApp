@@ -44,8 +44,8 @@ class InventoryService {
     try {
       const { companyId, sku, name, description, category, unitCost, sellingPrice, quantity, reorderLevel, unit, supplier } = itemData;
 
-      if (!sku || !name) {
-        throw new Error('SKU and name are required');
+      if (!name) {
+        throw new Error('Name is required');
       }
 
       const { data, error } = await this.getClient()

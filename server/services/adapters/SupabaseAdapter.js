@@ -111,7 +111,12 @@ class SupabaseAdapter extends DatabaseAdapter {
 
     let query = this.supabase
       .from('transactions')
-      .select('*', { count: 'exact' })
+      .select(`
+        *,
+        companies:company_id(name),
+        payees:payee_id(name),
+        income_sources:income_source_id(name)
+      `, { count: 'exact' })
       .eq('user_id', userId)
       .order('date', { ascending: false });
 
@@ -198,6 +203,9 @@ class SupabaseAdapter extends DatabaseAdapter {
       last_modified_by: userId
     };
 
+    // Helper to convert empty strings to null for UUID fields
+    const toUuidOrNull = (value) => (value && String(value).trim() !== '') ? value : null;
+
     // Map camelCase to snake_case
     const fieldMap = {
       date: 'date',
@@ -224,9 +232,17 @@ class SupabaseAdapter extends DatabaseAdapter {
       notes: 'notes'
     };
 
+    // UUID fields that need empty string -> null conversion
+    const uuidFields = ['payee_id', 'company_id', 'upload_id', 'income_source_id', 'vendor_id'];
+
     for (const [camelKey, snakeKey] of Object.entries(fieldMap)) {
       if (updateData[camelKey] !== undefined) {
-        updates[snakeKey] = updateData[camelKey];
+        // Convert empty strings to null for UUID fields
+        if (uuidFields.includes(snakeKey)) {
+          updates[snakeKey] = toUuidOrNull(updateData[camelKey]);
+        } else {
+          updates[snakeKey] = updateData[camelKey];
+        }
       }
     }
 
@@ -1384,13 +1400,16 @@ class SupabaseAdapter extends DatabaseAdapter {
       type: row.type,
       category: row.category,
       subcategory: row.subcategory,
-      payee: row.payee,
+      payee: row.payee || row.payees?.name || null,
+      payeeName: row.payees?.name || row.payee || null,
       payeeId: row.payee_id,
       companyId: row.company_id,
+      companyName: row.companies?.name || null,
       uploadId: row.upload_id,
       statementId: row.upload_id || row.statement_id, // Alias for compatibility
       csvImportId: row.csv_import_id,
       incomeSourceId: row.income_source_id,
+      incomeSourceName: row.income_sources?.name || null,
       bankName: row.bank_name,
       accountLastFour: row.account_last_four,
       checkNumber: row.check_number,

@@ -7,7 +7,7 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-hot-toast';
-import apiClient from '../../services/api';
+import api from '../../services/api';
 import receiptService from '../../services/receiptService';
 import { formatCurrency } from '../../utils/currencyUtils';
 
@@ -37,7 +37,7 @@ const ReceiptVendorAssignment = ({ onAssignmentComplete }) => {
   // Fetch all vendors (payees with type 'vendor')
   const { data: vendorsData, isLoading: loadingVendors, error: vendorsError } = useQuery({
     queryKey: ['all-vendors'],
-    queryFn: () => apiClient.payees.getVendors(),
+    queryFn: () => api.payees.getVendors(),
     retry: 2,
     onError: (error) => {
       console.error('Error fetching vendors:', error);
@@ -45,12 +45,14 @@ const ReceiptVendorAssignment = ({ onAssignmentComplete }) => {
     }
   });
 
-  const allReceiptsRaw = receiptsData?.receipts;
+  // Receipt API returns { success: true, data: [...], total: N }
+  const allReceiptsRaw = receiptsData?.data || receiptsData?.receipts;
   const allReceipts = Array.isArray(allReceiptsRaw) ? allReceiptsRaw : [];
   const unassignedReceipts = allReceipts.filter(r => !r.vendor || r.vendor.trim() === '');
   const assignedReceipts = allReceipts.filter(r => r.vendor && r.vendor.trim() !== '');
   const receipts = viewMode === 'unassigned' ? unassignedReceipts : assignedReceipts;
-  const vendorsRaw = vendorsData?.data?.payees || vendorsData?.payees;
+  // Vendors API returns { data: { vendors: [...] } } or { vendors: [...] }
+  const vendorsRaw = vendorsData?.data?.vendors || vendorsData?.vendors || vendorsData?.data?.payees || vendorsData?.payees;
   const vendors = Array.isArray(vendorsRaw) ? vendorsRaw : [];
 
   // Mutation for bulk vendor assignment to receipts
@@ -104,7 +106,7 @@ const ReceiptVendorAssignment = ({ onAssignmentComplete }) => {
 
   // Mutation for creating new vendor
   const createVendorMutation = useMutation({
-    mutationFn: (vendorData) => apiClient.payees.create(vendorData),
+    mutationFn: (vendorData) => api.payees.create(vendorData),
     onSuccess: (data) => {
       toast.success('Vendor created successfully');
       const newVendorId = data?.data?.id || data?.id;

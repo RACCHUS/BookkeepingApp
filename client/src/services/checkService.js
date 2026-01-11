@@ -1,27 +1,41 @@
 /**
  * Check Service - Frontend API client for check management
  * @description Provides API methods for checks CRUD, batch operations, and file uploads
+ * Now uses Supabase directly instead of Express API
  * 
  * Checks can be:
  * - Income: checks you RECEIVE from others (deposits)
  * - Expense: checks you WRITE to pay others
  */
 
-import axios from 'axios';
+import { supabase } from './supabase';
 import { auth } from './firebase';
 
-const API_BASE = import.meta.env.VITE_API_URL || '/api';
-
 /**
- * Get authorization headers with Firebase token
+ * Get the current user's Firebase UID
+ * Waits for auth to be ready if needed
  */
-const getAuthHeaders = async () => {
-  const user = auth.currentUser;
-  if (!user) throw new Error('User not authenticated');
-  const token = await user.getIdToken();
-  return {
-    Authorization: `Bearer ${token}`
-  };
+const getUserId = async () => {
+  if (auth.currentUser) {
+    return auth.currentUser.uid;
+  }
+  
+  return new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      unsubscribe();
+      reject(new Error('Authentication timeout - please refresh the page'));
+    }, 5000);
+    
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      clearTimeout(timeout);
+      unsubscribe();
+      if (user) {
+        resolve(user.uid);
+      } else {
+        reject(new Error('User not authenticated'));
+      }
+    });
+  });
 };
 
 /**
@@ -44,324 +58,442 @@ export const CHECK_STATUSES = {
 };
 
 /**
+ * Transform database row to frontend format
+ */
+const transformCheck = (row) => {
+  if (!row) return null;
+  return {
+    id: row.id,
+    checkNumber: row.check_number,
+    date: row.date,
+    amount: parseFloat(row.amount) || 0,
+    type: row.type || 'expense',
+    payee: row.payee,
+    payeeId: row.payee_id,
+    vendorId: row.vendor_id,
+    memo: row.memo,
+    status: row.status || 'pending',
+    imageUrl: row.image_url,
+    transactionId: row.transaction_id,
+    companyId: row.company_id,
+    bankAccount: row.bank_account,
+    clearedDate: row.cleared_date,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+};
+
+/**
  * Check API Service
  */
 const checkService = {
   /**
    * Create a new check (with optional image)
-   * @param {Object} checkData - Check data
-   * @param {File} file - Optional image file
-   * @returns {Promise<Object>} Created check
    */
   createCheck: async (checkData, file = null) => {
-    const headers = await getAuthHeaders();
+    const userId = await getUserId();
     
+    let imageUrl = null;
+    
+    // Upload image to Supabase Storage if provided
     if (file) {
-      // Use FormData for file upload
-      const formData = new FormData();
-      formData.append('image', file);
-      Object.keys(checkData).forEach(key => {
-        if (checkData[key] !== null && checkData[key] !== undefined && checkData[key] !== '') {
-          formData.append(key, checkData[key]);
-        }
-      });
+      const fileName = `${userId}/${Date.now()}-${file.name}`;
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('checks')
+        .upload(fileName, file);
       
-      const response = await axios.post(`${API_BASE}/checks`, formData, {
-        headers: {
-          ...headers,
-          'Content-Type': 'multipart/form-data'
-        }
-      });
-      return response.data;
-    } else {
-      // JSON request without file
-      const response = await axios.post(`${API_BASE}/checks`, checkData, {
-        headers: {
-          ...headers,
-          'Content-Type': 'application/json'
-        }
-      });
-      return response.data;
+      if (uploadError) throw uploadError;
+      
+      const { data: urlData } = supabase.storage
+        .from('checks')
+        .getPublicUrl(fileName);
+      
+      imageUrl = urlData.publicUrl;
     }
+    
+    const { data, error } = await supabase
+      .from('checks')
+      .insert({
+        user_id: userId,
+        check_number: checkData.checkNumber,
+        date: checkData.date,
+        amount: checkData.amount,
+        type: checkData.type || 'expense',
+        payee: checkData.payee,
+        payee_id: checkData.payeeId || null,
+        vendor_id: checkData.vendorId || null,
+        memo: checkData.memo,
+        status: checkData.status || 'pending',
+        image_url: imageUrl || checkData.imageUrl,
+        transaction_id: checkData.transactionId || null,
+        company_id: checkData.companyId || null,
+        bank_account: checkData.bankAccount,
+      })
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return { success: true, data: transformCheck(data) };
   },
 
   /**
    * Get paginated list of checks with filters
-   * @param {Object} filters - Filter options
-   * @returns {Promise<Object>} { data: checks[], pagination }
    */
   getChecks: async (filters = {}) => {
-    const headers = await getAuthHeaders();
+    const userId = await getUserId();
     
-    const params = { ...filters };
+    let query = supabase
+      .from('checks')
+      .select('*', { count: 'exact' })
+      .eq('user_id', userId);
     
-    // Remove undefined/null params
-    Object.keys(params).forEach(key => {
-      if (params[key] === undefined || params[key] === null) {
-        delete params[key];
+    // Apply filters
+    if (filters.type) query = query.eq('type', filters.type);
+    if (filters.status) query = query.eq('status', filters.status);
+    if (filters.payeeId) query = query.eq('payee_id', filters.payeeId);
+    if (filters.vendorId) query = query.eq('vendor_id', filters.vendorId);
+    if (filters.companyId) query = query.eq('company_id', filters.companyId);
+    if (filters.startDate) query = query.gte('date', filters.startDate);
+    if (filters.endDate) query = query.lte('date', filters.endDate);
+    if (filters.hasTransaction !== undefined) {
+      if (filters.hasTransaction) {
+        query = query.not('transaction_id', 'is', null);
+      } else {
+        query = query.is('transaction_id', null);
       }
-    });
+    }
     
-    const response = await axios.get(`${API_BASE}/checks`, {
-      headers,
-      params
-    });
-    return response.data;
+    // Apply sorting
+    const sortField = filters.sortBy || 'date';
+    const sortOrder = filters.sortOrder === 'asc' ? true : false;
+    query = query.order(sortField, { ascending: sortOrder });
+    
+    // Apply pagination
+    const limit = filters.limit || 20;
+    const offset = filters.offset || 0;
+    query = query.range(offset, offset + limit - 1);
+    
+    const { data, error, count } = await query;
+    if (error) throw error;
+    
+    return {
+      data: (data || []).map(transformCheck),
+      pagination: {
+        total: count || 0,
+        limit,
+        offset,
+      },
+    };
   },
 
   /**
    * Get check by ID
-   * @param {string} checkId - Check ID
-   * @returns {Promise<Object>} Check data
    */
   getCheckById: async (checkId) => {
-    const headers = await getAuthHeaders();
-    const response = await axios.get(`${API_BASE}/checks/${checkId}`, {
-      headers
-    });
-    return response.data;
+    const userId = await getUserId();
+    
+    const { data, error } = await supabase
+      .from('checks')
+      .select('*')
+      .eq('id', checkId)
+      .eq('user_id', userId)
+      .single();
+    
+    if (error) throw error;
+    return { success: true, data: transformCheck(data) };
   },
 
   /**
    * Update check
-   * @param {string} checkId - Check ID
-   * @param {Object} updates - Fields to update
-   * @returns {Promise<Object>} Updated check
    */
   updateCheck: async (checkId, updates) => {
-    const headers = await getAuthHeaders();
-    const response = await axios.put(`${API_BASE}/checks/${checkId}`, updates, {
-      headers
-    });
-    return response.data;
+    const userId = await getUserId();
+    
+    const dbUpdates = {};
+    if (updates.checkNumber !== undefined) dbUpdates.check_number = updates.checkNumber;
+    if (updates.date !== undefined) dbUpdates.date = updates.date;
+    if (updates.amount !== undefined) dbUpdates.amount = updates.amount;
+    if (updates.type !== undefined) dbUpdates.type = updates.type;
+    if (updates.payee !== undefined) dbUpdates.payee = updates.payee;
+    if (updates.payeeId !== undefined) dbUpdates.payee_id = updates.payeeId;
+    if (updates.vendorId !== undefined) dbUpdates.vendor_id = updates.vendorId;
+    if (updates.memo !== undefined) dbUpdates.memo = updates.memo;
+    if (updates.status !== undefined) dbUpdates.status = updates.status;
+    if (updates.imageUrl !== undefined) dbUpdates.image_url = updates.imageUrl;
+    if (updates.transactionId !== undefined) dbUpdates.transaction_id = updates.transactionId;
+    if (updates.companyId !== undefined) dbUpdates.company_id = updates.companyId;
+    if (updates.bankAccount !== undefined) dbUpdates.bank_account = updates.bankAccount;
+    if (updates.clearedDate !== undefined) dbUpdates.cleared_date = updates.clearedDate;
+    
+    const { data, error } = await supabase
+      .from('checks')
+      .update(dbUpdates)
+      .eq('id', checkId)
+      .eq('user_id', userId)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return { success: true, data: transformCheck(data) };
   },
 
   /**
    * Delete check
-   * @param {string} checkId - Check ID
-   * @param {Object} options - { deleteTransaction: boolean }
-   * @returns {Promise<Object>} Success response
    */
   deleteCheck: async (checkId, options = {}) => {
-    const headers = await getAuthHeaders();
-    const params = {};
-    if (options.deleteTransaction !== undefined) {
-      params.deleteTransaction = options.deleteTransaction;
+    const userId = await getUserId();
+    
+    // Get the check first to check for transaction
+    const { data: check } = await supabase
+      .from('checks')
+      .select('transaction_id')
+      .eq('id', checkId)
+      .eq('user_id', userId)
+      .single();
+    
+    // Delete associated transaction if requested
+    if (options.deleteTransaction && check?.transaction_id) {
+      await supabase
+        .from('transactions')
+        .delete()
+        .eq('id', check.transaction_id)
+        .eq('user_id', userId);
     }
-    const response = await axios.delete(`${API_BASE}/checks/${checkId}`, {
-      headers,
-      params
-    });
-    return response.data;
+    
+    const { error } = await supabase
+      .from('checks')
+      .delete()
+      .eq('id', checkId)
+      .eq('user_id', userId);
+    
+    if (error) throw error;
+    return { success: true };
   },
 
   /**
    * Upload or replace image for existing check
-   * @param {string} checkId - Check ID
-   * @param {File} file - Image file
-   * @param {Function} onProgress - Progress callback
-   * @returns {Promise<Object>} Updated check
    */
   uploadImage: async (checkId, file, onProgress = null) => {
-    const headers = await getAuthHeaders();
-    const formData = new FormData();
-    formData.append('image', file);
+    const userId = await getUserId();
     
-    const response = await axios.post(`${API_BASE}/checks/${checkId}/image`, formData, {
-      headers: {
-        ...headers,
-        'Content-Type': 'multipart/form-data'
-      },
-      onUploadProgress: onProgress ? (progressEvent) => {
-        const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-        onProgress(percentCompleted);
-      } : undefined
-    });
-    return response.data;
+    const fileName = `${userId}/${Date.now()}-${file.name}`;
+    const { error: uploadError } = await supabase.storage
+      .from('checks')
+      .upload(fileName, file);
+    
+    if (uploadError) throw uploadError;
+    
+    const { data: urlData } = supabase.storage
+      .from('checks')
+      .getPublicUrl(fileName);
+    
+    const { data, error } = await supabase
+      .from('checks')
+      .update({ image_url: urlData.publicUrl })
+      .eq('id', checkId)
+      .eq('user_id', userId)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return { success: true, data: transformCheck(data) };
   },
 
   /**
-   * Delete image from check (keep check record)
-   * @param {string} checkId - Check ID
-   * @returns {Promise<Object>} Updated check
+   * Delete image from check
    */
   deleteImage: async (checkId) => {
-    const headers = await getAuthHeaders();
-    const response = await axios.delete(`${API_BASE}/checks/${checkId}/image`, {
-      headers
-    });
-    return response.data;
+    const userId = await getUserId();
+    
+    const { data, error } = await supabase
+      .from('checks')
+      .update({ image_url: null })
+      .eq('id', checkId)
+      .eq('user_id', userId)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return { success: true, data: transformCheck(data) };
   },
 
   /**
-   * Link check to existing transaction
-   * @param {string} checkId - Check ID
-   * @param {string} transactionId - Transaction ID
-   * @returns {Promise<Object>} Updated check
+   * Link check to transaction
    */
   linkToTransaction: async (checkId, transactionId) => {
-    const headers = await getAuthHeaders();
-    const response = await axios.post(`${API_BASE}/checks/${checkId}/link/${transactionId}`, {}, {
-      headers
-    });
-    return response.data;
+    const userId = await getUserId();
+    
+    const { data, error } = await supabase
+      .from('checks')
+      .update({ transaction_id: transactionId })
+      .eq('id', checkId)
+      .eq('user_id', userId)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return { success: true, data: transformCheck(data) };
   },
 
   /**
    * Unlink check from transaction
-   * @param {string} checkId - Check ID
-   * @returns {Promise<Object>} Updated check
    */
   unlinkFromTransaction: async (checkId) => {
-    const headers = await getAuthHeaders();
-    const response = await axios.post(`${API_BASE}/checks/${checkId}/unlink`, {}, {
-      headers
-    });
-    return response.data;
+    const userId = await getUserId();
+    
+    const { data, error } = await supabase
+      .from('checks')
+      .update({ transaction_id: null })
+      .eq('id', checkId)
+      .eq('user_id', userId)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return { success: true, data: transformCheck(data) };
   },
 
   /**
-   * Bulk link multiple checks to a single transaction
-   * @param {string[]} checkIds - Array of check IDs
-   * @param {string} transactionId - Transaction ID to link to
-   * @returns {Promise<Object>} { successful, failed }
-   */
-  bulkLinkToTransaction: async (checkIds, transactionId) => {
-    const headers = await getAuthHeaders();
-    const response = await axios.post(`${API_BASE}/checks/bulk-link`, {
-      checkIds,
-      transactionId
-    }, { headers });
-    return response.data;
-  },
-
-  /**
-   * Bulk unlink multiple checks from their transactions
-   * @param {string[]} checkIds - Array of check IDs
-   * @returns {Promise<Object>} { successful, failed }
-   */
-  bulkUnlinkFromTransactions: async (checkIds) => {
-    const headers = await getAuthHeaders();
-    const response = await axios.post(`${API_BASE}/checks/bulk-unlink`, {
-      checkIds
-    }, { headers });
-    return response.data;
-  },
-
-  /**
-   * Link a check to multiple transactions at once
-   * @param {string} checkId - Check ID
-   * @param {string[]} transactionIds - Array of transaction IDs
-   * @returns {Promise<Object>} Updated check with results
-   */
-  linkToMultipleTransactions: async (checkId, transactionIds) => {
-    const headers = await getAuthHeaders();
-    const response = await axios.post(`${API_BASE}/checks/${checkId}/link-multiple`, {
-      transactionIds
-    }, { headers });
-    return response.data;
-  },
-
-  /**
-   * Add a single transaction link to check (multi-transaction support)
-   * @param {string} checkId - Check ID
-   * @param {string} transactionId - Transaction ID to add
-   * @returns {Promise<Object>} Updated check
-   */
-  addTransactionLink: async (checkId, transactionId) => {
-    const headers = await getAuthHeaders();
-    const response = await axios.post(`${API_BASE}/checks/${checkId}/add-link/${transactionId}`, {}, {
-      headers
-    });
-    return response.data;
-  },
-
-  /**
-   * Remove a single transaction link from check
-   * @param {string} checkId - Check ID
-   * @param {string} transactionId - Transaction ID to remove
-   * @returns {Promise<Object>} Updated check
-   */
-  removeTransactionLink: async (checkId, transactionId) => {
-    const headers = await getAuthHeaders();
-    const response = await axios.delete(`${API_BASE}/checks/${checkId}/remove-link/${transactionId}`, {
-      headers
-    });
-    return response.data;
-  },
-
-  /**
-   * Batch update multiple checks
-   * @param {string[]} checkIds - Array of check IDs
-   * @param {Object} updates - Fields to update
-   * @returns {Promise<Object>} { successful, failed }
+   * Batch update checks
    */
   batchUpdateChecks: async (checkIds, updates) => {
-    const headers = await getAuthHeaders();
-    const response = await axios.put(`${API_BASE}/checks/batch`, {
-      checkIds,
-      updates
-    }, { headers });
-    return response.data;
+    const userId = await getUserId();
+    
+    const dbUpdates = {};
+    if (updates.status !== undefined) dbUpdates.status = updates.status;
+    if (updates.payeeId !== undefined) dbUpdates.payee_id = updates.payeeId;
+    if (updates.vendorId !== undefined) dbUpdates.vendor_id = updates.vendorId;
+    if (updates.companyId !== undefined) dbUpdates.company_id = updates.companyId;
+    
+    const { data, error } = await supabase
+      .from('checks')
+      .update(dbUpdates)
+      .in('id', checkIds)
+      .eq('user_id', userId)
+      .select();
+    
+    if (error) throw error;
+    
+    return {
+      success: true,
+      data: {
+        successful: data?.length || 0,
+        failed: 0,
+      },
+    };
   },
 
   /**
-   * Batch delete multiple checks
-   * @param {string[]} checkIds - Array of check IDs
-   * @returns {Promise<Object>} { successful, failed }
+   * Batch delete checks
    */
-  batchDeleteChecks: async (checkIds) => {
-    const headers = await getAuthHeaders();
-    const response = await axios.delete(`${API_BASE}/checks/batch`, {
-      headers,
-      data: { checkIds }
-    });
-    return response.data;
+  batchDeleteChecks: async (checkIds, options = {}) => {
+    const userId = await getUserId();
+    
+    // Delete associated transactions if requested
+    if (options.deleteTransactions) {
+      const { data: checks } = await supabase
+        .from('checks')
+        .select('transaction_id')
+        .in('id', checkIds)
+        .eq('user_id', userId);
+      
+      const transactionIds = (checks || [])
+        .map(c => c.transaction_id)
+        .filter(Boolean);
+      
+      if (transactionIds.length > 0) {
+        await supabase
+          .from('transactions')
+          .delete()
+          .in('id', transactionIds)
+          .eq('user_id', userId);
+      }
+    }
+    
+    const { error } = await supabase
+      .from('checks')
+      .delete()
+      .in('id', checkIds)
+      .eq('user_id', userId);
+    
+    if (error) throw error;
+    
+    return {
+      success: true,
+      data: {
+        successful: checkIds.length,
+        failed: 0,
+      },
+    };
   },
 
   /**
    * Get check statistics
-   * @param {Object} options - Filter options (companyId, startDate, endDate)
-   * @returns {Promise<Object>} Statistics
    */
-  getStats: async (options = {}) => {
-    const headers = await getAuthHeaders();
-    const response = await axios.get(`${API_BASE}/checks/stats`, {
-      headers,
-      params: options
-    });
-    return response.data;
+  getStats: async () => {
+    const userId = await getUserId();
+    
+    const { data, error, count } = await supabase
+      .from('checks')
+      .select('amount, type, status', { count: 'exact' })
+      .eq('user_id', userId);
+    
+    if (error) throw error;
+    
+    const income = (data || []).filter(c => c.type === 'income');
+    const expense = (data || []).filter(c => c.type === 'expense');
+    const pending = (data || []).filter(c => c.status === 'pending');
+    const cleared = (data || []).filter(c => c.status === 'cleared');
+    
+    return {
+      success: true,
+      data: {
+        totalChecks: count || 0,
+        incomeChecks: income.length,
+        incomeAmount: income.reduce((sum, c) => sum + (parseFloat(c.amount) || 0), 0),
+        expenseChecks: expense.length,
+        expenseAmount: expense.reduce((sum, c) => sum + (parseFloat(c.amount) || 0), 0),
+        pending: pending.length,
+        cleared: cleared.length,
+      },
+    };
   },
 
   /**
-   * Bulk create checks from transactions
-   * @param {Array} transactions - Array of transaction objects
-   * @returns {Promise<Object>} { successCount, failCount, checks, failed }
-   */
-  bulkCreateFromTransactions: async (transactions) => {
-    const headers = await getAuthHeaders();
-    const response = await axios.post(`${API_BASE}/checks/from-transactions`, {
-      transactions
-    }, {
-      headers
-    });
-    return response.data;
-  },
-
-  /**
-   * Bulk create checks (with automatic transaction creation for each)
-   * @param {Array} checks - Array of check data objects
-   * @returns {Promise<Object>} { results, allSucceeded, someSucceeded, successCount, failCount }
+   * Bulk create checks
    */
   bulkCreate: async (checks) => {
-    const headers = await getAuthHeaders();
-    const response = await axios.post(`${API_BASE}/checks/bulk`, {
-      checks
-    }, {
-      headers
-    });
-    return response.data;
-  }
+    const userId = await getUserId();
+    
+    const checksToInsert = checks.map(c => ({
+      user_id: userId,
+      check_number: c.checkNumber,
+      date: c.date,
+      amount: c.amount,
+      type: c.type || 'expense',
+      payee: c.payee,
+      payee_id: c.payeeId || null,
+      vendor_id: c.vendorId || null,
+      memo: c.memo,
+      status: c.status || 'pending',
+      company_id: c.companyId || null,
+    }));
+    
+    const { data, error } = await supabase
+      .from('checks')
+      .insert(checksToInsert)
+      .select();
+    
+    if (error) throw error;
+    
+    return {
+      success: true,
+      data: {
+        created: data?.length || 0,
+        checks: (data || []).map(transformCheck),
+      },
+    };
+  },
 };
 
 export default checkService;

@@ -18,7 +18,8 @@ const InventoryReports = ({ companyId }) => {
     companyId,
     limit: 20 
   });
-  const transactions = transactionsResponse?.data || [];
+  // API returns { data: { transactions: [...] } }
+  const transactions = transactionsResponse?.data?.transactions || transactionsResponse?.data || [];
 
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-US', {

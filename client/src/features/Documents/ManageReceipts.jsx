@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-hot-toast';
 import { format } from 'date-fns';
 import receiptService from '../../services/receiptService';
-import apiClient from '../../services/api';
+import api from '../../services/api';
 import { LoadingSpinner } from '../../components/ui';
 import { CompanySelector } from '../../components/common';
 import {
@@ -67,14 +67,16 @@ const ManageReceipts = () => {
   const { data: transactionsData } = useQuery({
     queryKey: ['transactions', { limit: 200 }],
     queryFn: async () => {
-      const response = await apiClient.transactions.getAll({ limit: 200 });
+      const response = await api.transactions.getAll({ limit: 200 });
       return response.data || response;
     }
   });
 
-  const receiptsRaw = receiptsData?.receipts;
+  // Receipt API returns { success: true, data: [...], total: N }
+  const receiptsRaw = receiptsData?.data || receiptsData?.receipts;
   const receipts = Array.isArray(receiptsRaw) ? receiptsRaw : [];
-  const transactionsRaw = transactionsData?.transactions;
+  // Transaction API may return { transactions: [...] } or { data: [...] }
+  const transactionsRaw = transactionsData?.transactions || transactionsData?.data || transactionsData;
   const transactions = Array.isArray(transactionsRaw) ? transactionsRaw : [];
 
   // Update mutation

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-hot-toast';
-import apiClient from '../../services/api';
+import api from '../../services/api';
 import { formatDate } from '../../utils/dateUtils';
 import { formatCurrency } from '../../utils/currencyUtils';
 import { TransactionModal } from '../../components/forms';
@@ -24,7 +24,7 @@ const CheckPayeeAssignment = ({ onAssignmentComplete }) => {
   // Fetch unassigned check transactions
   const { data: transactionsData, isLoading: loadingTransactions, error: transactionsError } = useQuery({
     queryKey: ['unassigned-check-transactions'],
-    queryFn: () => apiClient.payees.getTransactionsWithoutPayees({ paymentMethod: 'check' }),
+    queryFn: () => api.payees.getTransactionsWithoutPayees({ paymentMethod: 'check' }),
     retry: 2,
     onError: (error) => {
       console.error('Error fetching transactions:', error);
@@ -35,7 +35,7 @@ const CheckPayeeAssignment = ({ onAssignmentComplete }) => {
   // Fetch assigned check transactions (for unassign view)
   const { data: assignedData, isLoading: loadingAssigned } = useQuery({
     queryKey: ['assigned-check-transactions'],
-    queryFn: () => apiClient.transactions.getAll({ paymentMethod: 'check', limit: 500 }),
+    queryFn: () => api.transactions.getAll({ paymentMethod: 'check', limit: 500 }),
     retry: 2,
     enabled: viewMode === 'assigned'
   });
@@ -43,7 +43,7 @@ const CheckPayeeAssignment = ({ onAssignmentComplete }) => {
   // Fetch all payees for dropdown
   const { data: payeesData, isLoading: loadingPayees, error: payeesError } = useQuery({
     queryKey: ['all-payees'],
-    queryFn: () => apiClient.payees.getAll(),
+    queryFn: () => api.payees.getAll(),
     retry: 2,
     onError: (error) => {
       console.error('Error fetching payees:', error);
@@ -67,7 +67,7 @@ const CheckPayeeAssignment = ({ onAssignmentComplete }) => {
   // Mutation for bulk payee assignment
   const assignPayeeMutation = useMutation({
     mutationFn: ({ transactionIds, payeeId, payeeName }) => 
-      apiClient.payees.bulkAssign(transactionIds, payeeId, payeeName),
+      api.payees.bulkAssign(transactionIds, payeeId, payeeName),
     onSuccess: (data) => {
       toast.success(`Payee assigned to ${data.updatedCount} transactions`);
       setSelectedTransactions(new Set());
@@ -87,7 +87,7 @@ const CheckPayeeAssignment = ({ onAssignmentComplete }) => {
 
   // Mutation for bulk payee unassignment
   const unassignPayeeMutation = useMutation({
-    mutationFn: (transactionIds) => apiClient.payees.bulkUnassign(transactionIds),
+    mutationFn: (transactionIds) => api.payees.bulkUnassign(transactionIds),
     onSuccess: (data) => {
       toast.success(`Payee removed from ${data.updatedCount} transactions`);
       setSelectedTransactions(new Set());
@@ -106,7 +106,7 @@ const CheckPayeeAssignment = ({ onAssignmentComplete }) => {
 
   // Mutation for creating new payee
   const createPayeeMutation = useMutation({
-    mutationFn: (payeeData) => apiClient.payees.create(payeeData),
+    mutationFn: (payeeData) => api.payees.create(payeeData),
     onSuccess: (data) => {
       toast.success('Payee created successfully');
       setSelectedPayee(data.id);
@@ -151,7 +151,7 @@ const CheckPayeeAssignment = ({ onAssignmentComplete }) => {
 
   const handleSaveTransaction = async (transactionData) => {
     try {
-      await apiClient.transactions.update(editingTransaction.id, transactionData);
+      await api.transactions.update(editingTransaction.id, transactionData);
       toast.success('Transaction updated successfully');
       queryClient.invalidateQueries({ queryKey: ['unassigned-check-transactions'] });
       queryClient.invalidateQueries({ queryKey: ['assigned-check-transactions'] });

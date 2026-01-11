@@ -32,8 +32,8 @@ const DocumentManagement = () => {
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   
-  // Main tab: 'receipts', 'checks', 'csv', 'pdf'
-  const initialTab = searchParams.get('tab') || 'receipts';
+  // Main tab: 'csv', 'receipts', 'checks', 'pdf'
+  const initialTab = searchParams.get('tab') || 'csv';
   // Sub tab: 'upload' or 'manage'
   const initialSubTab = searchParams.get('sub') || 'upload';
   
@@ -66,12 +66,14 @@ const DocumentManagement = () => {
     queryFn: () => api.companies.getAll(),
     staleTime: 5 * 60 * 1000
   });
-  const companies = companiesData?.companies || [];
+  // Supabase returns { success: true, data: { companies: [...] } }
+  const companiesRaw = companiesData?.data?.companies;
+  const companies = Array.isArray(companiesRaw) ? companiesRaw : [];
 
   const mainTabs = [
+    { id: 'csv', name: 'CSV Import', icon: TableCellsIcon },
     { id: 'receipts', name: 'Receipts', icon: ReceiptPercentIcon },
     { id: 'checks', name: 'Checks', icon: BanknotesIcon },
-    { id: 'csv', name: 'CSV Import', icon: TableCellsIcon },
     { id: 'pdf', name: 'PDF Statements', icon: DocumentTextIcon }
   ];
 

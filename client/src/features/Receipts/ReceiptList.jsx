@@ -96,24 +96,31 @@ const ReceiptList = () => {
   const { data: companiesData } = useQuery({
     queryKey: ['companies'],
     queryFn: async () => {
-      const { apiClient } = await import('../../services/api');
-      return apiClient.companies.getAll();
+      const api = (await import('../../services/api')).default;
+      return api.companies.getAll();
     }
   });
 
-  const companies = companiesData?.data?.companies || companiesData?.companies || [];
+  // Server returns { success: true, data: [...] }
+  // Supabase returns { success: true, data: { companies: [...] } }
+  const companies = Array.isArray(companiesData?.data) 
+    ? companiesData.data 
+    : (companiesData?.data?.companies || []);
+
+  // Receipt API returns { success: true, data: [...], total: N }
+  const receipts = receiptsData?.data || receiptsData?.receipts || [];
 
   // Filter by search locally (for vendor name)
   const filteredReceipts = useMemo(() => {
-    if (!receiptsData?.receipts) return [];
-    if (!filters.search) return receiptsData.receipts;
+    if (!receipts.length) return [];
+    if (!filters.search) return receipts;
     
     const searchLower = filters.search.toLowerCase();
-    return receiptsData.receipts.filter(r => 
+    return receipts.filter(r => 
       (r.vendor && r.vendor.toLowerCase().includes(searchLower)) ||
       (r.notes && r.notes.toLowerCase().includes(searchLower))
     );
-  }, [receiptsData, filters.search]);
+  }, [receipts, filters.search]);
 
   // Mutations
   const createMutation = useMutation({

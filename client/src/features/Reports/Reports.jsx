@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useSearchParams, Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
-import { apiClient } from '../../services/api.js';
+import api from '../../services/api.js'; // Use hybridApiClient (default export)
+import checkService from '../../services/checkService.js';
 import { useAuth } from '../../context/AuthContext';
 import { LoadingSpinner } from '../../components/ui';
 import { SmartDateSelector } from "../../components/forms";
@@ -85,7 +86,7 @@ const Reports = () => {
       if (uploadFilter?.id) {
         filters.uploadId = uploadFilter.id;
       }
-      return apiClient.transactions.getSummary(filters.startDate, filters.endDate, filters);
+      return api.transactions.getSummary(filters.startDate, filters.endDate, filters);
     },
     enabled: !!user && !!dateRange.start && !!dateRange.end
   });
@@ -101,13 +102,13 @@ const Reports = () => {
       if (uploadFilter?.id) {
         filters.uploadId = uploadFilter.id;
       }
-      return apiClient.transactions.getCategoryStats(dateRange.start, dateRange.end, filters);
+      return api.transactions.getCategoryStats(dateRange.start, dateRange.end, filters);
     },
     enabled: !!user && !!dateRange.start && !!dateRange.end
   });
 
   const handleGenerateReport = async (reportType) => {
-    if (!summaryData?.summary) {
+    if (!summaryData?.data?.summary) {
       toast.error('No data available for the selected date range');
       return;
     }
@@ -132,14 +133,14 @@ const Reports = () => {
       
       switch (reportType) {
         case 'summary':
-          response = await apiClient.reports.generateSummaryPDF({
+          response = await api.reports.generateSummaryPDF({
             ...reportFilters,
             includeDetails: true
           });
           break;
           
         case 'tax':
-          response = await apiClient.reports.generateTaxSummaryPDF({
+          response = await api.reports.generateTaxSummaryPDF({
             ...reportFilters,
             taxYear: new Date(dateRange.start).getFullYear(),
             includeTransactionDetails: true
@@ -147,33 +148,33 @@ const Reports = () => {
           break;
           
         case 'category':
-          response = await apiClient.reports.generateCategoryBreakdownPDF({
+          response = await api.reports.generateCategoryBreakdownPDF({
             ...reportFilters
           });
           break;
           
         case 'checks':
-          response = await apiClient.reports.generateChecksPaidPDF({
+          response = await api.reports.generateChecksPaidPDF({
             ...reportFilters
           });
           break;
           
         case '1099':
-          response = await apiClient.reports.generate1099SummaryPDF({
+          response = await api.reports.generate1099SummaryPDF({
             ...reportFilters,
             includeDetails: true
           });
           break;
           
         case 'vendor':
-          response = await apiClient.reports.generateVendorSummaryPDF({
+          response = await api.reports.generateVendorSummaryPDF({
             ...reportFilters,
             includeDetails: true
           });
           break;
           
         case 'payee-summary':
-          response = await apiClient.reports.generatePayeeSummaryPDF({
+          response = await api.reports.generatePayeeSummaryPDF({
             ...reportFilters,
             includeDetails: true
           });
@@ -207,7 +208,7 @@ const Reports = () => {
 
   // Handle preview report - fetches data and opens modal
   const handlePreviewReport = async (reportType) => {
-    if (!summaryData?.summary) {
+    if (!summaryData?.data?.summary) {
       toast.error('No data available for the selected date range');
       return;
     }
@@ -230,33 +231,38 @@ const Reports = () => {
       }
 
       let data;
+      let response;
       
       switch (reportType) {
         case 'summary':
           // Fetch profit/loss report which has the full structure
-          data = await apiClient.reports.profitLoss(reportFilters);
+          response = await api.reports.profitLoss(reportFilters);
+          data = response?.data || response;
           break;
           
         case 'tax':
-          data = await apiClient.reports.taxSummary({
+          response = await api.reports.taxSummary({
             ...reportFilters,
             taxYear: new Date(dateRange.start).getFullYear()
           });
+          data = response?.data || response;
           break;
           
         case 'category':
           // Fetch expense summary for proper category breakdown
-          data = await apiClient.reports.expenseSummary(reportFilters);
+          response = await api.reports.expenseSummary(reportFilters);
+          data = response?.data || response;
           break;
           
         case 'checks':
-          // Fetch check transactions (paymentMethod = 'check')
-          const checksRes = await apiClient.transactions.getAll({
-            ...reportFilters,
-            paymentMethod: 'check',
+          // Fetch checks from the dedicated checks table
+          const checksRes = await checkService.getChecks({
+            startDate: reportFilters.startDate,
+            endDate: reportFilters.endDate,
+            companyId: reportFilters.companyId,
             limit: 500
           });
-          const checksList = checksRes.data?.transactions || checksRes.transactions || checksRes || [];
+          const checksList = checksRes.data || [];
           data = { 
             checks: Array.isArray(checksList) ? checksList : [],
             summary: {
@@ -267,15 +273,18 @@ const Reports = () => {
           break;
           
         case '1099':
-          data = await apiClient.reports.get1099Summary(reportFilters);
+          response = await api.reports.get1099Summary(reportFilters);
+          data = response?.data || response;
           break;
           
         case 'vendor':
-          data = await apiClient.reports.getVendorSummary(reportFilters);
+          response = await api.reports.getVendorSummary(reportFilters);
+          data = response?.data || response;
           break;
           
         case 'payee-summary':
-          data = await apiClient.reports.getPayeeSummary(reportFilters);
+          response = await api.reports.getPayeeSummary(reportFilters);
+          data = response?.data || response;
           break;
           
         default:
@@ -364,8 +373,8 @@ const Reports = () => {
     return <LoadingSpinner text="Loading report data..." />;
   }
 
-  const summary = summaryData?.summary || {};
-  const stats = categoryStats?.stats || {};
+  const summary = summaryData?.data?.summary || {};
+  const stats = categoryStats?.data?.categories || [];
 
   return (
     <div className="space-y-6">
@@ -424,28 +433,28 @@ const Reports = () => {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6 transition-colors">
-          <div className="text-sm font-medium text-gray-500 dark:text-gray-400">Total Income</div>
-          <div className="text-2xl font-bold text-green-600 dark:text-green-400">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6">
+        <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-4 md:p-6 transition-colors">
+          <div className="text-xs md:text-sm font-medium text-gray-500 dark:text-gray-400">Total Income</div>
+          <div className="text-lg md:text-2xl font-bold text-green-600 dark:text-green-400">
             ${Math.abs(summary.totalIncome || 0).toLocaleString()}
           </div>
         </div>
-        <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6 transition-colors">
-          <div className="text-sm font-medium text-gray-500 dark:text-gray-400">Total Expenses</div>
-          <div className="text-2xl font-bold text-red-600 dark:text-red-400">
+        <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-4 md:p-6 transition-colors">
+          <div className="text-xs md:text-sm font-medium text-gray-500 dark:text-gray-400">Total Expenses</div>
+          <div className="text-lg md:text-2xl font-bold text-red-600 dark:text-red-400">
             ${Math.abs(summary.totalExpenses || 0).toLocaleString()}
           </div>
         </div>
-        <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6 transition-colors">
-          <div className="text-sm font-medium text-gray-500 dark:text-gray-400">Net Income</div>
-          <div className={`text-2xl font-bold ${(summary.netIncome || 0) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+        <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-4 md:p-6 transition-colors">
+          <div className="text-xs md:text-sm font-medium text-gray-500 dark:text-gray-400">Net Income</div>
+          <div className={`text-lg md:text-2xl font-bold ${(summary.netIncome || 0) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
             ${Math.abs(summary.netIncome || 0).toLocaleString()}
           </div>
         </div>
-        <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6 transition-colors">
-          <div className="text-sm font-medium text-gray-500 dark:text-gray-400">Transactions</div>
-          <div className="text-2xl font-bold text-gray-900 dark:text-white">
+        <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-4 md:p-6 transition-colors">
+          <div className="text-xs md:text-sm font-medium text-gray-500 dark:text-gray-400">Transactions</div>
+          <div className="text-lg md:text-2xl font-bold text-gray-900 dark:text-white">
             {summary.transactionCount || 0}
           </div>
         </div>
@@ -483,7 +492,7 @@ const Reports = () => {
           </Link>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
           {reportTypes.map((report) => {
             const Icon = report.icon;
             const isGenerating = generating === report.id;

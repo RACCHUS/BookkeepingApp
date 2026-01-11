@@ -15,7 +15,7 @@ import { IRS_CATEGORIES } from '@shared/constants/categories';
  * QuickTransactionEntry - Rapid entry of multiple transactions
  * Optimized for entering multiple transactions quickly
  */
-const QuickTransactionEntry = ({ isOpen, onClose, onSubmit, isLoading = false, companies = [] }) => {
+const QuickTransactionEntry = ({ isOpen, onClose, onSubmit, isLoading = false, companies = [], payees = [] }) => {
   // Multiple transaction entries
   const [entries, setEntries] = useState([createEmptyEntry()]);
   const [submitStatus, setSubmitStatus] = useState(null); // null | 'success' | 'partial' | 'error'
@@ -35,6 +35,7 @@ const QuickTransactionEntry = ({ isOpen, onClose, onSubmit, isLoading = false, c
       category: '',
       companyId: '',
       payee: '',
+      payeeId: '',
       notes: '',
       isValid: false,
       error: null
@@ -333,14 +334,22 @@ const QuickTransactionEntry = ({ isOpen, onClose, onSubmit, isLoading = false, c
 
                     {/* Payee */}
                     <div className="col-span-2">
-                      <input
-                        type="text"
-                        value={entry.payee}
-                        onChange={(e) => updateEntry(index, 'payee', e.target.value)}
-                        onKeyDown={(e) => handleKeyDown(e, index)}
-                        placeholder="Who you paid"
+                      <select
+                        value={entry.payeeId}
+                        onChange={(e) => {
+                          const selectedPayee = payees.find(p => p.id === e.target.value);
+                          updateEntry(index, 'payeeId', e.target.value);
+                          updateEntry(index, 'payee', selectedPayee?.name || '');
+                        }}
                         className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
-                      />
+                      >
+                        <option value="">Select payee</option>
+                        {payees.filter(p => p.isActive !== false).map(p => (
+                          <option key={p.id} value={p.id}>
+                            {p.name} {p.type ? `(${p.type})` : ''}
+                          </option>
+                        ))}
+                      </select>
                     </div>
 
                     {/* Category */}
@@ -465,6 +474,12 @@ QuickTransactionEntry.propTypes = {
   companies: PropTypes.arrayOf(PropTypes.shape({
     id: PropTypes.string.isRequired,
     name: PropTypes.string.isRequired
+  })),
+  payees: PropTypes.arrayOf(PropTypes.shape({
+    id: PropTypes.string.isRequired,
+    name: PropTypes.string.isRequired,
+    type: PropTypes.string,
+    isActive: PropTypes.bool
   }))
 };
 

@@ -36,20 +36,19 @@ CREATE TABLE IF NOT EXISTS csv_imports (
 CREATE INDEX IF NOT EXISTS idx_pdf_uploads_user_id ON pdf_uploads(user_id);
 CREATE INDEX IF NOT EXISTS idx_csv_imports_user_id ON csv_imports(user_id);
 
--- Enable RLS
-ALTER TABLE pdf_uploads ENABLE ROW LEVEL SECURITY;
-ALTER TABLE csv_imports ENABLE ROW LEVEL SECURITY;
+-- DISABLE RLS since we use Firebase Auth (not Supabase Auth)
+-- RLS policies rely on auth.uid() which doesn't work with Firebase
+ALTER TABLE pdf_uploads DISABLE ROW LEVEL SECURITY;
+ALTER TABLE csv_imports DISABLE ROW LEVEL SECURITY;
 
--- Simple RLS policies - allow service role full access
-DO $$ 
-BEGIN
-    -- PDF uploads policies
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'service_role_pdf_uploads') THEN
-        CREATE POLICY service_role_pdf_uploads ON pdf_uploads FOR ALL USING (true) WITH CHECK (true);
-    END IF;
-    
-    -- CSV imports policies  
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'service_role_csv_imports') THEN
-        CREATE POLICY service_role_csv_imports ON csv_imports FOR ALL USING (true) WITH CHECK (true);
-    END IF;
-END $$;
+-- Clean up any existing policies (no longer needed with RLS disabled)
+DROP POLICY IF EXISTS service_role_pdf_uploads ON pdf_uploads;
+DROP POLICY IF EXISTS service_role_csv_imports ON csv_imports;
+DROP POLICY IF EXISTS "Users can view their own PDF uploads" ON pdf_uploads;
+DROP POLICY IF EXISTS "Users can create their own PDF uploads" ON pdf_uploads;
+DROP POLICY IF EXISTS "Users can update their own PDF uploads" ON pdf_uploads;
+DROP POLICY IF EXISTS "Users can delete their own PDF uploads" ON pdf_uploads;
+DROP POLICY IF EXISTS "Users can view their own CSV imports" ON csv_imports;
+DROP POLICY IF EXISTS "Users can create their own CSV imports" ON csv_imports;
+DROP POLICY IF EXISTS "Users can update their own CSV imports" ON csv_imports;
+DROP POLICY IF EXISTS "Users can delete their own CSV imports" ON csv_imports;

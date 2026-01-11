@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { apiClient } from '../../services/api.js';
+import api from '../../services/api.js';
 
 const CompanySelector = ({ 
   value, 
@@ -19,13 +19,18 @@ const CompanySelector = ({
   // Fetch companies
   const { data: companiesResponse, isLoading, error: apiError } = useQuery({
     queryKey: ['companies'],
-    queryFn: apiClient.companies.getAll,
+    queryFn: api.companies.getAll,
     staleTime: 5 * 60 * 1000, // 5 minutes
     retry: 2, // Retry failed requests
     retryDelay: 1000, // Wait 1 second between retries
   });
 
-  const companies = companiesResponse?.data || [];
+  // Server returns { success: true, data: [...] }
+  // Supabase returns { success: true, data: { companies: [...] } }
+  const companiesRaw = Array.isArray(companiesResponse?.data) 
+    ? companiesResponse.data 
+    : companiesResponse?.data?.companies;
+  const companies = Array.isArray(companiesRaw) ? companiesRaw : [];
   const hasApiError = !!apiError;
   const hasCompanies = companies.length > 0;
 

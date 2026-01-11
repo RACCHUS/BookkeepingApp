@@ -1,6 +1,9 @@
 /**
  * Comprehensive sorting options for transactions
  * Supports multi-column sorting throughout the application
+ * 
+ * IMPORTANT: These field names must match the transformed transaction object
+ * from supabaseClient.js transformTransaction() function
  */
 
 // All sortable fields based on transaction schema
@@ -65,14 +68,7 @@ export const SORT_OPTIONS = [
     value: 'companyName',
     label: 'Company',
     icon: '🏛️',
-    description: 'Sort by company name',
-    group: 'organization'
-  },
-  {
-    value: 'employeeName',
-    label: 'Employee',
-    icon: '👷',
-    description: 'Sort by employee name',
+    description: 'Sort by company name (requires join)',
     group: 'organization'
   },
   {
@@ -90,6 +86,13 @@ export const SORT_OPTIONS = [
     group: 'payment'
   },
   {
+    value: 'referenceNumber',
+    label: 'Reference #',
+    icon: '🔢',
+    description: 'Sort by reference number',
+    group: 'payment'
+  },
+  {
     value: 'source',
     label: 'Source',
     icon: '📥',
@@ -104,25 +107,11 @@ export const SORT_OPTIONS = [
     group: 'metadata'
   },
   {
-    value: 'taxYear',
-    label: 'Tax Year',
-    icon: '📊',
-    description: 'Sort by tax year',
-    group: 'tax'
-  },
-  {
-    value: 'quarterlyPeriod',
-    label: 'Quarter',
-    icon: '📆',
-    description: 'Sort by quarterly period',
-    group: 'tax'
-  },
-  {
-    value: 'isTaxDeductible',
-    label: 'Tax Deductible',
-    icon: '✅',
-    description: 'Sort by tax deductible status',
-    group: 'tax'
+    value: 'bankName',
+    label: 'Bank',
+    icon: '🏦',
+    description: 'Sort by bank name',
+    group: 'metadata'
   },
   {
     value: 'isReconciled',
@@ -132,11 +121,25 @@ export const SORT_OPTIONS = [
     group: 'status'
   },
   {
-    value: 'isManuallyReviewed',
+    value: 'isReviewed',
     label: 'Reviewed',
     icon: '👁️',
     description: 'Sort by review status',
     group: 'status'
+  },
+  {
+    value: 'is1099Payment',
+    label: '1099 Payment',
+    icon: '📋',
+    description: 'Sort by 1099 payment status',
+    group: 'status'
+  },
+  {
+    value: 'notes',
+    label: 'Notes',
+    icon: '📝',
+    description: 'Sort by notes presence',
+    group: 'metadata'
   },
   {
     value: 'createdAt',
@@ -161,10 +164,9 @@ export const SORT_GROUPS = {
   parties: { label: 'Parties', order: 3 },
   organization: { label: 'Organization', order: 4 },
   payment: { label: 'Payment', order: 5 },
-  tax: { label: 'Tax', order: 6 },
-  status: { label: 'Status', order: 7 },
-  metadata: { label: 'Metadata', order: 8 },
-  timestamps: { label: 'Timestamps', order: 9 }
+  status: { label: 'Status', order: 6 },
+  metadata: { label: 'Metadata', order: 7 },
+  timestamps: { label: 'Timestamps', order: 8 }
 };
 
 export const SORT_DIRECTIONS = [

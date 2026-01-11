@@ -2,26 +2,41 @@
  * Tax Form Service
  * 
  * API client for tax form generation endpoints
+ * Uses Supabase for data, with placeholders for PDF generation
  * 
- * @author BookkeepingApp Team
+ * Note: Full PDF generation requires server-side processing.
+ * This version provides data preview and basic functionality.
  */
 
+import { supabase } from './supabase';
 import { auth } from './firebase';
 
-const API_BASE = import.meta.env.VITE_API_URL || '/api';
-
 /**
- * Get authorization headers
- * @returns {Promise<Object>} Headers with auth token
+ * Get current user ID - waits for auth state if needed
  */
-const getAuthHeaders = async () => {
-  const user = auth.currentUser;
-  if (!user) throw new Error('User not authenticated');
-  const token = await user.getIdToken();
-  return {
-    'Authorization': `Bearer ${token}`,
-    'Content-Type': 'application/json'
-  };
+const getUserId = async () => {
+  // If user is already available, return immediately
+  if (auth.currentUser) {
+    return auth.currentUser.uid;
+  }
+  
+  // Wait for auth state to be determined (handles token refresh)
+  return new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      unsubscribe();
+      reject(new Error('Authentication timeout - please refresh the page'));
+    }, 5000);
+    
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      clearTimeout(timeout);
+      unsubscribe();
+      if (user) {
+        resolve(user.uid);
+      } else {
+        reject(new Error('User not authenticated'));
+      }
+    });
+  });
 };
 
 /**
@@ -32,297 +47,356 @@ const taxFormService = {
 
   /**
    * Preview 1099-NEC data for a payee
-   * @param {string} payeeId - Payee ID
-   * @param {Object} options - Query options
-   * @returns {Promise<Object>} Preview data
+   * Gets payment data from Supabase
    */
   preview1099NEC: async (payeeId, options = {}) => {
-    const headers = await getAuthHeaders();
-    const params = new URLSearchParams();
-    if (options.companyId) params.append('companyId', options.companyId);
-    if (options.taxYear) params.append('taxYear', options.taxYear);
+    const userId = await getUserId();
+    const taxYear = options.taxYear || new Date().getFullYear();
     
-    const response = await fetch(
-      `${API_BASE}/tax-forms/1099-nec/preview/${payeeId}?${params}`,
-      { headers }
-    );
+    // Get payee info
+    const { data: payee, error: payeeError } = await supabase
+      .from('payees')
+      .select('*')
+      .eq('id', payeeId)
+      .eq('user_id', userId)
+      .single();
     
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || 'Failed to preview 1099-NEC');
+    if (payeeError) throw payeeError;
+    
+    // Get transactions for this payee in the tax year
+    let query = supabase
+      .from('transactions')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('payee_id', payeeId)
+      .eq('type', 'expense')
+      .gte('date', `${taxYear}-01-01`)
+      .lte('date', `${taxYear}-12-31`);
+    
+    if (options.companyId) {
+      query = query.eq('company_id', options.companyId);
     }
     
-    return response.json();
+    const { data: transactions, error: txError } = await query;
+    if (txError) throw txError;
+    
+    const totalPayments = (transactions || []).reduce(
+      (sum, tx) => sum + (parseFloat(tx.amount) || 0), 
+      0
+    );
+    
+    return {
+      success: true,
+      data: {
+        payee: {
+          id: payee.id,
+          name: payee.name,
+          taxId: payee.tax_id,
+          address: payee.address,
+          city: payee.city,
+          state: payee.state,
+          zip: payee.zip,
+        },
+        taxYear,
+        totalPayments,
+        transactionCount: transactions?.length || 0,
+        meetsThreshold: totalPayments >= 600,
+        threshold: 600,
+      },
+    };
   },
 
   /**
    * Generate 1099-NEC PDF for a payee
-   * @param {string} payeeId - Payee ID
-   * @param {Object} options - Query options
-   * @returns {Promise<Blob>} PDF blob
+   * Note: Full PDF generation not available without server
    */
   generate1099NEC: async (payeeId, options = {}) => {
-    const headers = await getAuthHeaders();
-    const params = new URLSearchParams();
-    if (options.companyId) params.append('companyId', options.companyId);
-    if (options.taxYear) params.append('taxYear', options.taxYear);
-    if (options.flatten !== undefined) params.append('flatten', options.flatten);
-    if (options.ignoreErrors) params.append('ignoreErrors', 'true');
-    
-    const response = await fetch(
-      `${API_BASE}/tax-forms/1099-nec/generate/${payeeId}?${params}`,
-      { headers }
-    );
-    
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.errors?.join(', ') || 'Failed to generate 1099-NEC');
-    }
-    
-    return response.blob();
+    throw new Error('PDF generation requires server-side processing. Use the preview function for data.');
   },
 
   /**
-   * Bulk generate 1099-NEC forms
-   * @param {string} companyId - Company ID
-   * @param {number} taxYear - Tax year (optional)
-   * @returns {Promise<Object>} Bulk generation results
+   * Batch preview 1099-NEC for all qualifying payees
    */
-  bulkGenerate1099NEC: async (companyId, taxYear = null) => {
-    const headers = await getAuthHeaders();
+  batchPreview1099NEC: async (options = {}) => {
+    const userId = await getUserId();
+    const taxYear = options.taxYear || new Date().getFullYear();
     
-    const response = await fetch(`${API_BASE}/tax-forms/1099-nec/bulk`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({ companyId, taxYear })
-    });
+    // Get all payees marked as 1099 eligible
+    let payeeQuery = supabase
+      .from('payees')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('is_1099_eligible', true);
     
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || 'Failed to bulk generate 1099-NECs');
-    }
+    const { data: payees, error: payeeError } = await payeeQuery;
+    if (payeeError) throw payeeError;
     
-    return response.json();
-  },
-
-  // ==================== 1099-MISC ====================
-
-  /**
-   * Preview 1099-MISC data for a payee
-   * @param {string} payeeId - Payee ID
-   * @param {Object} paymentData - Payment data
-   * @param {Object} options - Query options
-   * @returns {Promise<Object>} Preview data
-   */
-  preview1099MISC: async (payeeId, paymentData = {}, options = {}) => {
-    const headers = await getAuthHeaders();
-    const params = new URLSearchParams();
-    if (options.companyId) params.append('companyId', options.companyId);
+    const results = [];
     
-    const response = await fetch(
-      `${API_BASE}/tax-forms/1099-misc/preview/${payeeId}?${params}`,
-      { headers }
-    );
-    
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || 'Failed to preview 1099-MISC');
-    }
-    
-    return response.json();
-  },
-
-  /**
-   * Generate 1099-MISC PDF for a payee
-   * @param {string} payeeId - Payee ID
-   * @param {Object} paymentData - Payment data
-   * @param {Object} options - Query options
-   * @returns {Promise<Blob>} PDF blob
-   */
-  generate1099MISC: async (payeeId, paymentData, options = {}) => {
-    const headers = await getAuthHeaders();
-    const params = new URLSearchParams();
-    if (options.companyId) params.append('companyId', options.companyId);
-    if (options.flatten !== undefined) params.append('flatten', options.flatten);
-    
-    const response = await fetch(
-      `${API_BASE}/tax-forms/1099-misc/generate/${payeeId}?${params}`,
-      {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(paymentData)
+    for (const payee of payees || []) {
+      // Get transactions for this payee
+      let txQuery = supabase
+        .from('transactions')
+        .select('amount')
+        .eq('user_id', userId)
+        .eq('payee_id', payee.id)
+        .eq('type', 'expense')
+        .gte('date', `${taxYear}-01-01`)
+        .lte('date', `${taxYear}-12-31`);
+      
+      if (options.companyId) {
+        txQuery = txQuery.eq('company_id', options.companyId);
       }
-    );
-    
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.errors?.join(', ') || 'Failed to generate 1099-MISC');
-    }
-    
-    return response.blob();
-  },
-
-  // ==================== W-2 ====================
-
-  /**
-   * Preview W-2 data for an employee
-   * @param {string} employeeId - Employee ID
-   * @param {Object} wageData - Wage data (optional)
-   * @param {Object} options - Query options
-   * @returns {Promise<Object>} Preview data
-   */
-  previewW2: async (employeeId, wageData = null, options = {}) => {
-    const headers = await getAuthHeaders();
-    const params = new URLSearchParams();
-    if (options.companyId) params.append('companyId', options.companyId);
-    
-    const response = await fetch(
-      `${API_BASE}/tax-forms/w2/preview/${employeeId}?${params}`,
-      {
-        method: wageData ? 'POST' : 'GET',
-        headers,
-        ...(wageData ? { body: JSON.stringify(wageData) } : {})
+      
+      const { data: transactions } = await txQuery;
+      
+      const totalPayments = (transactions || []).reduce(
+        (sum, tx) => sum + (parseFloat(tx.amount) || 0),
+        0
+      );
+      
+      if (totalPayments >= 600) {
+        results.push({
+          payee: {
+            id: payee.id,
+            name: payee.name,
+            taxId: payee.tax_id,
+          },
+          totalPayments,
+          meetsThreshold: true,
+        });
       }
-    );
-    
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || 'Failed to preview W-2');
     }
     
-    return response.json();
+    return {
+      success: true,
+      data: {
+        taxYear,
+        threshold: 600,
+        qualifyingPayees: results.length,
+        payees: results,
+      },
+    };
   },
 
   /**
-   * Generate W-2 PDF for an employee
-   * @param {string} employeeId - Employee ID
-   * @param {Object} wageData - Wage data
-   * @param {Object} options - Query options
-   * @returns {Promise<Blob>} PDF blob
+   * Generate batch 1099-NEC PDFs
+   * Note: Not available without server
    */
-  generateW2: async (employeeId, wageData, options = {}) => {
-    const headers = await getAuthHeaders();
-    const params = new URLSearchParams();
-    if (options.companyId) params.append('companyId', options.companyId);
-    if (options.flatten !== undefined) params.append('flatten', options.flatten);
+  batchGenerate1099NEC: async (options = {}) => {
+    throw new Error('Batch PDF generation requires server-side processing.');
+  },
+
+  // ==================== W-9 ====================
+
+  /**
+   * Get W-9 data for a payee
+   */
+  getW9Data: async (payeeId) => {
+    const userId = await getUserId();
     
-    const response = await fetch(
-      `${API_BASE}/tax-forms/w2/generate/${employeeId}?${params}`,
-      {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(wageData)
+    const { data: payee, error } = await supabase
+      .from('payees')
+      .select('*')
+      .eq('id', payeeId)
+      .eq('user_id', userId)
+      .single();
+    
+    if (error) throw error;
+    
+    return {
+      success: true,
+      data: {
+        name: payee.name,
+        businessName: payee.business_name,
+        taxClassification: payee.tax_classification,
+        taxId: payee.tax_id,
+        address: payee.address,
+        city: payee.city,
+        state: payee.state,
+        zip: payee.zip,
+      },
+    };
+  },
+
+  /**
+   * Update W-9 data for a payee
+   */
+  updateW9Data: async (payeeId, w9Data) => {
+    const userId = await getUserId();
+    
+    const { data, error } = await supabase
+      .from('payees')
+      .update({
+        business_name: w9Data.businessName,
+        tax_classification: w9Data.taxClassification,
+        tax_id: w9Data.taxId,
+        address: w9Data.address,
+        city: w9Data.city,
+        state: w9Data.state,
+        zip: w9Data.zip,
+      })
+      .eq('id', payeeId)
+      .eq('user_id', userId)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    
+    return { success: true, data };
+  },
+
+  // ==================== Tax Summary ====================
+
+  /**
+   * Get tax summary for a year
+   */
+  getTaxSummary: async (options = {}) => {
+    const userId = await getUserId();
+    const taxYear = options.taxYear || new Date().getFullYear();
+    
+    let query = supabase
+      .from('transactions')
+      .select('*')
+      .eq('user_id', userId)
+      .gte('date', `${taxYear}-01-01`)
+      .lte('date', `${taxYear}-12-31`);
+    
+    if (options.companyId) {
+      query = query.eq('company_id', options.companyId);
+    }
+    
+    const { data: transactions, error } = await query;
+    if (error) throw error;
+    
+    // Calculate totals by category
+    const incomeByCategory = {};
+    const expenseByCategory = {};
+    let totalIncome = 0;
+    let totalExpenses = 0;
+    
+    for (const tx of transactions || []) {
+      const category = tx.category || 'Uncategorized';
+      const amount = parseFloat(tx.amount) || 0;
+      
+      if (tx.type === 'income') {
+        incomeByCategory[category] = (incomeByCategory[category] || 0) + amount;
+        totalIncome += amount;
+      } else {
+        expenseByCategory[category] = (expenseByCategory[category] || 0) + amount;
+        totalExpenses += amount;
       }
-    );
-    
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.errors?.join(', ') || 'Failed to generate W-2');
     }
     
-    return response.blob();
+    return {
+      success: true,
+      data: {
+        taxYear,
+        income: {
+          total: totalIncome,
+          byCategory: incomeByCategory,
+        },
+        expenses: {
+          total: totalExpenses,
+          byCategory: expenseByCategory,
+        },
+        netIncome: totalIncome - totalExpenses,
+        transactionCount: transactions?.length || 0,
+      },
+    };
   },
 
   /**
-   * Bulk generate W-2 forms
-   * @param {string} companyId - Company ID
-   * @param {number} taxYear - Tax year (optional)
-   * @param {Object} wageDataMap - Map of employeeId to wage data (optional)
-   * @returns {Promise<Object>} Bulk generation results
-   */
-  bulkGenerateW2: async (companyId, taxYear = null, wageDataMap = {}) => {
-    const headers = await getAuthHeaders();
-    
-    const response = await fetch(`${API_BASE}/tax-forms/w2/bulk`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({ companyId, taxYear, wageDataMap })
-    });
-    
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || 'Failed to bulk generate W-2s');
-    }
-    
-    return response.json();
-  },
-
-  // ==================== Summary & Utilities ====================
-
-  /**
-   * Get tax form summary for a tax year
-   * @param {number} taxYear - Tax year
-   * @param {string} companyId - Company ID (optional)
-   * @returns {Promise<Object>} Summary data
+   * Get tax form summary for dashboard
+   * Returns counts of 1099-NEC and W-2 eligible payees
    */
   getTaxFormSummary: async (taxYear, companyId = null) => {
-    const headers = await getAuthHeaders();
-    const params = new URLSearchParams();
-    if (companyId) params.append('companyId', companyId);
+    const userId = await getUserId();
+    const year = taxYear || new Date().getFullYear() - 1;
     
-    const response = await fetch(
-      `${API_BASE}/tax-forms/summary/${taxYear}?${params}`,
-      { headers }
-    );
+    // Get all payees
+    let payeeQuery = supabase
+      .from('payees')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('is_active', true);
     
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || 'Failed to get tax form summary');
+    if (companyId) {
+      payeeQuery = payeeQuery.eq('company_id', companyId);
     }
     
-    return response.json();
-  },
-
-  /**
-   * Get payees with missing tax form information
-   * @param {Object} options - Query options
-   * @returns {Promise<Object>} Missing info data
-   */
-  getMissingInfo: async (options = {}) => {
-    const headers = await getAuthHeaders();
-    const params = new URLSearchParams();
-    if (options.companyId) params.append('companyId', options.companyId);
-    if (options.formType) params.append('formType', options.formType);
+    const { data: payees, error: payeeError } = await payeeQuery;
+    if (payeeError) throw payeeError;
     
-    const response = await fetch(
-      `${API_BASE}/tax-forms/missing-info?${params}`,
-      { headers }
+    // Separate by type
+    const contractors = (payees || []).filter(p => 
+      p.type === 'contractor' || p.type === 'vendor' || p.is_1099_eligible
     );
+    const employees = (payees || []).filter(p => p.type === 'employee');
     
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || 'Failed to get missing info');
+    // Check each contractor for 1099 eligibility (>= $600)
+    let eligible1099Count = 0;
+    let generated1099Count = 0;
+    let missingInfo1099 = [];
+    
+    for (const contractor of contractors) {
+      // Get payments for this contractor in the tax year
+      let txQuery = supabase
+        .from('transactions')
+        .select('amount')
+        .eq('user_id', userId)
+        .eq('payee_id', contractor.id)
+        .eq('type', 'expense')
+        .gte('date', `${year}-01-01`)
+        .lte('date', `${year}-12-31`);
+      
+      if (companyId) {
+        txQuery = txQuery.eq('company_id', companyId);
+      }
+      
+      const { data: payments } = await txQuery;
+      const totalPaid = (payments || []).reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
+      
+      if (totalPaid >= 600) {
+        eligible1099Count++;
+        
+        // Check for missing info
+        if (!contractor.tax_id) {
+          missingInfo1099.push({ id: contractor.id, name: contractor.name, missing: 'Tax ID' });
+        }
+        if (!contractor.address) {
+          missingInfo1099.push({ id: contractor.id, name: contractor.name, missing: 'Address' });
+        }
+      }
     }
     
-    return response.json();
+    // For W-2, just count active employees
+    const employeeCount = employees.length;
+    const missingInfoW2 = employees.filter(e => !e.tax_id || !e.address).map(e => ({
+      id: e.id,
+      name: e.name,
+      missing: !e.tax_id ? 'SSN' : 'Address',
+    }));
+    
+    return {
+      taxYear: year,
+      form1099NEC: {
+        eligible: eligible1099Count,
+        generated: generated1099Count,
+        pending: eligible1099Count - generated1099Count,
+        threshold: 600,
+      },
+      formW2: {
+        employees: employeeCount,
+        generated: 0,
+        pending: employeeCount,
+      },
+      missingInfo: {
+        form1099NEC: missingInfo1099,
+        formW2: missingInfoW2,
+      },
+    };
   },
-
-  // ==================== Utility Functions ====================
-
-  /**
-   * Download a blob as a file
-   * @param {Blob} blob - PDF blob
-   * @param {string} fileName - File name
-   */
-  downloadBlob: (blob, fileName) => {
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = fileName;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    window.URL.revokeObjectURL(url);
-  },
-
-  /**
-   * Open blob in new tab for preview
-   * @param {Blob} blob - PDF blob
-   */
-  previewBlob: (blob) => {
-    const url = window.URL.createObjectURL(blob);
-    window.open(url, '_blank');
-  }
 };
 
 export default taxFormService;

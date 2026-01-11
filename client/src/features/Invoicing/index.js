@@ -19,6 +19,7 @@ export { PaymentRecorder } from './PaymentRecorder';
 
 // Recurring
 export { RecurringList } from './RecurringList';
+export { RecurringForm } from './RecurringForm';
 export { CreateRecurringModal } from './CreateRecurringModal';
 
 // Shared Components

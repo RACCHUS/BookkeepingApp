@@ -18,7 +18,14 @@ const QUERY_KEY = 'recurring-schedules';
 export function useRecurringSchedules(params = {}) {
   return useQuery({
     queryKey: [QUERY_KEY, params],
-    queryFn: () => recurringService.getRecurringSchedules(params)
+    queryFn: async () => {
+      const response = await recurringService.getRecurringSchedules(params);
+      // Transform to expected format: { schedules: [...] }
+      return {
+        schedules: response?.data?.schedules || [],
+      };
+    },
+    staleTime: 30 * 1000,
   });
 }
 
@@ -28,8 +35,14 @@ export function useRecurringSchedules(params = {}) {
 export function useRecurringSchedule(id, options = {}) {
   return useQuery({
     queryKey: [QUERY_KEY, id],
-    queryFn: () => recurringService.getRecurringSchedule(id),
-    enabled: !!id && options.enabled !== false
+    queryFn: async () => {
+      const response = await recurringService.getRecurringSchedule(id);
+      // Transform to expected format: { schedule: {...} }
+      return {
+        schedule: response?.data || null,
+      };
+    },
+    enabled: !!id && options.enabled !== false,
   });
 }
 
@@ -42,7 +55,7 @@ export function useCreateRecurringSchedule() {
   return useMutation({
     mutationFn: (data) => recurringService.createRecurringSchedule(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEY], refetchType: 'all' });
       toast.success('Recurring schedule created');
     },
     onError: (error) => {
@@ -61,8 +74,8 @@ export function useCreateRecurringFromInvoice() {
     mutationFn: ({ invoiceId, options }) => 
       recurringService.createFromInvoice(invoiceId, options),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
-      queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEY], refetchType: 'all' });
+      queryClient.invalidateQueries({ queryKey: ['invoices'], refetchType: 'all' });
       toast.success('Recurring schedule created from invoice');
     },
     onError: (error) => {
@@ -80,8 +93,7 @@ export function useUpdateRecurringSchedule() {
   return useMutation({
     mutationFn: ({ id, data }) => recurringService.updateRecurringSchedule(id, data),
     onSuccess: (_, { id }) => {
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEY, id] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEY], refetchType: 'all' });
       toast.success('Recurring schedule updated');
     },
     onError: (error) => {
@@ -99,7 +111,7 @@ export function useDeleteRecurringSchedule() {
   return useMutation({
     mutationFn: (id) => recurringService.deleteRecurringSchedule(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEY], refetchType: 'all' });
       toast.success('Recurring schedule deleted');
     },
     onError: (error) => {
@@ -116,9 +128,8 @@ export function usePauseRecurringSchedule() {
   
   return useMutation({
     mutationFn: (id) => recurringService.pauseRecurringSchedule(id),
-    onSuccess: (_, id) => {
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEY, id] });
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEY], refetchType: 'all' });
       toast.success('Recurring schedule paused');
     },
     onError: (error) => {
@@ -135,9 +146,8 @@ export function useResumeRecurringSchedule() {
   
   return useMutation({
     mutationFn: (id) => recurringService.resumeRecurringSchedule(id),
-    onSuccess: (_, id) => {
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEY, id] });
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEY], refetchType: 'all' });
       toast.success('Recurring schedule resumed');
     },
     onError: (error) => {

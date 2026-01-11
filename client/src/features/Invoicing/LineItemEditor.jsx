@@ -41,7 +41,8 @@ export function LineItemEditor({
   const [searchQuery, setSearchQuery] = useState('');
   const { data: catalogueData } = useCatalogueItems({ search: searchQuery, activeOnly: true });
   
-  const catalogueItems = catalogueData?.items || [];
+  // API returns { success: true, data: { items: [...] } }
+  const catalogueItems = catalogueData?.data?.items || catalogueData?.items || [];
 
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-US', {
@@ -231,11 +232,12 @@ export function LineItemEditor({
                     ) : (
                       <input
                         type="text"
-                        value={item.description}
+                        value={item.description || ''}
                         onChange={(e) => handleItemChange(index, 'description', e.target.value)}
-                        className="w-full px-2 py-1 border border-transparent hover:border-gray-300 
-                                 dark:hover:border-gray-500 focus:border-blue-500 rounded
-                                 bg-transparent text-gray-900 dark:text-white"
+                        className="w-full px-2 py-1 border border-gray-200 dark:border-gray-600
+                                 hover:border-gray-300 dark:hover:border-gray-500 focus:border-blue-500
+                                 focus:ring-1 focus:ring-blue-500 rounded
+                                 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                         placeholder="Item description"
                       />
                     )}
@@ -246,13 +248,14 @@ export function LineItemEditor({
                     ) : (
                       <input
                         type="number"
-                        value={item.quantity}
+                        value={item.quantity || ''}
                         onChange={(e) => handleItemChange(index, 'quantity', parseFloat(e.target.value) || 0)}
                         min="0.01"
                         step="0.01"
-                        className="w-full px-2 py-1 text-right border border-transparent hover:border-gray-300 
-                                 dark:hover:border-gray-500 focus:border-blue-500 rounded
-                                 bg-transparent text-gray-900 dark:text-white"
+                        className="w-full px-2 py-1 text-right border border-gray-200 dark:border-gray-600
+                                 hover:border-gray-300 dark:hover:border-gray-500 focus:border-blue-500
+                                 focus:ring-1 focus:ring-blue-500 rounded
+                                 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                       />
                     )}
                   </td>
@@ -263,16 +266,17 @@ export function LineItemEditor({
                       </span>
                     ) : (
                       <div className="relative">
-                        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400">$</span>
+                        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">$</span>
                         <input
                           type="number"
-                          value={item.unit_price}
+                          value={item.unit_price || ''}
                           onChange={(e) => handleItemChange(index, 'unit_price', parseFloat(e.target.value) || 0)}
                           min="0"
                           step="0.01"
-                          className="w-full pl-6 pr-2 py-1 text-right border border-transparent hover:border-gray-300 
-                                   dark:hover:border-gray-500 focus:border-blue-500 rounded
-                                   bg-transparent text-gray-900 dark:text-white"
+                          className="w-full pl-6 pr-2 py-1 text-right border border-gray-200 dark:border-gray-600 
+                                   hover:border-gray-300 dark:hover:border-gray-500 focus:border-blue-500 
+                                   focus:ring-1 focus:ring-blue-500 rounded
+                                   bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                         />
                       </div>
                     )}
@@ -284,14 +288,15 @@ export function LineItemEditor({
                       ) : (
                         <input
                           type="number"
-                          value={item.tax_rate}
+                          value={item.tax_rate || ''}
                           onChange={(e) => handleItemChange(index, 'tax_rate', parseFloat(e.target.value) || 0)}
                           min="0"
                           max="100"
                           step="0.01"
-                          className="w-full px-2 py-1 text-right border border-transparent hover:border-gray-300 
-                                   dark:hover:border-gray-500 focus:border-blue-500 rounded
-                                   bg-transparent text-gray-900 dark:text-white"
+                          className="w-full px-2 py-1 text-right border border-gray-200 dark:border-gray-600
+                                   hover:border-gray-300 dark:hover:border-gray-500 focus:border-blue-500
+                                   focus:ring-1 focus:ring-blue-500 rounded
+                                   bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                         />
                       )}
                     </td>

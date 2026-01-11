@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from 'react-hot-toast';
-import apiClient from '../../services/api';
+import api from '../../services/api';
 import PayeeList from './PayeeList';
 import PayeeForm from './PayeeForm';
 import CheckPayeeAssignment from './CheckPayeeAssignment';
@@ -16,11 +16,11 @@ const PayeeManagement = () => {
     queryKey: ['payees', activeTab],
     queryFn: () => {
       if (activeTab === 'employees') {
-        return apiClient.payees.getEmployees();
+        return api.payees.getEmployees();
       } else if (activeTab === 'vendors') {
-        return apiClient.payees.getVendors();
+        return api.payees.getVendors();
       } else {
-        return apiClient.payees.getAll();
+        return api.payees.getAll();
       }
     }
   });
@@ -28,7 +28,7 @@ const PayeeManagement = () => {
   // Fetch unassigned check transactions
   const { data: unassignedChecks, refetch: refetchUnassigned } = useQuery({
     queryKey: ['unassigned-checks'],
-    queryFn: () => apiClient.payees.getTransactionsWithoutPayees({ paymentMethod: 'check' })
+    queryFn: () => api.payees.getTransactionsWithoutPayees({ paymentMethod: 'check' })
   });
 
   const payeesRaw = payeesData?.payees || payeesData?.employees || payeesData?.vendors;
@@ -58,7 +58,7 @@ const PayeeManagement = () => {
     }
 
     try {
-      await apiClient.payees.delete(payeeId);
+      await api.payees.delete(payeeId);
       toast.success('Payee deleted successfully');
       refetch();
     } catch (error) {

@@ -167,18 +167,34 @@ describe('InventoryService', () => {
       expect(result).toHaveProperty('name', 'Test Product');
     });
 
-    it('should throw error when SKU is missing', async () => {
+    it('should create item without SKU (SKU is optional)', async () => {
       const itemData = { name: 'Test Product' };
+      const mockItem = {
+        id: TEST_ITEM_ID,
+        user_id: TEST_USER_ID,
+        sku: null,
+        name: 'Test Product',
+        quantity: 0,
+        unit_cost: 0,
+        selling_price: 0,
+        reorder_level: 0,
+        unit: 'each',
+        is_active: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+      mockSingle.mockResolvedValue({ data: mockItem, error: null });
 
-      await expect(inventoryService.createItem(TEST_USER_ID, itemData))
-        .rejects.toThrow('SKU and name are required');
+      const result = await inventoryService.createItem(TEST_USER_ID, itemData);
+      expect(result).toHaveProperty('name', 'Test Product');
+      expect(result.sku).toBeNull();
     });
 
     it('should throw error when name is missing', async () => {
       const itemData = { sku: 'SKU-001' };
 
       await expect(inventoryService.createItem(TEST_USER_ID, itemData))
-        .rejects.toThrow('SKU and name are required');
+        .rejects.toThrow('Name is required');
     });
 
     it('should handle database errors gracefully', async () => {

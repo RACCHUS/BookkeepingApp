@@ -11,7 +11,14 @@ import toast from 'react-hot-toast';
 export function useQuotes(options = {}) {
   return useQuery({
     queryKey: ['quotes', options],
-    queryFn: () => quoteService.getQuotes(options),
+    queryFn: async () => {
+      const result = await quoteService.getQuotes(options);
+      // Return in format expected by QuoteList: { quotes: [...], total: ... }
+      return { 
+        quotes: result?.data || result?.quotes || [], 
+        total: result?.total || 0 
+      };
+    },
     staleTime: 2 * 60 * 1000,
   });
 }
@@ -19,7 +26,11 @@ export function useQuotes(options = {}) {
 export function useQuote(id) {
   return useQuery({
     queryKey: ['quotes', id],
-    queryFn: () => quoteService.getQuote(id),
+    queryFn: async () => {
+      const result = await quoteService.getQuote(id);
+      // Return in format expected by QuoteForm: { quote: {...} }
+      return { quote: result?.data || result };
+    },
     enabled: !!id,
   });
 }
@@ -43,7 +54,8 @@ export function useUpdateQuote() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: ({ id, updates }) => quoteService.updateQuote(id, updates),
+    // Accept both { id, updates } and { id, data } for flexibility
+    mutationFn: ({ id, updates, data }) => quoteService.updateQuote(id, updates || data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['quotes'] });
       toast.success('Quote updated successfully');

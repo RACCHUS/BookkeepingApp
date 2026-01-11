@@ -2,7 +2,7 @@
  * Inventory API service - handles all inventory-related API calls
  */
 
-import { apiClient } from './api.js';
+import api from './api.js';
 
 const inventoryService = {
   /**
@@ -10,7 +10,7 @@ const inventoryService = {
    * @param {object} params - Query parameters (companyId, category, lowStock, search, limit, offset)
    */
   async getAll(params = {}) {
-    return await apiClient.inventory.getAll(params);
+    return await api.inventory.getAll(params);
   },
 
   /**
@@ -18,7 +18,7 @@ const inventoryService = {
    * @param {string} itemId - Item ID
    */
   async getById(itemId) {
-    return await apiClient.inventory.getById(itemId);
+    return await api.inventory.getById(itemId);
   },
 
   /**
@@ -26,7 +26,7 @@ const inventoryService = {
    * @param {object} itemData - Item data
    */
   async create(itemData) {
-    return await apiClient.inventory.create(itemData);
+    return await api.inventory.create(itemData);
   },
 
   /**
@@ -35,7 +35,7 @@ const inventoryService = {
    * @param {object} updateData - Update data
    */
   async update(itemId, updateData) {
-    return await apiClient.inventory.update(itemId, updateData);
+    return await api.inventory.update(itemId, updateData);
   },
 
   /**
@@ -43,7 +43,7 @@ const inventoryService = {
    * @param {string} itemId - Item ID
    */
   async delete(itemId) {
-    return await apiClient.inventory.delete(itemId);
+    return await api.inventory.delete(itemId);
   },
 
   /**
@@ -52,7 +52,7 @@ const inventoryService = {
    * @param {object} adjustmentData - { quantity, type, notes, unitCost }
    */
   async adjustStock(itemId, adjustmentData) {
-    return await apiClient.inventory.adjustStock(itemId, adjustmentData);
+    return await api.inventory.adjustStock(itemId, adjustmentData);
   },
 
   /**
@@ -61,7 +61,7 @@ const inventoryService = {
    * @param {object} saleData - { quantity, transactionId }
    */
   async recordSale(itemId, saleData) {
-    return await apiClient.inventory.recordSale(itemId, saleData);
+    return await api.inventory.recordSale(itemId, saleData);
   },
 
   /**
@@ -70,7 +70,7 @@ const inventoryService = {
    * @param {object} purchaseData - { quantity, unitCost, transactionId }
    */
   async recordPurchase(itemId, purchaseData) {
-    return await apiClient.inventory.recordPurchase(itemId, purchaseData);
+    return await api.inventory.recordPurchase(itemId, purchaseData);
   },
 
   /**
@@ -78,7 +78,7 @@ const inventoryService = {
    * @param {object} params - Query parameters (companyId)
    */
   async getValuation(params = {}) {
-    return await apiClient.inventory.getValuation(params);
+    return await api.inventory.getValuation(params);
   },
 
   /**
@@ -86,7 +86,7 @@ const inventoryService = {
    * @param {object} params - Query parameters (companyId)
    */
   async getLowStock(params = {}) {
-    return await apiClient.inventory.getLowStock(params);
+    return await api.inventory.getLowStock(params);
   },
 
   /**
@@ -94,14 +94,14 @@ const inventoryService = {
    * @param {object} params - Query parameters (itemId, companyId, type, startDate, endDate, limit, offset)
    */
   async getTransactions(params = {}) {
-    return await apiClient.inventory.getTransactions(params);
+    return await api.inventory.getTransactions(params);
   },
 
   /**
    * Get inventory categories
    */
   async getCategories() {
-    return await apiClient.inventory.getCategories();
+    return await api.inventory.getCategories();
   }
 };
 

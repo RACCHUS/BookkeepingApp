@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-hot-toast';
 import { format } from 'date-fns';
 import checkService from '../../services/checkService';
-import apiClient from '../../services/api';
+import api from '../../services/api';
 import { LoadingSpinner } from '../../components/ui';
 import { CompanySelector } from '../../components/common';
 import {
@@ -69,14 +69,16 @@ const ManageChecks = () => {
   const { data: transactionsData } = useQuery({
     queryKey: ['transactions', { limit: 200 }],
     queryFn: async () => {
-      const response = await apiClient.transactions.getAll({ limit: 200 });
+      const response = await api.transactions.getAll({ limit: 200 });
       return response.data || response;
     }
   });
 
-  const checksRaw = checksData?.data?.checks;
+  // Check API returns { data: [...], pagination: {...} } - data is array directly
+  const checksRaw = checksData?.data?.checks || checksData?.data;
   const checks = Array.isArray(checksRaw) ? checksRaw : [];
-  const transactionsRaw = transactionsData?.transactions;
+  // Transaction API may return { transactions: [...] } or { data: [...] }
+  const transactionsRaw = transactionsData?.transactions || transactionsData?.data || transactionsData;
   const transactions = Array.isArray(transactionsRaw) ? transactionsRaw : [];
 
   // Update mutation

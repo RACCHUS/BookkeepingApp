@@ -11,6 +11,28 @@ vi.mock('../../../services/api', () => ({
     },
     companies: {
       getAll: vi.fn().mockResolvedValue({ data: { companies: [] } })
+    },
+    payees: {
+      getAll: vi.fn().mockResolvedValue({ 
+        data: { 
+          payees: [
+            { id: 'payee-1', name: 'John Contractor', type: 'contractor', isActive: true },
+            { id: 'payee-2', name: 'Acme Vendor', type: 'vendor', isActive: true },
+            { id: 'payee-3', name: 'Jane Employee', type: 'employee', isActive: true }
+          ] 
+        } 
+      }),
+      getVendors: vi.fn().mockResolvedValue({
+        data: {
+          vendors: [
+            { id: 'vendor-1', name: 'Office Supply Co', type: 'vendor', isActive: true },
+            { id: 'vendor-2', name: 'Tech Store Inc', type: 'vendor', isActive: true }
+          ]
+        }
+      })
+    },
+    csv: {
+      getImports: vi.fn().mockResolvedValue({ data: [] })
     }
   },
   default: {
@@ -19,6 +41,9 @@ vi.mock('../../../services/api', () => ({
     },
     companies: {
       getAll: vi.fn().mockResolvedValue({ data: { companies: [] } })
+    },
+    incomeSources: {
+      getAll: vi.fn().mockResolvedValue({ data: { incomeSources: [] } })
     }
   }
 }));
@@ -138,6 +163,38 @@ describe('TransactionModal', () => {
     // Check that category selection exists by finding the label text
     expect(screen.getByText('Category')).toBeInTheDocument();
     // Check for the select placeholder
-    expect(screen.getByText('Select a category')).toBeInTheDocument();
+    expect(screen.getByText('Select a category (optional)')).toBeInTheDocument();
+  });
+
+  it('renders payee dropdown for selecting from payee list', async () => {
+    renderWithProviders(
+      <TransactionModal
+        isOpen={true}
+        onClose={mockOnClose}
+        onSave={mockOnSave}
+        mode="create"
+      />
+    );
+    
+    // Check that payee dropdown exists
+    expect(screen.getByText('Payee')).toBeInTheDocument();
+    // Check for the select placeholder
+    expect(screen.getByText('-- Select a Payee --')).toBeInTheDocument();
+  });
+
+  it('renders vendor dropdown for selecting from vendor list', async () => {
+    renderWithProviders(
+      <TransactionModal
+        isOpen={true}
+        onClose={mockOnClose}
+        onSave={mockOnSave}
+        mode="create"
+      />
+    );
+    
+    // Check that vendor dropdown exists
+    expect(screen.getByText('Vendor')).toBeInTheDocument();
+    // Check for the select placeholder
+    expect(screen.getByText('-- Select a Vendor --')).toBeInTheDocument();
   });
 });

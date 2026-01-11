@@ -29,7 +29,7 @@ vi.mock('react-hot-toast', () => ({
 
 // Mock API client
 vi.mock('../../services/api', () => ({
-  apiClient: {
+  default: {
     csv: {
       getBanks: vi.fn(),
       upload: vi.fn(),
@@ -52,7 +52,7 @@ vi.mock('react-router-dom', async () => {
   };
 });
 
-import { apiClient } from '../../services/api';
+import api from '../../services/api';
 import { toast } from 'react-hot-toast';
 import CSVUpload from '../../features/CSVUpload/CSVUpload';
 
@@ -70,7 +70,7 @@ describe('CSVUpload', () => {
     });
 
     // Default mock responses
-    apiClient.csv.getBanks.mockResolvedValue({
+    api.csv.getBanks.mockResolvedValue({
       data: [
         { key: 'auto', name: 'Auto-Detect' },
         { key: 'chase', name: 'Chase' },
@@ -79,7 +79,7 @@ describe('CSVUpload', () => {
       ],
     });
 
-    apiClient.companies.getAll.mockResolvedValue({
+    api.companies.getAll.mockResolvedValue({
       companies: [
         { id: 'company-1', name: 'Test Company LLC' },
         { id: 'company-2', name: 'Another Business' },
@@ -129,7 +129,7 @@ describe('CSVUpload', () => {
 
   describe('Upload Flow', () => {
     it('should handle successful CSV upload', async () => {
-      apiClient.csv.upload.mockResolvedValue({
+      api.csv.upload.mockResolvedValue({
         success: true,
         data: {
           uploadId: 'upload-123',
@@ -153,7 +153,7 @@ describe('CSVUpload', () => {
     });
 
     it('should show error toast on upload failure', async () => {
-      apiClient.csv.upload.mockRejectedValue({
+      api.csv.upload.mockRejectedValue({
         response: {
           data: { message: 'Invalid CSV format' },
         },
@@ -170,7 +170,7 @@ describe('CSVUpload', () => {
 
   describe('Error Handling', () => {
     it('should handle network errors gracefully', async () => {
-      apiClient.csv.getBanks.mockRejectedValue(new Error('Network error'));
+      api.csv.getBanks.mockRejectedValue(new Error('Network error'));
 
       renderComponent();
 
@@ -181,7 +181,7 @@ describe('CSVUpload', () => {
     });
 
     it('should display parsing errors from CSV', async () => {
-      apiClient.csv.upload.mockResolvedValue({
+      api.csv.upload.mockResolvedValue({
         success: false,
         message: 'Could not parse CSV file',
       });

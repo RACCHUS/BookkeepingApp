@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-hot-toast';
-import { apiClient } from '../../services/api.js';
+import api from '../../services/api.js';
 import { formatCurrency } from '../../utils/currencyUtils';
 import { TransactionModal } from '../../components/forms';
 import { PencilIcon } from '@heroicons/react/24/outline';
@@ -20,7 +20,7 @@ const TransactionCompanyAssignment = ({ onAssignmentComplete }) => {
   // Fetch transactions without company
   const { data: transactionsData, isLoading: loadingTransactions, error: transactionsError } = useQuery({
     queryKey: ['unassigned-company-transactions'],
-    queryFn: () => apiClient.companies.getTransactionsWithoutCompany(),
+    queryFn: () => api.companies.getTransactionsWithoutCompany(),
     retry: 2,
     onError: (error) => {
       console.error('Error fetching transactions:', error);
@@ -31,7 +31,7 @@ const TransactionCompanyAssignment = ({ onAssignmentComplete }) => {
   // Fetch assigned transactions (for unassign view)
   const { data: assignedData, isLoading: loadingAssigned } = useQuery({
     queryKey: ['assigned-company-transactions'],
-    queryFn: () => apiClient.transactions.getAll({ limit: 500 }),
+    queryFn: () => api.transactions.getAll({ limit: 500 }),
     retry: 2,
     enabled: viewMode === 'assigned'
   });
@@ -39,7 +39,7 @@ const TransactionCompanyAssignment = ({ onAssignmentComplete }) => {
   // Fetch all companies for dropdown
   const { data: companiesData, isLoading: loadingCompanies, error: companiesError } = useQuery({
     queryKey: ['companies'],
-    queryFn: () => apiClient.companies.getAll(),
+    queryFn: () => api.companies.getAll(),
     retry: 2,
     onError: (error) => {
       console.error('Error fetching companies:', error);
@@ -53,15 +53,20 @@ const TransactionCompanyAssignment = ({ onAssignmentComplete }) => {
   const allTransactions = Array.isArray(allTransactionsRaw) ? allTransactionsRaw : [];
   const assignedTransactions = allTransactions.filter(t => t.companyId && t.companyId.trim() !== '');
   const transactions = viewMode === 'unassigned' ? unassignedTransactions : assignedTransactions;
-  const companiesRaw = companiesData?.data;
+  // Server returns { success: true, data: [...] }
+  // Supabase returns { success: true, data: { companies: [...] } }
+  const companiesRaw = Array.isArray(companiesData?.data) 
+    ? companiesData.data 
+    : companiesData?.data?.companies;
   const companies = Array.isArray(companiesRaw) ? companiesRaw : [];
 
   // Mutation for bulk company assignment
   const assignCompanyMutation = useMutation({
     mutationFn: ({ companyId, transactionIds }) => 
-      apiClient.companies.bulkAssignTransactions(companyId, transactionIds),
-    onSuccess: (data) => {
-      toast.success(`Company assigned to ${data.updatedCount} transactions`);
+      api.companies.bulkAssignTransactions(companyId, transactionIds),
+    onSuccess: (result) => {
+      const count = result?.data?.updated || result?.updated || 0;
+      toast.success(`Company assigned to ${count} transactions`);
       setSelectedTransactions(new Set());
       setSelectedCompany('');
       queryClient.invalidateQueries(['unassigned-company-transactions']);
@@ -77,9 +82,10 @@ const TransactionCompanyAssignment = ({ onAssignmentComplete }) => {
 
   // Mutation for bulk company unassignment
   const unassignCompanyMutation = useMutation({
-    mutationFn: (transactionIds) => apiClient.companies.bulkUnassignTransactions(transactionIds),
-    onSuccess: (data) => {
-      toast.success(`Company removed from ${data.updatedCount} transactions`);
+    mutationFn: (transactionIds) => api.companies.bulkUnassignTransactions(transactionIds),
+    onSuccess: (result) => {
+      const count = result?.data?.updated || result?.updated || 0;
+      toast.success(`Company removed from ${count} transactions`);
       setSelectedTransactions(new Set());
       queryClient.invalidateQueries(['unassigned-company-transactions']);
       queryClient.invalidateQueries(['assigned-company-transactions']);
@@ -124,7 +130,7 @@ const TransactionCompanyAssignment = ({ onAssignmentComplete }) => {
 
   const handleSaveTransaction = async (transactionData) => {
     try {
-      await apiClient.transactions.update(editingTransaction.id, transactionData);
+      await api.transactions.update(editingTransaction.id, transactionData);
       toast.success('Transaction updated successfully');
       queryClient.invalidateQueries({ queryKey: ['unassigned-company-transactions'] });
       queryClient.invalidateQueries({ queryKey: ['assigned-company-transactions'] });

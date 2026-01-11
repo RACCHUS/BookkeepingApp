@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-hot-toast';
-import { apiClient } from '../../services/api';
+import api from '../../services/api';
 import { IRS_CATEGORIES } from '@shared/constants/categories';
 import { LoadingSpinner } from '../../components/ui';
 
@@ -36,7 +36,7 @@ const Classification = () => {
   } = useQuery({
     queryKey: ['classification-rules'],
     queryFn: async () => {
-      const response = await apiClient.classification.getRules();
+      const response = await api.classification.getRules();
       return response.rules || response;
     },
     ...QUERY_CONFIG,
@@ -53,7 +53,7 @@ const Classification = () => {
   } = useQuery({
     queryKey: ['uncategorized-transactions'],
     queryFn: async () => {
-      const response = await apiClient.classification.getUncategorized();
+      const response = await api.classification.getUncategorized();
       return response.transactions || response;
     },
     ...QUERY_CONFIG,
@@ -83,7 +83,7 @@ const Classification = () => {
         category: newRule.category
       };
 
-      await apiClient.classification.createRule(rule);
+      await api.classification.createRule(rule);
       toast.success('Classification rule created');
       // Reset form and reload data
       setNewRule({ keywords: '', category: '' });
@@ -96,7 +96,7 @@ const Classification = () => {
 
   const handleDeleteRule = async (ruleId) => {
     try {
-      await apiClient.classification.deleteRule(ruleId);
+      await api.classification.deleteRule(ruleId);
       toast.success('Rule deleted');
       handleRefresh();
     } catch (error) {

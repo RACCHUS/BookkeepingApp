@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { toast } from 'react-hot-toast';
-import { apiClient } from '../../services/api';
+import api from '../../services/api';
 import { 
   DocumentArrowDownIcon, 
   CalendarIcon, 
@@ -15,7 +15,7 @@ const QuickReports = ({ className = '' }) => {
     setGenerating(period.id);
     
     try {
-      const response = await apiClient.reports.generateTaxSummaryPDF({
+      const response = await api.reports.generateTaxSummaryPDF({
         startDate: period.start,
         endDate: period.end,
         taxYear: new Date(period.start).getFullYear(),

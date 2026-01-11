@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-hot-toast';
-import apiClient from '../../services/api';
+import api from '../../services/api';
 import { formatDate } from '../../utils/dateUtils';
 import { formatCurrency } from '../../utils/currencyUtils';
 
@@ -22,7 +22,7 @@ const CheckVendorAssignment = ({ onAssignmentComplete }) => {
   // Fetch unassigned check transactions
   const { data: transactionsData, isLoading: loadingTransactions, error: transactionsError } = useQuery({
     queryKey: ['unassigned-check-vendor-transactions'],
-    queryFn: () => apiClient.payees.getTransactionsWithoutPayees({ sectionCode: 'checks' }),
+    queryFn: () => api.payees.getTransactionsWithoutPayees({ sectionCode: 'checks' }),
     retry: 2,
     onError: (error) => {
       console.error('Error fetching transactions:', error);
@@ -33,7 +33,7 @@ const CheckVendorAssignment = ({ onAssignmentComplete }) => {
   // Fetch assigned check transactions (for unassign view)
   const { data: assignedData, isLoading: loadingAssigned } = useQuery({
     queryKey: ['assigned-check-vendor-transactions'],
-    queryFn: () => apiClient.transactions.getAll({ sectionCode: 'checks', limit: 500 }),
+    queryFn: () => api.transactions.getAll({ sectionCode: 'checks', limit: 500 }),
     retry: 2,
     enabled: viewMode === 'assigned'
   });
@@ -41,7 +41,7 @@ const CheckVendorAssignment = ({ onAssignmentComplete }) => {
   // Fetch all vendors for dropdown
   const { data: vendorsData, isLoading: loadingVendors, error: vendorsError } = useQuery({
     queryKey: ['all-vendors'],
-    queryFn: () => apiClient.payees.getAll({ type: 'vendor' }),
+    queryFn: () => api.payees.getAll({ type: 'vendor' }),
     retry: 2,
     onError: (error) => {
       console.error('Error fetching vendors:', error);
@@ -64,7 +64,7 @@ const CheckVendorAssignment = ({ onAssignmentComplete }) => {
     mutationFn: async ({ transactionIds, vendorId, vendorName }) => {
       // Update each transaction with vendor info
       const updatePromises = transactionIds.map(id =>
-        apiClient.transactions.update(id, { vendorId, vendorName })
+        api.transactions.update(id, { vendorId, vendorName })
       );
       await Promise.all(updatePromises);
       return { updatedCount: transactionIds.length };
@@ -88,7 +88,7 @@ const CheckVendorAssignment = ({ onAssignmentComplete }) => {
   const unassignVendorMutation = useMutation({
     mutationFn: async (transactionIds) => {
       const updatePromises = transactionIds.map(id =>
-        apiClient.transactions.update(id, { vendorId: null, vendorName: null })
+        api.transactions.update(id, { vendorId: null, vendorName: null })
       );
       await Promise.all(updatePromises);
       return { updatedCount: transactionIds.length };
@@ -109,7 +109,7 @@ const CheckVendorAssignment = ({ onAssignmentComplete }) => {
 
   // Mutation for creating new vendor
   const createVendorMutation = useMutation({
-    mutationFn: (vendorData) => apiClient.payees.create(vendorData),
+    mutationFn: (vendorData) => api.payees.create(vendorData),
     onSuccess: (data) => {
       toast.success('Vendor created successfully');
       setSelectedVendor(data.id);

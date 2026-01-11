@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import StatementSelector from '../../features/Statements/StatementSelector';
 import { CompanySelector } from '../common';
-import { apiClient } from '../../services/api';
 import api from '../../services/api';
 import { useForm } from 'react-hook-form';
 import { toast } from 'react-hot-toast';
@@ -32,7 +31,7 @@ const TransactionModal = ({ transaction, isOpen, onClose, onSave, mode = 'edit',
   const { data: statements = [], refetch: refetchStatements } = useQuery({
     queryKey: ['pdf-statements-for-modal', refreshTrigger],
     queryFn: async () => {
-      const res = await apiClient.pdf.getUploads();
+      const res = await api.pdf.getUploads();
       const uploads = Array.isArray(res?.data) ? res.data : (res?.data?.uploads || []);
       if (!Array.isArray(uploads)) return [];
       
@@ -66,7 +65,7 @@ const TransactionModal = ({ transaction, isOpen, onClose, onSave, mode = 'edit',
   const { data: csvImports = [], refetch: refetchCsvImports } = useQuery({
     queryKey: ['csv-imports-for-modal', refreshTrigger],
     queryFn: async () => {
-      const res = await apiClient.csv.getImports({ status: 'completed' });
+      const res = await api.csv.getImports({ status: 'completed' });
       const imports = Array.isArray(res?.data) ? res.data : [];
       
       return imports
@@ -98,10 +97,33 @@ const TransactionModal = ({ transaction, isOpen, onClose, onSave, mode = 'edit',
     queryKey: ['income-sources-for-modal'],
     queryFn: async () => {
       const res = await api.incomeSources.getAll();
-      return res.sources || [];
+      // Handle both formats: res.sources (legacy) and res.data.incomeSources (supabase)
+      return res.sources || res.data?.incomeSources || [];
     },
     ...QUERY_CONFIG,
   });
+
+  // Fetch payees (employees/vendors/contractors) with React Query caching
+  const { data: payeesData } = useQuery({
+    queryKey: ['payees-for-modal'],
+    queryFn: async () => {
+      const res = await api.payees?.getAll?.() || { data: { payees: [] } };
+      return res.data?.payees || res.payees || [];
+    },
+    ...QUERY_CONFIG,
+  });
+  const payees = payeesData || [];
+
+  // Fetch vendors (payees with type 'vendor') for vendor dropdown
+  const { data: vendorsData } = useQuery({
+    queryKey: ['vendors-for-modal'],
+    queryFn: async () => {
+      const res = await api.payees?.getVendors?.() || { data: { vendors: [] } };
+      return res.data?.vendors || res.vendors || [];
+    },
+    ...QUERY_CONFIG,
+  });
+  const vendors = vendorsData || [];
 
   const {
     register,
@@ -144,7 +166,9 @@ const TransactionModal = ({ transaction, isOpen, onClose, onSave, mode = 'edit',
       category: typeof transaction?.category === 'string' ? transaction.category : '',
       subcategory: typeof transaction?.subcategory === 'string' ? transaction.subcategory : '',
       type: typeof transaction?.type === 'string' && ['income','expense'].includes(transaction.type) ? transaction.type : (typeof transaction?.amount === 'number' && transaction.amount > 0 ? 'income' : 'expense'),
+      payeeId: typeof transaction?.payeeId === 'string' ? transaction.payeeId : '',
       payee: typeof transaction?.payee === 'string' ? transaction.payee : '',
+      vendorId: typeof transaction?.vendorId === 'string' ? transaction.vendorId : '',
       vendorName: typeof transaction?.vendorName === 'string' ? transaction.vendorName : '',
       isContractorPayment: !!transaction?.isContractorPayment || !!transaction?.is1099Payment,
       isReconciled: !!transaction?.isReconciled,
@@ -235,7 +259,9 @@ const TransactionModal = ({ transaction, isOpen, onClose, onSave, mode = 'edit',
         category: typeof transaction?.category === 'string' ? transaction.category : '',
         subcategory: typeof transaction?.subcategory === 'string' ? transaction.subcategory : '',
         type: typeof transaction?.type === 'string' && ['income','expense'].includes(transaction.type) ? transaction.type : (typeof transaction?.amount === 'number' && transaction.amount > 0 ? 'income' : 'expense'),
+        payeeId: typeof transaction?.payeeId === 'string' ? transaction.payeeId : '',
         payee: typeof transaction?.payee === 'string' ? transaction.payee : '',
+        vendorId: typeof transaction?.vendorId === 'string' ? transaction.vendorId : '',
         vendorName: typeof transaction?.vendorName === 'string' ? transaction.vendorName : '',
         isContractorPayment: !!transaction?.isContractorPayment || !!transaction?.is1099Payment,
         isReconciled: !!transaction?.isReconciled,
@@ -259,7 +285,9 @@ const TransactionModal = ({ transaction, isOpen, onClose, onSave, mode = 'edit',
         category: '',
         subcategory: '',
         type: 'expense',
+        payeeId: '',
         payee: '',
+        vendorId: '',
         vendorName: '',
         isContractorPayment: false,
         isReconciled: false,
@@ -308,6 +336,10 @@ const TransactionModal = ({ transaction, isOpen, onClose, onSave, mode = 'edit',
         companyName: data.companyName || '',
         incomeSourceId: data.type === 'income' ? (data.incomeSourceId || '') : '',
         incomeSourceName: data.type === 'income' ? (data.incomeSourceName || '') : '',
+        payeeId: data.payeeId || null,
+        payee: data.payee || '', // Keep payee name for display purposes
+        vendorId: data.vendorId || null,
+        vendorName: data.vendorName || '', // Keep vendor name for display purposes
         is1099Payment: data.isContractorPayment || false,
         isReconciled: data.isReconciled || false,
         isReviewed: data.isReviewed || false,
@@ -483,10 +515,10 @@ const TransactionModal = ({ transaction, isOpen, onClose, onSave, mode = 'edit',
             <div>
               <label className="form-label">Category</label>
               <select 
-                {...register('category', { required: 'Category is required' })}
+                {...register('category')}
                 className={`form-input category-select ${!watch('category') ? 'text-gray-400 dark:text-gray-500' : ''}`}
               >
-                <option value="">Select a category</option>
+                <option value="">Select a category (optional)</option>
                 
                 {Object.entries(CATEGORY_GROUPS).map(([groupName, categories]) => (
                   <optgroup 
@@ -503,9 +535,6 @@ const TransactionModal = ({ transaction, isOpen, onClose, onSave, mode = 'edit',
                   </optgroup>
                 ))}
               </select>
-              {errors.category && (
-                <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.category.message}</p>
-              )}
             </div>
 
             {/* Subcategory */}
@@ -533,28 +562,62 @@ const TransactionModal = ({ transaction, isOpen, onClose, onSave, mode = 'edit',
             <div>
               <label className="form-label">
                 Payee
-                <span className="text-gray-500 text-xs ml-2">(who you pay - employee, contractor, etc.)</span>
+                <span className="text-gray-500 text-xs ml-2">(select from payee list)</span>
               </label>
-              <input
-                type="text"
-                {...register('payee')}
+              <select
+                {...register('payeeId')}
+                onChange={(e) => {
+                  const selectedPayee = payees.find(p => p.id === e.target.value);
+                  setValue('payeeId', e.target.value);
+                  setValue('payee', selectedPayee?.name || '');
+                  // Auto-check contractor payment if payee is a contractor
+                  if (selectedPayee?.type === 'contractor') {
+                    setValue('isContractorPayment', true);
+                  }
+                }}
                 className="form-input"
-                placeholder="Employee, contractor, or service provider name"
-              />
+              >
+                <option value="">-- Select a Payee --</option>
+                {payees.filter(p => p.isActive !== false).map(p => (
+                  <option key={p.id} value={p.id}>
+                    {p.name} {p.type ? `(${p.type})` : ''}
+                  </option>
+                ))}
+              </select>
+              {payees.length === 0 && (
+                <p className="text-xs text-gray-500 mt-1">
+                  No payees found. <a href="/payees" className="text-blue-600 hover:underline">Add payees in Payee Management</a>
+                </p>
+              )}
             </div>
 
-            {/* Vendor Name (business you purchase from) */}
+            {/* Vendor (business you purchase from) */}
             <div>
               <label className="form-label">
                 Vendor
-                <span className="text-gray-500 text-xs ml-2">(business you purchase from)</span>
+                <span className="text-gray-500 text-xs ml-2">(select from vendor list)</span>
               </label>
-              <input
-                type="text"
-                {...register('vendorName')}
+              <select
+                {...register('vendorId')}
+                onChange={(e) => {
+                  const selectedVendor = vendors.find(v => v.id === e.target.value);
+                  setValue('vendorId', e.target.value);
+                  setValue('vendorName', selectedVendor?.name || '');
+                }}
                 className="form-input"
-                placeholder="Store, supplier, or business name"
-              />
+              >
+                <option value="">-- Select a Vendor --</option>
+                {vendors.map(v => (
+                  <option key={v.id} value={v.id}>
+                    {v.name}
+                  </option>
+                ))}
+              </select>
+              {vendors.length === 0 && (
+                <p className="text-xs text-gray-500 mt-1">
+                  No vendors found. <a href="/vendors" className="text-blue-600 hover:underline">Add a vendor</a>
+                </p>
+              )}
             </div>
 
             {/* Contractor Payment Checkbox */}

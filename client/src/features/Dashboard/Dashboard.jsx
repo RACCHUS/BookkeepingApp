@@ -1,7 +1,7 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { apiClient } from '../../services/api';
+import api from '../../services/api';
 import { LoadingSpinner } from '../../components/ui';
 import { QuickReports } from '../../components/common';
 import {
@@ -23,7 +23,7 @@ const Dashboard = () => {
 
   const { data: summary, isLoading, error } = useQuery({
     queryKey: ['transaction-summary', startOfMonth, endOfMonth],
-    queryFn: () => apiClient.transactions.getSummary(
+    queryFn: () => api.transactions.getSummary(
       startOfMonth.toISOString(),
       endOfMonth.toISOString()
     ),
@@ -31,7 +31,7 @@ const Dashboard = () => {
 
   const { data: recentTransactions } = useQuery({
     queryKey: ['recent-transactions'],
-    queryFn: () => apiClient.transactions.getAll({
+    queryFn: () => api.transactions.getAll({
       limit: 5,
       orderBy: 'date',
       order: 'desc'
@@ -88,7 +88,7 @@ const Dashboard = () => {
 
   // Add transaction handler
   const handleAddTransaction = async (data) => {
-    await apiClient.transactions.create(data);
+    await api.transactions.create(data);
     setShowAddModal(false);
     // Refetch recent transactions and summary so new transaction appears with correct Firestore id
     if (typeof window !== 'undefined' && window.__REACT_QUERY_CLIENT__) {

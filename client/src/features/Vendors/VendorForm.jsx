@@ -5,7 +5,7 @@
 import React, { useState, useEffect } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-hot-toast';
-import apiClient from '../../services/api';
+import api from '../../services/api';
 
 const VendorForm = ({ vendor, onClose }) => {
   const queryClient = useQueryClient();
@@ -38,11 +38,13 @@ const VendorForm = ({ vendor, onClose }) => {
   }, [vendor]);
 
   const createMutation = useMutation({
-    mutationFn: (data) => apiClient.payees.create({ ...data, type: 'vendor' }),
+    mutationFn: (data) => api.payees.create({ ...data, type: 'vendor' }),
     onSuccess: () => {
       toast.success('Vendor created successfully');
       queryClient.invalidateQueries(['vendors']);
       queryClient.invalidateQueries(['all-vendors']);
+      queryClient.invalidateQueries(['vendors-for-modal']);
+      queryClient.invalidateQueries(['vendors-for-transactions']);
       onClose();
     },
     onError: (error) => {
@@ -52,11 +54,13 @@ const VendorForm = ({ vendor, onClose }) => {
   });
 
   const updateMutation = useMutation({
-    mutationFn: (data) => apiClient.payees.update(vendor.id, data),
+    mutationFn: (data) => api.payees.update(vendor.id, data),
     onSuccess: () => {
       toast.success('Vendor updated successfully');
       queryClient.invalidateQueries(['vendors']);
       queryClient.invalidateQueries(['all-vendors']);
+      queryClient.invalidateQueries(['vendors-for-modal']);
+      queryClient.invalidateQueries(['vendors-for-transactions']);
       onClose();
     },
     onError: (error) => {
