@@ -424,22 +424,28 @@ export const supabaseClient = {
       // Calculate totals
       let totalIncome = 0;
       let totalExpenses = 0;
+      let totalTransfers = 0;
       const byCategory = {};
 
       (data || []).forEach(t => {
         const amount = parseFloat(t.amount) || 0;
         const category = t.category || 'Uncategorized';
         
-        if (t.type === 'income' || t.type === 'deposit') {
+        // Transfers don't affect income/expense totals - they're neutral
+        if (t.type === 'transfer') {
+          totalTransfers += Math.abs(amount);
+        } else if (t.type === 'income' || t.type === 'deposit') {
           totalIncome += amount;
         } else {
           totalExpenses += Math.abs(amount);
         }
         
         if (!byCategory[category]) {
-          byCategory[category] = { income: 0, expenses: 0, count: 0 };
+          byCategory[category] = { income: 0, expenses: 0, transfers: 0, count: 0 };
         }
-        if (t.type === 'income' || t.type === 'deposit') {
+        if (t.type === 'transfer') {
+          byCategory[category].transfers += Math.abs(amount);
+        } else if (t.type === 'income' || t.type === 'deposit') {
           byCategory[category].income += amount;
         } else {
           byCategory[category].expenses += Math.abs(amount);
@@ -453,7 +459,8 @@ export const supabaseClient = {
           summary: {
             totalIncome,
             totalExpenses,
-            netIncome: totalIncome - totalExpenses,
+            totalTransfers,
+            netIncome: totalIncome - totalExpenses, // Transfers excluded
             transactionCount: data?.length || 0,
           },
           byCategory,
@@ -488,10 +495,13 @@ export const supabaseClient = {
         const amount = parseFloat(t.amount) || 0;
         
         if (!categories[category]) {
-          categories[category] = { income: 0, expenses: 0, count: 0 };
+          categories[category] = { income: 0, expenses: 0, transfers: 0, count: 0 };
         }
         
-        if (t.type === 'income' || t.type === 'deposit') {
+        // Transfers tracked separately
+        if (t.type === 'transfer') {
+          categories[category].transfers += Math.abs(amount);
+        } else if (t.type === 'income' || t.type === 'deposit') {
           categories[category].income += amount;
         } else {
           categories[category].expenses += Math.abs(amount);
@@ -2784,9 +2794,10 @@ export const supabaseClient = {
 
       const transactions = (data || []).map(transformTransaction);
       
-      // Calculate summary stats
+      // Calculate summary stats (exclude transfers from income/expense)
       const income = transactions.filter(t => t.type === 'income').reduce((sum, t) => sum + (parseFloat(t.amount) || 0), 0);
       const expenses = transactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + Math.abs(parseFloat(t.amount) || 0), 0);
+      const transfers = transactions.filter(t => t.type === 'transfer').reduce((sum, t) => sum + Math.abs(parseFloat(t.amount) || 0), 0);
       
       // Group by month for chart data
       const monthlyData = {};
@@ -2798,11 +2809,14 @@ export const supabaseClient = {
             monthLabel: date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
             income: { total: 0 },
             expenses: { total: 0 },
+            transfers: { total: 0 },
             netIncome: 0
           };
         }
         const amount = parseFloat(t.amount) || 0;
-        if (t.type === 'income' || t.type === 'deposit') {
+        if (t.type === 'transfer') {
+          monthlyData[monthKey].transfers.total += Math.abs(amount);
+        } else if (t.type === 'income' || t.type === 'deposit') {
           monthlyData[monthKey].income.total += amount;
         } else {
           monthlyData[monthKey].expenses.total += Math.abs(amount);
@@ -2818,7 +2832,8 @@ export const supabaseClient = {
           summary: {
             totalIncome: income,
             totalExpenses: expenses,
-            netIncome: income - expenses,
+            totalTransfers: transfers,
+            netIncome: income - expenses, // Transfers excluded
             transactionCount: transactions.length,
           },
           period: { year, month, startDate, endDate },

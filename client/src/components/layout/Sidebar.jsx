@@ -20,7 +20,8 @@ import {
   ReceiptPercentIcon,
   ArrowPathIcon,
   ChevronLeftIcon,
-  ChevronRightIcon
+  ChevronRightIcon,
+  QuestionMarkCircleIcon
 } from '@heroicons/react/24/outline';
 
 const Sidebar = ({ isCollapsed, onToggle }) => {
@@ -44,6 +45,7 @@ const Sidebar = ({ isCollapsed, onToggle }) => {
     { name: 'Classification', href: '/classification', icon: TagIcon },
     { name: 'Tax Forms', href: '/tax-forms', icon: DocumentDuplicateIcon },
     { name: 'Reports', href: '/reports', icon: ChartBarIcon },
+    { name: 'Help', href: '/help', icon: QuestionMarkCircleIcon },
   ];
 
   return (

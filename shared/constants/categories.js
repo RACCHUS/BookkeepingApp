@@ -1100,6 +1100,31 @@ export const TRANSACTION_TYPES = {
   TRANSFER: 'transfer'
 };
 
+// Neutral/Non-Taxable Transaction Categories (not counted as income or expense)
+export const NEUTRAL_CATEGORIES = {
+  OWNER_CONTRIBUTION: 'Owner Contribution/Capital',
+  OWNER_DRAW: 'Owner Draw/Distribution',
+  LOAN_RECEIVED: 'Loan Received',
+  LOAN_PAYMENT: 'Loan Payment (Principal)',
+  TRANSFER_BETWEEN_ACCOUNTS: 'Transfer Between Accounts',
+  REFUND_RECEIVED: 'Refund Received',
+  REFUND_ISSUED: 'Refund Issued',
+  SECURITY_DEPOSIT: 'Security Deposit',
+  SECURITY_DEPOSIT_RETURN: 'Security Deposit Return',
+  ESCROW_DEPOSIT: 'Escrow Deposit',
+  ESCROW_RELEASE: 'Escrow Release',
+  CREDIT_CARD_PAYMENT: 'Credit Card Payment',
+  SALES_TAX_COLLECTED: 'Sales Tax Collected',
+  SALES_TAX_PAYMENT: 'Sales Tax Payment',
+  PAYROLL_TAX_DEPOSIT: 'Payroll Tax Deposit',
+  REIMBURSEMENT_RECEIVED: 'Reimbursement Received',
+  REIMBURSEMENT_PAID: 'Reimbursement Paid',
+  PERSONAL_FUNDS_IN: 'Personal Funds Added',
+  PERSONAL_FUNDS_OUT: 'Personal Funds Withdrawn',
+  OPENING_BALANCE: 'Opening Balance',
+  ADJUSTMENT: 'Balance Adjustment',
+};
+
 // Payment methods
 export const PAYMENT_METHODS = {
   CASH: 'cash',
@@ -1127,6 +1152,7 @@ export default {
   CATEGORY_METADATA,
   CATEGORY_GROUPS,
   TRANSACTION_TYPES,
+  NEUTRAL_CATEGORIES,
   PAYMENT_METHODS,
   FILE_UPLOAD,
   // Helper functions

@@ -34,6 +34,7 @@ import { CSVUpload } from './features/CSVUpload';
 import { InventoryPage } from './features/Inventory';
 import { TaxFormsDashboard } from './features/TaxForms';
 import { CataloguePage, QuoteList, QuoteForm, InvoiceList, InvoiceForm, PaymentRecorder, RecurringList, RecurringForm } from './features/Invoicing';
+import { HelpPage } from './features/Help';
 
 // Create a client with optimized caching
 const queryClient = new QueryClient({
@@ -181,6 +182,7 @@ function App() {
                   <Route path="recurring" element={<RecurringList />} />
                   <Route path="recurring/new" element={<RecurringForm />} />
                   <Route path="recurring/:id/edit" element={<RecurringForm />} />
+                  <Route path="help" element={<HelpPage />} />
                 </Route>
                 
                 {/* Catch all route */}

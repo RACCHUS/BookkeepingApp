@@ -3,8 +3,19 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import CompanySelector from '../CompanySelector';
 
-// Mock the API client
+// Mock the API client - need to mock default export
 vi.mock('../../../services/api.js', () => ({
+  default: {
+    companies: {
+      getAll: vi.fn().mockResolvedValue({
+        data: [
+          { id: 'company-1', name: 'Test Company 1', legalName: 'Test Company 1 LLC', isDefault: true },
+          { id: 'company-2', name: 'Test Company 2', legalName: 'Test Company 2 Inc', isDefault: false },
+          { id: 'company-3', name: 'Another Business', legalName: 'Another Business Corp', isDefault: false }
+        ]
+      })
+    }
+  },
   apiClient: {
     companies: {
       getAll: vi.fn().mockResolvedValue({

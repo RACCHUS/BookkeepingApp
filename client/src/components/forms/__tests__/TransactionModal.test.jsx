@@ -197,4 +197,32 @@ describe('TransactionModal', () => {
     // Check for the select placeholder
     expect(screen.getByText('-- Select a Vendor --')).toBeInTheDocument();
   });
+
+  it('renders transfer type option in the type dropdown', () => {
+    renderWithProviders(
+      <TransactionModal
+        isOpen={true}
+        onClose={mockOnClose}
+        onSave={mockOnSave}
+        mode="create"
+      />
+    );
+    
+    // Check that Transfer option exists in the type dropdown
+    expect(screen.getByRole('option', { name: /Transfer\/Neutral/i })).toBeInTheDocument();
+  });
+
+  it('renders create mode title correctly', async () => {
+    renderWithProviders(
+      <TransactionModal
+        isOpen={true}
+        onClose={mockOnClose}
+        onSave={mockOnSave}
+        mode="create"
+      />
+    );
+    
+    // Should show Add New Transaction in create mode
+    expect(screen.getByText('Add New Transaction')).toBeInTheDocument();
+  });
 });

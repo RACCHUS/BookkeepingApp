@@ -147,12 +147,19 @@ export function getSectionStatistics(transactions) {
   const summary = getTransactionSectionSummary(transactions);
   const descriptions = getAvailableSectionCodes();
   
-  return Object.keys(summary.counts).map(sectionCode => ({
-    code: sectionCode,
-    description: descriptions[sectionCode] || 'Unknown Section',
-    count: summary.counts[sectionCode],
-    totalAmount: summary.amounts[sectionCode],
-    averageAmount: summary.amounts[sectionCode] / summary.counts[sectionCode],
-    percentage: (summary.counts[sectionCode] / summary.totalTransactions) * 100
-  }));
+  return Object.keys(summary.counts).map(sectionCode => {
+    const count = summary.counts[sectionCode] || 0;
+    const totalAmount = summary.amounts[sectionCode] || 0;
+    const totalTransactions = summary.totalTransactions || 0;
+    
+    return {
+      code: sectionCode,
+      description: descriptions[sectionCode] || 'Unknown Section',
+      count: count,
+      totalAmount: totalAmount,
+      // Prevent division by zero
+      averageAmount: count > 0 ? Math.round((totalAmount / count) * 100) / 100 : 0,
+      percentage: totalTransactions > 0 ? Math.round((count / totalTransactions) * 10000) / 100 : 0
+    };
+  });
 }

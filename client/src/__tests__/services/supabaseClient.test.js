@@ -247,6 +247,48 @@ describe('supabaseClient', () => {
         expect(supabase.from).toHaveBeenCalledWith('transactions');
         expect(result.success).toBe(true);
       });
+
+      it('should exclude transfer transactions from income/expense totals', async () => {
+        const mockTransactions = [
+          { type: 'expense', amount: -100, category: 'Office Expenses' },
+          { type: 'income', amount: 500, category: 'Sales' },
+          { type: 'transfer', amount: 1000, category: 'Owner Contribution' },
+          { type: 'transfer', amount: 500, category: 'Loan Received' },
+        ];
+        
+        const chainMock = createChainMock(mockTransactions);
+        supabase.from.mockReturnValue(chainMock);
+        
+        const result = await supabaseClient.transactions.getSummary('2024-01-01', '2024-12-31');
+        
+        expect(result.success).toBe(true);
+        // Transfers should not affect income/expense totals
+        expect(result.data.summary.totalIncome).toBe(500);
+        expect(result.data.summary.totalExpenses).toBe(100);
+        expect(result.data.summary.totalTransfers).toBe(1500);
+        // Net income should exclude transfers
+        expect(result.data.summary.netIncome).toBe(400); // 500 - 100 = 400
+      });
+
+      it('should track transfers by category', async () => {
+        const mockTransactions = [
+          { type: 'transfer', amount: 1000, category: 'Owner Contribution' },
+          { type: 'transfer', amount: 500, category: 'Owner Contribution' },
+          { type: 'transfer', amount: 250, category: 'Loan Received' },
+        ];
+        
+        const chainMock = createChainMock(mockTransactions);
+        supabase.from.mockReturnValue(chainMock);
+        
+        const result = await supabaseClient.transactions.getSummary('2024-01-01', '2024-12-31');
+        
+        expect(result.success).toBe(true);
+        expect(result.data.byCategory['Owner Contribution'].transfers).toBe(1500);
+        expect(result.data.byCategory['Loan Received'].transfers).toBe(250);
+        // These transfer categories should have 0 income and 0 expense
+        expect(result.data.byCategory['Owner Contribution'].income).toBe(0);
+        expect(result.data.byCategory['Owner Contribution'].expenses).toBe(0);
+      });
     });
   });
 
@@ -855,4 +897,153 @@ describe('supabaseClient', () => {
       expect(chainMock.range).toHaveBeenCalledWith(200, 299);
     });
   });
+
+  describe('Math Calculation Edge Cases', () => {
+    describe('getSummary edge cases', () => {
+      it('should handle null/undefined amounts gracefully', async () => {
+        const mockTransactions = [
+          { type: 'income', amount: null, category: 'Sales' },
+          { type: 'income', amount: undefined, category: 'Sales' },
+          { type: 'income', amount: 500, category: 'Sales' },
+          { type: 'expense', amount: null, category: 'Office' },
+          { type: 'expense', amount: -100, category: 'Office' },
+        ];
+        
+        const chainMock = createChainMock(mockTransactions);
+        supabase.from.mockReturnValue(chainMock);
+        
+        const result = await supabaseClient.transactions.getSummary('2024-01-01', '2024-12-31');
+        
+        expect(result.success).toBe(true);
+        // parseFloat(null) || 0 should return 0
+        expect(result.data.summary.totalIncome).toBe(500);
+        expect(result.data.summary.totalExpenses).toBe(100);
+        expect(result.data.summary.netIncome).toBe(400);
+      });
+
+      it('should handle string amounts that need parsing', async () => {
+        const mockTransactions = [
+          { type: 'income', amount: '1000.50', category: 'Sales' },
+          { type: 'expense', amount: '-500.25', category: 'Office' },
+        ];
+        
+        const chainMock = createChainMock(mockTransactions);
+        supabase.from.mockReturnValue(chainMock);
+        
+        const result = await supabaseClient.transactions.getSummary('2024-01-01', '2024-12-31');
+        
+        expect(result.success).toBe(true);
+        expect(result.data.summary.totalIncome).toBeCloseTo(1000.50, 2);
+        expect(result.data.summary.totalExpenses).toBeCloseTo(500.25, 2);
+      });
+
+      it('should handle empty transactions array', async () => {
+        const chainMock = createChainMock([]);
+        supabase.from.mockReturnValue(chainMock);
+        
+        const result = await supabaseClient.transactions.getSummary('2024-01-01', '2024-12-31');
+        
+        expect(result.success).toBe(true);
+        expect(result.data.summary.totalIncome).toBe(0);
+        expect(result.data.summary.totalExpenses).toBe(0);
+        expect(result.data.summary.totalTransfers).toBe(0);
+        expect(result.data.summary.netIncome).toBe(0);
+      });
+
+      it('should handle very small decimal amounts', async () => {
+        const mockTransactions = [
+          { type: 'income', amount: 0.01, category: 'Sales' },
+          { type: 'income', amount: 0.02, category: 'Sales' },
+          { type: 'expense', amount: -0.01, category: 'Office' },
+        ];
+        
+        const chainMock = createChainMock(mockTransactions);
+        supabase.from.mockReturnValue(chainMock);
+        
+        const result = await supabaseClient.transactions.getSummary('2024-01-01', '2024-12-31');
+        
+        expect(result.success).toBe(true);
+        expect(result.data.summary.totalIncome).toBeCloseTo(0.03, 2);
+        expect(result.data.summary.totalExpenses).toBeCloseTo(0.01, 2);
+        expect(result.data.summary.netIncome).toBeCloseTo(0.02, 2);
+      });
+
+      it('should handle very large amounts', async () => {
+        const mockTransactions = [
+          { type: 'income', amount: 999999999.99, category: 'Sales' },
+          { type: 'expense', amount: -500000000.00, category: 'Expenses' },
+        ];
+        
+        const chainMock = createChainMock(mockTransactions);
+        supabase.from.mockReturnValue(chainMock);
+        
+        const result = await supabaseClient.transactions.getSummary('2024-01-01', '2024-12-31');
+        
+        expect(result.success).toBe(true);
+        expect(result.data.summary.totalIncome).toBeCloseTo(999999999.99, 0);
+        expect(result.data.summary.totalExpenses).toBeCloseTo(500000000.00, 0);
+        expect(result.data.summary.netIncome).toBeCloseTo(499999999.99, 0);
+      });
+    });
+
+    describe('profitLoss margin calculation', () => {
+      it('should handle zero income (avoid division by zero)', async () => {
+        const mockTransactions = [
+          { id: '1', type: 'expense', amount: -500, category: 'Office', date: '2024-01-15' },
+        ];
+        
+        const chainMock = createChainMock(mockTransactions);
+        supabase.from.mockReturnValue(chainMock);
+        
+        const result = await supabaseClient.reports.profitLoss({});
+        
+        expect(result.success).toBe(true);
+        expect(result.data.summary.grossIncome).toBe(0);
+        expect(result.data.summary.totalExpenses).toBe(500);
+        expect(result.data.summary.netIncome).toBe(-500);
+        // Margin should be 0 when income is 0, not NaN or Infinity
+        expect(result.data.summary.margin).toBe(0);
+        expect(Number.isFinite(result.data.summary.margin)).toBe(true);
+      });
+
+      it('should calculate negative margin correctly', async () => {
+        const mockTransactions = [
+          { id: '1', type: 'income', amount: 1000, category: 'Sales', date: '2024-01-15' },
+          { id: '2', type: 'expense', amount: -1500, category: 'Office', date: '2024-01-15' },
+        ];
+        
+        const chainMock = createChainMock(mockTransactions);
+        supabase.from.mockReturnValue(chainMock);
+        
+        const result = await supabaseClient.reports.profitLoss({});
+        
+        expect(result.success).toBe(true);
+        expect(result.data.summary.netIncome).toBe(-500);
+        // Margin = (income - expenses) / income * 100 = -500/1000 * 100 = -50%
+        expect(result.data.summary.margin).toBe(-50);
+      });
+    });
+
+    describe('getCategoryStats edge cases', () => {
+      it('should handle transactions with missing category', async () => {
+        const mockTransactions = [
+          { type: 'income', amount: 500 }, // no category
+          { type: 'expense', amount: -200, category: null },
+          { type: 'expense', amount: -100, category: 'Office' },
+        ];
+        
+        const chainMock = createChainMock(mockTransactions);
+        supabase.from.mockReturnValue(chainMock);
+        
+        const result = await supabaseClient.transactions.getCategoryStats('2024-01-01', '2024-12-31');
+        
+        expect(result.success).toBe(true);
+        // Should group missing categories as 'Uncategorized'
+        const categories = result.data.categories;
+        const uncategorized = categories.find(c => c.category === 'Uncategorized');
+        expect(uncategorized).toBeDefined();
+      });
+    });
+  });
 });
+

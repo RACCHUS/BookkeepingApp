@@ -9,6 +9,7 @@ import { XMarkIcon } from '@heroicons/react/24/outline';
 import { 
   IRS_CATEGORIES, 
   CATEGORY_GROUPS, 
+  NEUTRAL_CATEGORIES,
   getCategoriesForDropdown, 
   getSubcategories, 
   isTaxDeductible,
@@ -258,7 +259,7 @@ const TransactionModal = ({ transaction, isOpen, onClose, onSave, mode = 'edit',
         description: typeof transaction?.description === 'string' ? transaction.description : '',
         category: typeof transaction?.category === 'string' ? transaction.category : '',
         subcategory: typeof transaction?.subcategory === 'string' ? transaction.subcategory : '',
-        type: typeof transaction?.type === 'string' && ['income','expense'].includes(transaction.type) ? transaction.type : (typeof transaction?.amount === 'number' && transaction.amount > 0 ? 'income' : 'expense'),
+        type: typeof transaction?.type === 'string' && ['income','expense','transfer'].includes(transaction.type) ? transaction.type : (typeof transaction?.amount === 'number' && transaction.amount > 0 ? 'income' : 'expense'),
         payeeId: typeof transaction?.payeeId === 'string' ? transaction.payeeId : '',
         payee: typeof transaction?.payee === 'string' ? transaction.payee : '',
         vendorId: typeof transaction?.vendorId === 'string' ? transaction.vendorId : '',
@@ -321,7 +322,15 @@ const TransactionModal = ({ transaction, isOpen, onClose, onSave, mode = 'edit',
     try {
       // Convert amount to number and apply sign based on type
       const amount = parseFloat(data.amount);
-      const finalAmount = data.type === 'income' ? Math.abs(amount) : -Math.abs(amount);
+      // Transfer amounts stay positive (neutral), income positive, expense negative
+      let finalAmount;
+      if (data.type === 'transfer') {
+        finalAmount = Math.abs(amount); // Transfers are neutral, store as positive
+      } else if (data.type === 'income') {
+        finalAmount = Math.abs(amount);
+      } else {
+        finalAmount = -Math.abs(amount);
+      }
 
       // Parse tags from comma-separated string
       const tags = data.tags ? data.tags.split(',').map(t => t.trim()).filter(Boolean) : [];
@@ -449,14 +458,20 @@ const TransactionModal = ({ transaction, isOpen, onClose, onSave, mode = 'edit',
                 <select {...register('type')} className="form-input">
                   <option value="expense">Expense</option>
                   <option value="income">Income</option>
+                  <option value="transfer">Transfer/Neutral</option>
                 </select>
+                {watch('type') === 'transfer' && (
+                  <p className="mt-1 text-xs text-blue-600 dark:text-blue-400">
+                    Transfers don't affect income/expense totals (e.g., owner contributions, loans, account transfers)
+                  </p>
+                )}
               </div>
             </div>
 
             {/* Amount */}
             <div>
               <label className="form-label">
-                Amount ({watch('type') === 'income' ? 'Income' : 'Expense'})
+                Amount ({watch('type') === 'income' ? 'Income' : watch('type') === 'transfer' ? 'Transfer' : 'Expense'})
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -520,7 +535,19 @@ const TransactionModal = ({ transaction, isOpen, onClose, onSave, mode = 'edit',
               >
                 <option value="">Select a category (optional)</option>
                 
-                {Object.entries(CATEGORY_GROUPS).map(([groupName, categories]) => (
+                {/* Show neutral categories for transfer type */}
+                {watch('type') === 'transfer' && (
+                  <optgroup label="— Transfer/Neutral Categories —">
+                    {Object.values(NEUTRAL_CATEGORIES).sort().map((category) => (
+                      <option key={category} value={category}>
+                        {category}
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
+                
+                {/* Show regular categories for income/expense */}
+                {watch('type') !== 'transfer' && Object.entries(CATEGORY_GROUPS).map(([groupName, categories]) => (
                   <optgroup 
                     key={groupName} 
                     label={groupName.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
