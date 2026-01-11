@@ -1,10 +1,20 @@
 import { createClient } from '@supabase/supabase-js';
+import dotenv from 'dotenv';
+
+// Load environment variables
+dotenv.config({ path: '../server/.env' });
+
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
+  console.error('Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY environment variables');
+  console.error('Please ensure these are set in server/.env');
+  process.exit(1);
+}
 
 // Use the service role key to run migrations (bypasses RLS)
-const supabase = createClient(
-  'https://jjkcrknddmehqcscfceo.supabase.co',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impqa2Nya25kZG1laHFjc2NmY2VvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NzU3NjcxMiwiZXhwIjoyMDgzMTUyNzEyfQ.aL0qdsu44ARJr27XAdjGvlu2PN5bBpSmtf1vrQRxYWM'
-);
+const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
 async function runMigration() {
   console.log('Running company columns migration...');
@@ -21,7 +31,7 @@ async function runMigration() {
     console.log('Columns missing. Running migration via REST API...');
     
     // Use Supabase Management API to run SQL
-    const projectRef = 'jjkcrknddmehqcscfceo';
+    const projectRef = new URL(SUPABASE_URL).hostname.split('.')[0];
     const sql = `
       ALTER TABLE public.companies ADD COLUMN IF NOT EXISTS description TEXT;
       ALTER TABLE public.companies ADD COLUMN IF NOT EXISTS phone TEXT;
@@ -39,12 +49,12 @@ async function runMigration() {
       console.log('RPC not available. Trying direct HTTP to database...');
       
       // Use fetch to call the Supabase REST API for raw SQL
-      const response = await fetch(`https://${projectRef}.supabase.co/rest/v1/rpc/exec_sql`, {
+      const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/exec_sql`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impqa2Nya25kZG1laHFjc2NmY2VvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NzU3NjcxMiwiZXhwIjoyMDgzMTUyNzEyfQ.aL0qdsu44ARJr27XAdjGvlu2PN5bBpSmtf1vrQRxYWM',
-          'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impqa2Nya25kZG1laHFjc2NmY2VvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NzU3NjcxMiwiZXhwIjoyMDgzMTUyNzEyfQ.aL0qdsu44ARJr27XAdjGvlu2PN5bBpSmtf1vrQRxYWM'
+          'apikey': SUPABASE_SERVICE_KEY,
+          'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`
         },
         body: JSON.stringify({ query: sql })
       });
@@ -53,7 +63,7 @@ async function runMigration() {
         console.log('\\n=== PLEASE RUN THIS SQL IN SUPABASE DASHBOARD ===\\n');
         console.log(sql);
         console.log('\\n=================================================\\n');
-        console.log('Go to: https://supabase.com/dashboard/project/jjkcrknddmehqcscfceo/sql');
+        console.log(`Go to: https://supabase.com/dashboard/project/${projectRef}/sql`);
       } else {
         console.log('Migration completed successfully!');
       }

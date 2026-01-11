@@ -30,14 +30,16 @@ const Classification = () => {
 
   // Fetch classification rules with React Query caching
   const { 
-    data: rules = [], 
+    data: rulesData, 
     isLoading: rulesLoading,
     refetch: refetchRules 
   } = useQuery({
     queryKey: ['classification-rules'],
     queryFn: async () => {
       const response = await api.classification.getRules();
-      return response.rules || response;
+      // Handle various response formats: { rules: [...] }, { data: { rules: [...] } }, or direct array
+      const rules = response?.rules || response?.data?.rules || response?.data || response;
+      return Array.isArray(rules) ? rules : [];
     },
     ...QUERY_CONFIG,
     onError: (error) => {
@@ -46,21 +48,29 @@ const Classification = () => {
     },
   });
 
+  // Ensure rules is always an array
+  const rules = Array.isArray(rulesData) ? rulesData : [];
+
   // Fetch uncategorized transactions with React Query caching
   const { 
-    data: uncategorizedTransactions = [], 
+    data: uncategorizedData, 
     isLoading: uncategorizedLoading 
   } = useQuery({
     queryKey: ['uncategorized-transactions'],
     queryFn: async () => {
       const response = await api.classification.getUncategorized();
-      return response.transactions || response;
+      // Handle various response formats
+      const transactions = response?.transactions || response?.data?.transactions || response?.data || response;
+      return Array.isArray(transactions) ? transactions : [];
     },
     ...QUERY_CONFIG,
     onError: (error) => {
       console.error('Error loading uncategorized transactions:', error);
     },
   });
+
+  // Ensure uncategorizedTransactions is always an array
+  const uncategorizedTransactions = Array.isArray(uncategorizedData) ? uncategorizedData : [];
 
   const loading = rulesLoading || uncategorizedLoading;
 
