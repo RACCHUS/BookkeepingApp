@@ -1070,12 +1070,29 @@ const hybridApiClient = {
       return { success: true, data: transactions };
     },
     getRules: async () => {
+      const user = auth.currentUser;
+      if (!user) throw new Error('User not authenticated');
+      
       // Fetch classification rules from Supabase
       const { data, error } = await supabase
         .from('classification_rules')
-        .select('*');
+        .select('*')
+        .eq('user_id', user.uid)
+        .order('priority', { ascending: false });
       if (error) throw error;
-      return { success: true, data: data || [] };
+      
+      // Transform to frontend format (pattern -> keywords array)
+      const rules = (data || []).map(rule => ({
+        id: rule.id,
+        keywords: rule.pattern ? rule.pattern.split(',').map(k => k.trim()) : [],
+        category: rule.category,
+        name: rule.name,
+        patternType: rule.pattern_type,
+        priority: rule.priority,
+        isActive: rule.is_active
+      }));
+      
+      return { success: true, data: rules };
     },
     getUncategorized: async () => {
       const user = auth.currentUser;
@@ -1085,7 +1102,9 @@ const hybridApiClient = {
         .from('transactions')
         .select('*')
         .eq('user_id', user.uid)
-        .or('category.is.null,category.eq.');
+        .or('category.is.null,category.eq.')
+        .order('date', { ascending: false })
+        .limit(50);
       if (error) throw error;
       return { success: true, data: data || [] };
     },
@@ -1093,21 +1112,86 @@ const hybridApiClient = {
       const user = auth.currentUser;
       if (!user) throw new Error('User not authenticated');
       
+      // Transform from frontend format (keywords array -> pattern string)
+      const dbRule = {
+        user_id: user.uid,
+        name: rule.keywords.join(', ').substring(0, 50) || 'Rule',
+        pattern: Array.isArray(rule.keywords) ? rule.keywords.join(',') : rule.keywords,
+        pattern_type: 'contains',
+        category: rule.category,
+        is_active: true,
+        priority: 0
+      };
+      
       const { data, error } = await supabase
         .from('classification_rules')
-        .insert({ ...rule, user_id: user.uid })
+        .insert(dbRule)
         .select()
         .single();
       if (error) throw error;
       return { success: true, data };
     },
     deleteRule: async (ruleId) => {
+      const user = auth.currentUser;
+      if (!user) throw new Error('User not authenticated');
+      
       const { error } = await supabase
         .from('classification_rules')
         .delete()
-        .eq('id', ruleId);
+        .eq('id', ruleId)
+        .eq('user_id', user.uid);
       if (error) throw error;
       return { success: true };
+    },
+    
+    /**
+     * Apply a rule to existing uncategorized transactions
+     * @param {string[]} keywords - Keywords to match in description/payee
+     * @param {string} category - Category to apply
+     * @returns {Promise<{success: boolean, count: number}>}
+     */
+    applyRuleToExisting: async (keywords, category) => {
+      const user = auth.currentUser;
+      if (!user) throw new Error('User not authenticated');
+      
+      // First, fetch all uncategorized transactions
+      const { data: transactions, error: fetchError } = await supabase
+        .from('transactions')
+        .select('id, description, payee')
+        .eq('user_id', user.uid)
+        .or('category.is.null,category.eq.');
+      
+      if (fetchError) throw fetchError;
+      if (!transactions || transactions.length === 0) {
+        return { success: true, count: 0 };
+      }
+      
+      // Find transactions that match any of the keywords
+      const matchingIds = transactions
+        .filter(tx => {
+          const searchText = `${tx.description || ''} ${tx.payee || ''}`.toLowerCase();
+          return keywords.some(keyword => searchText.includes(keyword.toLowerCase()));
+        })
+        .map(tx => tx.id);
+      
+      if (matchingIds.length === 0) {
+        return { success: true, count: 0 };
+      }
+      
+      // Update all matching transactions
+      const { error: updateError } = await supabase
+        .from('transactions')
+        .update({ 
+          category,
+          updated_at: new Date().toISOString(),
+          last_modified_by: user.uid
+        })
+        .in('id', matchingIds)
+        .eq('user_id', user.uid);
+      
+      if (updateError) throw updateError;
+      
+      return { success: true, count: matchingIds.length };
     },
   },
   

@@ -18,8 +18,10 @@ const Classification = () => {
   const [testResult, setTestResult] = useState(null);
   const [newRule, setNewRule] = useState({
     keywords: '',
-    category: ''
+    category: '',
+    applyToExisting: false
   });
+  const [applyingRule, setApplyingRule] = useState(false);
 
   // Test transaction state
   const [testTransaction, setTestTransaction] = useState({
@@ -88,15 +90,38 @@ const Classification = () => {
         return;
       }
 
+      const keywords = newRule.keywords.split(',').map(k => k.trim()).filter(k => k);
       const rule = {
-        keywords: newRule.keywords.split(',').map(k => k.trim()).filter(k => k),
+        keywords,
         category: newRule.category
       };
 
       await api.classification.createRule(rule);
       toast.success('Classification rule created');
+
+      // Apply to existing transactions if checkbox is checked
+      if (newRule.applyToExisting) {
+        setApplyingRule(true);
+        try {
+          const result = await api.classification.applyRuleToExisting(keywords, newRule.category);
+          if (result.count > 0) {
+            toast.success(`Updated ${result.count} existing transaction${result.count > 1 ? 's' : ''}`);
+            // Invalidate transactions cache
+            queryClient.invalidateQueries(['transactions']);
+            queryClient.invalidateQueries(['recent-transactions']);
+          } else {
+            toast.info('No matching uncategorized transactions found');
+          }
+        } catch (applyError) {
+          console.error('Error applying rule to existing:', applyError);
+          toast.error('Rule created, but failed to apply to existing transactions');
+        } finally {
+          setApplyingRule(false);
+        }
+      }
+
       // Reset form and reload data
-      setNewRule({ keywords: '', category: '' });
+      setNewRule({ keywords: '', category: '', applyToExisting: false });
       handleRefresh();
     } catch (error) {
       console.error('Create rule error:', error);
@@ -168,19 +193,76 @@ const Classification = () => {
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
             >
               <option value="">Select category...</option>
-              {Object.entries(IRS_CATEGORIES).map(([key, category]) => (
-                <option key={key} value={category}>
-                  {category}
-                </option>
-              ))}
+              <optgroup label="— Income —">
+                {Object.entries(IRS_CATEGORIES)
+                  .filter(([key]) => ['GROSS_RECEIPTS', 'RETURNS_ALLOWANCES', 'OTHER_INCOME'].includes(key))
+                  .sort((a, b) => a[1].localeCompare(b[1]))
+                  .map(([key, category]) => (
+                    <option key={key} value={category}>{category}</option>
+                  ))}
+              </optgroup>
+              <optgroup label="— Cost of Goods Sold —">
+                {Object.entries(IRS_CATEGORIES)
+                  .filter(([key]) => ['COST_OF_GOODS_SOLD', 'INVENTORY_BEGINNING', 'INVENTORY_PURCHASES', 'COST_OF_LABOR', 'MATERIALS_SUPPLIES', 'OTHER_COSTS', 'INVENTORY_ENDING'].includes(key))
+                  .sort((a, b) => a[1].localeCompare(b[1]))
+                  .map(([key, category]) => (
+                    <option key={key} value={category}>{category}</option>
+                  ))}
+              </optgroup>
+              <optgroup label="— Business Expenses (Schedule C) —">
+                {Object.entries(IRS_CATEGORIES)
+                  .filter(([key]) => ['ADVERTISING', 'CAR_TRUCK_EXPENSES', 'COMMISSIONS_FEES', 'CONTRACT_LABOR', 'DEPLETION', 'DEPRECIATION', 'EMPLOYEE_BENEFIT_PROGRAMS', 'INSURANCE_OTHER', 'INTEREST_MORTGAGE', 'INTEREST_OTHER', 'LEGAL_PROFESSIONAL', 'OFFICE_EXPENSES', 'PENSION_PROFIT_SHARING', 'RENT_LEASE_VEHICLES', 'RENT_LEASE_OTHER', 'REPAIRS_MAINTENANCE', 'SUPPLIES', 'TAXES_LICENSES', 'TRAVEL', 'MEALS', 'UTILITIES', 'WAGES'].includes(key))
+                  .sort((a, b) => a[1].localeCompare(b[1]))
+                  .map(([key, category]) => (
+                    <option key={key} value={category}>{category}</option>
+                  ))}
+              </optgroup>
+              <optgroup label="— Other Expenses —">
+                {Object.entries(IRS_CATEGORIES)
+                  .filter(([key]) => ['OTHER_EXPENSES', 'SOFTWARE_SUBSCRIPTIONS', 'WEB_HOSTING', 'BANK_FEES', 'BAD_DEBTS', 'DUES_MEMBERSHIPS', 'TRAINING_EDUCATION', 'TRADE_PUBLICATIONS', 'SECURITY_SERVICES', 'BUSINESS_GIFTS', 'UNIFORMS_SAFETY', 'TOOLS_EQUIPMENT'].includes(key))
+                  .sort((a, b) => a[1].localeCompare(b[1]))
+                  .map(([key, category]) => (
+                    <option key={key} value={category}>{category}</option>
+                  ))}
+              </optgroup>
+              <optgroup label="— Personal / Non-Deductible —">
+                {Object.entries(IRS_CATEGORIES)
+                  .filter(([key]) => ['PERSONAL_EXPENSE', 'PERSONAL_TRANSFER', 'OWNER_DRAWS', 'UNCATEGORIZED', 'SPLIT_TRANSACTION'].includes(key))
+                  .sort((a, b) => a[1].localeCompare(b[1]))
+                  .map(([key, category]) => (
+                    <option key={key} value={category}>{category}</option>
+                  ))}
+              </optgroup>
             </select>
           </div>
         </div>
+        <div className="flex items-center gap-4 mb-4">
+          <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={newRule.applyToExisting}
+              onChange={(e) => setNewRule(prev => ({ ...prev, applyToExisting: e.target.checked }))}
+              className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+            />
+            Apply to existing uncategorized transactions
+          </label>
+        </div>
         <button
           onClick={handleCreateRule}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          disabled={applyingRule}
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
         >
-          Create Rule
+          {applyingRule ? (
+            <>
+              <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+              </svg>
+              Applying...
+            </>
+          ) : (
+            'Create Rule'
+          )}
         </button>
       </div>
 

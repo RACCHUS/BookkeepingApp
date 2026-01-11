@@ -20,13 +20,15 @@ const Dashboard = () => {
   const currentDate = new Date();
   const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
   const endOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+  
+  // Format dates as YYYY-MM-DD for database query
+  const formatDate = (date) => date.toISOString().split('T')[0];
+  const startDateStr = formatDate(startOfMonth);
+  const endDateStr = formatDate(endOfMonth);
 
   const { data: summary, isLoading, error } = useQuery({
-    queryKey: ['transaction-summary', startOfMonth, endOfMonth],
-    queryFn: () => api.transactions.getSummary(
-      startOfMonth.toISOString(),
-      endOfMonth.toISOString()
-    ),
+    queryKey: ['transaction-summary', startDateStr, endDateStr],
+    queryFn: () => api.transactions.getSummary(startDateStr, endDateStr),
   });
 
   const { data: recentTransactions } = useQuery({
@@ -36,6 +38,17 @@ const Dashboard = () => {
       orderBy: 'date',
       order: 'desc'
     }),
+  });
+
+  // Also get summary of all recent transactions (last 30 days) for better UX when current month is empty
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  const recentDateStr = formatDate(thirtyDaysAgo);
+  
+  const { data: recentSummary } = useQuery({
+    queryKey: ['recent-summary', recentDateStr],
+    queryFn: () => api.transactions.getSummary(recentDateStr, formatDate(new Date())),
+    enabled: !summary?.data?.summary?.transactionCount, // Only fetch if current month is empty
   });
 
   const [showAddModal, setShowAddModal] = React.useState(false);
@@ -54,32 +67,38 @@ const Dashboard = () => {
 
   const summaryData = summary?.data?.summary || {};
   const transactions = recentTransactions?.data?.transactions || [];
+  
+  // Use recent summary if current month has no transactions
+  const displaySummary = summaryData.transactionCount > 0 
+    ? summaryData 
+    : (recentSummary?.data?.summary || summaryData);
+  const showingRecentData = summaryData.transactionCount === 0 && recentSummary?.data?.summary?.transactionCount > 0;
 
   const stats = [
     {
       name: 'Total Income',
-      value: `$${(summaryData.totalIncome || 0).toLocaleString()}`,
+      value: `$${(displaySummary.totalIncome || 0).toLocaleString()}`,
       icon: ArrowTrendingUpIcon,
       color: 'text-green-600',
       bgColor: 'bg-green-100'
     },
     {
       name: 'Total Expenses',
-      value: `$${(summaryData.totalExpenses || 0).toLocaleString()}`,
+      value: `$${(displaySummary.totalExpenses || 0).toLocaleString()}`,
       icon: ArrowTrendingDownIcon,
       color: 'text-red-600',
       bgColor: 'bg-red-100'
     },
     {
       name: 'Net Income',
-      value: `$${(summaryData.netIncome || 0).toLocaleString()}`,
+      value: `$${(displaySummary.netIncome || 0).toLocaleString()}`,
       icon: CurrencyDollarIcon,
-      color: summaryData.netIncome >= 0 ? 'text-green-600' : 'text-red-600',
-      bgColor: summaryData.netIncome >= 0 ? 'bg-green-100' : 'bg-red-100'
+      color: displaySummary.netIncome >= 0 ? 'text-green-600' : 'text-red-600',
+      bgColor: displaySummary.netIncome >= 0 ? 'bg-green-100' : 'bg-red-100'
     },
     {
       name: 'Transactions',
-      value: summaryData.transactionCount || 0,
+      value: displaySummary.transactionCount || 0,
       icon: DocumentTextIcon,
       color: 'text-blue-600',
       bgColor: 'bg-blue-100'
@@ -93,7 +112,7 @@ const Dashboard = () => {
     // Refetch recent transactions and summary so new transaction appears with correct Firestore id
     if (typeof window !== 'undefined' && window.__REACT_QUERY_CLIENT__) {
       window.__REACT_QUERY_CLIENT__.invalidateQueries(['recent-transactions']);
-      window.__REACT_QUERY_CLIENT__.invalidateQueries(['transaction-summary', startOfMonth, endOfMonth]);
+      window.__REACT_QUERY_CLIENT__.invalidateQueries(['transaction-summary', startDateStr, endDateStr]);
     }
   };
 
@@ -103,7 +122,11 @@ const Dashboard = () => {
       <div>
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white transition-colors">Dashboard</h1>
         <p className="text-gray-600 dark:text-gray-300 transition-colors">
-          Overview for {startOfMonth.toLocaleDateString()} - {endOfMonth.toLocaleDateString()}
+          {showingRecentData ? (
+            <>Last 30 days (no transactions in {startOfMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })})</>
+          ) : (
+            <>Overview for {startOfMonth.toLocaleDateString()} - {endOfMonth.toLocaleDateString()}</>
+          )}
         </p>
       </div>
 
@@ -196,9 +219,9 @@ const Dashboard = () => {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="card">
           <div className="card-body text-center">
-            <ChartBarIcon className="w-12 h-12 mx-auto mb-4 text-primary-600 dark:text-primary-400 transition-colors" />
-            <h3 className="text-lg font-semibold mb-2">Upload PDF</h3>
-            <p className="text-gray-600 dark:text-gray-300 mb-4 transition-colors">Import transactions from bank statements</p>
+            <ChartBarIcon className="w-12 h-12 mx-auto mb-4 text-blue-500" />
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Upload CSV</h3>
+            <p className="text-gray-700 dark:text-gray-200 mb-4">Import transactions from bank statements</p>
             <button 
               className="btn btn-primary"
               onClick={() => navigate('/upload')}
@@ -210,9 +233,9 @@ const Dashboard = () => {
         
         <div className="card">
           <div className="card-body text-center">
-            <DocumentTextIcon className="w-12 h-12 mx-auto mb-4 text-primary-600 dark:text-primary-400 transition-colors" />
-            <h3 className="text-lg font-semibold mb-2">Add Transaction</h3>
-            <p className="text-gray-600 dark:text-gray-300 mb-4 transition-colors">Manually enter a new transaction</p>
+            <DocumentTextIcon className="w-12 h-12 mx-auto mb-4 text-blue-500" />
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Add Transaction</h3>
+            <p className="text-gray-700 dark:text-gray-200 mb-4">Manually enter a new transaction</p>
             <button className="btn btn-primary" onClick={() => setShowAddModal(true)}>
               Add Transaction
             </button>
@@ -221,9 +244,9 @@ const Dashboard = () => {
         
         <div className="card">
           <div className="card-body text-center">
-            <ChartBarIcon className="w-12 h-12 mx-auto mb-4 text-primary-600 dark:text-primary-400 transition-colors" />
-            <h3 className="text-lg font-semibold mb-2">Generate Report</h3>
-            <p className="text-gray-600 dark:text-gray-300 mb-4 transition-colors">Create profit/loss and tax reports</p>
+            <ChartBarIcon className="w-12 h-12 mx-auto mb-4 text-blue-500" />
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Generate Report</h3>
+            <p className="text-gray-700 dark:text-gray-200 mb-4">Create profit/loss and tax reports</p>
             <button className="btn btn-primary" onClick={() => navigate('/reports')}>
               View Reports
             </button>

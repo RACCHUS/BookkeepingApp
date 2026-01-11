@@ -10,6 +10,93 @@ import { auth } from './firebase';
 import { parseCSVFile, getSupportedBanks } from './csvParser';
 
 /**
+ * Apply classification rules to transactions
+ * @param {string} userId - User ID
+ * @param {string[]} transactionIds - Array of transaction IDs to classify (optional, if not provided classifies all uncategorized)
+ * @returns {Promise<{classified: number, rules: number}>}
+ */
+const applyClassificationRules = async (userId, transactionIds = null) => {
+  try {
+    // Fetch all active classification rules for the user
+    const { data: rules, error: rulesError } = await supabase
+      .from('classification_rules')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('is_active', true)
+      .order('priority', { ascending: false });
+
+    if (rulesError || !rules || rules.length === 0) {
+      return { classified: 0, rules: 0 };
+    }
+
+    // Fetch transactions to classify
+    let query = supabase
+      .from('transactions')
+      .select('id, description, payee')
+      .eq('user_id', userId)
+      .or('category.is.null,category.eq.');
+
+    if (transactionIds && transactionIds.length > 0) {
+      query = query.in('id', transactionIds);
+    }
+
+    const { data: transactions, error: txError } = await query;
+
+    if (txError || !transactions || transactions.length === 0) {
+      return { classified: 0, rules: rules.length };
+    }
+
+    // Group transactions by matching rule
+    const updates = [];
+    
+    for (const tx of transactions) {
+      const searchText = `${tx.description || ''} ${tx.payee || ''}`.toLowerCase();
+      
+      // Find first matching rule (rules are sorted by priority)
+      for (const rule of rules) {
+        const keywords = rule.pattern ? rule.pattern.split(',').map(k => k.trim().toLowerCase()) : [];
+        const matches = keywords.some(keyword => searchText.includes(keyword));
+        
+        if (matches) {
+          updates.push({ id: tx.id, category: rule.category });
+          break; // Stop at first match (highest priority)
+        }
+      }
+    }
+
+    if (updates.length === 0) {
+      return { classified: 0, rules: rules.length };
+    }
+
+    // Batch update transactions by category to minimize queries
+    const updatesByCategory = {};
+    for (const update of updates) {
+      if (!updatesByCategory[update.category]) {
+        updatesByCategory[update.category] = [];
+      }
+      updatesByCategory[update.category].push(update.id);
+    }
+
+    for (const [category, ids] of Object.entries(updatesByCategory)) {
+      await supabase
+        .from('transactions')
+        .update({ 
+          category,
+          updated_at: new Date().toISOString(),
+          last_modified_by: userId
+        })
+        .in('id', ids)
+        .eq('user_id', userId);
+    }
+
+    return { classified: updates.length, rules: rules.length };
+  } catch (error) {
+    console.error('Error applying classification rules:', error);
+    return { classified: 0, rules: 0, error: error.message };
+  }
+};
+
+/**
  * Get the current user's Firebase UID
  * Waits for auth to be ready if needed
  */
@@ -537,6 +624,16 @@ export const supabaseClient = {
 
       if (error) throw error;
 
+      // Apply classification rules to newly created transactions without categories
+      const uncategorizedIds = (data || [])
+        .filter(t => !t.category)
+        .map(t => t.id);
+      
+      let classificationResult = { classified: 0, rules: 0 };
+      if (uncategorizedIds.length > 0) {
+        classificationResult = await applyClassificationRules(userId, uncategorizedIds);
+      }
+
       return {
         success: true,
         data: {
@@ -545,6 +642,7 @@ export const supabaseClient = {
           count: data?.length || 0,
           successCount: data?.length || 0,
           failedCount: 0,
+          classified: classificationResult.classified,
         }
       };
     },
@@ -1503,12 +1601,22 @@ export const supabaseClient = {
         original_description: t.originalDescription || t.description,
       }));
 
+      let insertedIds = [];
       if (transactionsToInsert.length > 0) {
-        const { error: insertError } = await supabase
+        const { data: insertedData, error: insertError } = await supabase
           .from('transactions')
-          .insert(transactionsToInsert);
+          .insert(transactionsToInsert)
+          .select('id');
 
         if (insertError) throw insertError;
+        insertedIds = (insertedData || []).map(t => t.id);
+      }
+
+      // Apply classification rules to newly imported transactions
+      let classificationResult = { classified: 0, rules: 0 };
+      if (insertedIds.length > 0) {
+        classificationResult = await applyClassificationRules(userId, insertedIds);
+        console.log('Classification result:', classificationResult);
       }
 
       return {
@@ -1518,6 +1626,8 @@ export const supabaseClient = {
           duplicates: duplicateCount,
           total: transactions.length,
           importId: csvImportId,
+          classified: classificationResult.classified,
+          rulesApplied: classificationResult.rules,
         },
       };
     },
@@ -2638,12 +2748,26 @@ export const supabaseClient = {
 
     getMonthlySummary: async (params = {}) => {
       const userId = await getUserId();
-      const { year, month, companyId } = params;
+      const { year, month, startDate: paramStartDate, endDate: paramEndDate, companyId } = params;
       
-      // Calculate date range for the month
-      const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
-      const lastDay = new Date(year, month, 0).getDate();
-      const endDate = `${year}-${String(month).padStart(2, '0')}-${lastDay}`;
+      // Support both year/month and startDate/endDate formats
+      let startDate, endDate;
+      if (paramStartDate && paramEndDate) {
+        startDate = paramStartDate;
+        endDate = paramEndDate;
+      } else if (year !== undefined && month !== undefined) {
+        startDate = `${year}-${String(month).padStart(2, '0')}-01`;
+        const lastDay = new Date(year, month, 0).getDate();
+        endDate = `${year}-${String(month).padStart(2, '0')}-${lastDay}`;
+      } else {
+        // Default to current month
+        const now = new Date();
+        const currentYear = now.getFullYear();
+        const currentMonth = now.getMonth() + 1;
+        startDate = `${currentYear}-${String(currentMonth).padStart(2, '0')}-01`;
+        const lastDay = new Date(currentYear, currentMonth, 0).getDate();
+        endDate = `${currentYear}-${String(currentMonth).padStart(2, '0')}-${lastDay}`;
+      }
       
       let query = supabase
         .from('transactions')
@@ -2664,10 +2788,33 @@ export const supabaseClient = {
       const income = transactions.filter(t => t.type === 'income').reduce((sum, t) => sum + (parseFloat(t.amount) || 0), 0);
       const expenses = transactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + Math.abs(parseFloat(t.amount) || 0), 0);
       
+      // Group by month for chart data
+      const monthlyData = {};
+      transactions.forEach(t => {
+        const date = new Date(t.date);
+        const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+        if (!monthlyData[monthKey]) {
+          monthlyData[monthKey] = {
+            monthLabel: date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+            income: { total: 0 },
+            expenses: { total: 0 },
+            netIncome: 0
+          };
+        }
+        const amount = parseFloat(t.amount) || 0;
+        if (t.type === 'income' || t.type === 'deposit') {
+          monthlyData[monthKey].income.total += amount;
+        } else {
+          monthlyData[monthKey].expenses.total += Math.abs(amount);
+        }
+        monthlyData[monthKey].netIncome = monthlyData[monthKey].income.total - monthlyData[monthKey].expenses.total;
+      });
+      
       return {
         success: true,
         data: {
           transactions,
+          months: Object.values(monthlyData).sort((a, b) => a.monthLabel.localeCompare(b.monthLabel)),
           summary: {
             totalIncome: income,
             totalExpenses: expenses,
@@ -2681,11 +2828,26 @@ export const supabaseClient = {
 
     getMonthlyChecks: async (params = {}) => {
       const userId = await getUserId();
-      const { year, month, companyId } = params;
+      const { year, month, startDate: paramStartDate, endDate: paramEndDate, companyId } = params;
       
-      const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
-      const lastDay = new Date(year, month, 0).getDate();
-      const endDate = `${year}-${String(month).padStart(2, '0')}-${lastDay}`;
+      // Support both year/month and startDate/endDate formats
+      let startDate, endDate;
+      if (paramStartDate && paramEndDate) {
+        startDate = paramStartDate;
+        endDate = paramEndDate;
+      } else if (year !== undefined && month !== undefined) {
+        startDate = `${year}-${String(month).padStart(2, '0')}-01`;
+        const lastDay = new Date(year, month, 0).getDate();
+        endDate = `${year}-${String(month).padStart(2, '0')}-${lastDay}`;
+      } else {
+        // Default to current month
+        const now = new Date();
+        const currentYear = now.getFullYear();
+        const currentMonth = now.getMonth() + 1;
+        startDate = `${currentYear}-${String(currentMonth).padStart(2, '0')}-01`;
+        const lastDay = new Date(currentYear, currentMonth, 0).getDate();
+        endDate = `${currentYear}-${String(currentMonth).padStart(2, '0')}-${lastDay}`;
+      }
       
       let query = supabase
         .from('transactions')
@@ -2701,10 +2863,35 @@ export const supabaseClient = {
       const { data, error } = await query;
       if (error) throw error;
 
+      const checks = (data || []).map(transformTransaction);
+      
+      // Group by month for chart data
+      const monthlyData = {};
+      checks.forEach(t => {
+        const date = new Date(t.date);
+        const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+        if (!monthlyData[monthKey]) {
+          monthlyData[monthKey] = {
+            monthLabel: date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+            income: { amount: 0 },
+            expense: { amount: 0 },
+            totalChecks: 0
+          };
+        }
+        const amount = parseFloat(t.amount) || 0;
+        if (t.type === 'income' || t.type === 'deposit') {
+          monthlyData[monthKey].income.amount += amount;
+        } else {
+          monthlyData[monthKey].expense.amount += Math.abs(amount);
+        }
+        monthlyData[monthKey].totalChecks++;
+      });
+
       return {
         success: true,
         data: {
-          checks: (data || []).map(transformTransaction),
+          checks,
+          months: Object.values(monthlyData).sort((a, b) => a.monthLabel.localeCompare(b.monthLabel)),
           period: { year, month, startDate, endDate },
         },
       };

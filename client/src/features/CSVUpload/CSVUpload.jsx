@@ -89,10 +89,13 @@ const CSVUpload = () => {
       if (response.success) {
         setUploadState('success');
         
-        const { imported, duplicates } = response.data;
+        const { imported, duplicates, classified } = response.data;
         let message = `Successfully imported ${imported} transactions`;
         if (duplicates > 0) {
           message += ` (${duplicates} duplicates skipped)`;
+        }
+        if (classified > 0) {
+          message += `. ${classified} auto-categorized by rules`;
         }
         toast.success(message);
         
