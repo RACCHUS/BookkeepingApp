@@ -1,13 +1,16 @@
 # Deployment Guide
 
-This guide covers deploying the Bookkeeping App to production environments using Firebase Hosting and Cloud Functions.
+This guide covers deploying the Bookkeeping App to production using Firebase Hosting.
 
-## Deployment Overview
+## Architecture Overview
 
-The application consists of three main components:
+The application uses a hybrid architecture:
 - **Frontend**: React app deployed to Firebase Hosting
-- **Backend**: Node.js API deployed to Firebase Cloud Functions
-- **Database**: Firestore database with security rules
+- **Authentication**: Firebase Authentication
+- **Database**: Supabase PostgreSQL (accessed directly from frontend)
+- **Storage**: Supabase Storage (with Cloudinary fallback)
+
+> **Note**: The Express.js server (`/server`) is only used for local development. In production, the frontend communicates directly with Supabase.
 
 ## Prerequisites
 
@@ -23,10 +26,7 @@ firebase login
 
 ### 3. Project Setup
 Ensure your Firebase project is configured with:
-- Firestore database
-- Firebase Authentication
-- Firebase Storage
-- Cloud Functions
+- Firebase Authentication (Email/Password enabled)
 - Firebase Hosting
 
 ## Environment Configuration
@@ -35,105 +35,75 @@ Ensure your Firebase project is configured with:
 
 **Client Environment** (`client/.env.production`):
 ```env
-VITE_FIREBASE_API_KEY=your-production-api-key
+# Firebase Auth Configuration
+VITE_FIREBASE_API_KEY=your-firebase-api-key
 VITE_FIREBASE_AUTH_DOMAIN=your-project.firebaseapp.com
 VITE_FIREBASE_PROJECT_ID=your-project-id
 VITE_FIREBASE_STORAGE_BUCKET=your-project.appspot.com
 VITE_FIREBASE_MESSAGING_SENDER_ID=123456789
 VITE_FIREBASE_APP_ID=1:123456789:web:abcdef123456
-VITE_API_BASE_URL=https://us-central1-your-project.cloudfunctions.net/api
+
+# Supabase Configuration (Database)
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_ANON_KEY=sb_publishable_your-anon-key
 ```
 
-**Server Environment** (`server/.env.production`):
-```env
-NODE_ENV=production
-FIREBASE_PROJECT_ID=your-project-id
-FIREBASE_CLIENT_EMAIL=firebase-adminsdk-xxxxx@your-project.iam.gserviceaccount.com
-FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
-CORS_ORIGIN=https://your-project.firebaseapp.com
-```
+> **Important**: Use the Supabase **publishable** key (starts with `sb_publishable_`), NOT the secret key.
 
-### 2. Firebase Admin SDK Setup
-The backend requires a Firebase Admin SDK service account key:
+## Deployment Steps
 
-1. Go to Firebase Console → Project Settings → Service Accounts
-2. Generate new private key
-3. Store securely and reference in environment variables
+### Quick Deploy (Recommended)
 
-## Deployment Scripts
-
-### 1. Automated Deployment Script
-
-**`deploy.sh`** (Linux/Mac):
 ```bash
-#!/bin/bash
-
-echo "🚀 Starting deployment process..."
-
-# Install dependencies
-echo "📦 Installing dependencies..."
-npm run install:all
-
-# Build client
-echo "🏗️ Building client..."
+# 1. Build the client
 cd client
 npm run build
+
+# 2. Deploy to Firebase Hosting
 cd ..
-
-# Deploy to Firebase
-echo "🔥 Deploying to Firebase..."
-firebase deploy --only hosting,functions,firestore:rules,storage
-
-echo "✅ Deployment complete!"
-echo "🌐 Visit: https://your-project.firebaseapp.com"
+firebase deploy --only hosting
 ```
 
-**`deploy.bat`** (Windows):
+### Full Deployment Script
+
+**Windows (`scripts/deployment/deploy.bat`):**
 ```batch
 @echo off
 echo 🚀 Starting deployment process...
 
 echo 📦 Installing dependencies...
-call npm run install:all
+cd client
+call npm install
 
 echo 🏗️ Building client...
-cd client
 call npm run build
-cd ..
 
-echo 🔥 Deploying to Firebase...
-call firebase deploy --only hosting,functions,firestore:rules,storage
+echo 🔥 Deploying to Firebase Hosting...
+cd ..
+call firebase deploy --only hosting
 
 echo ✅ Deployment complete!
-echo 🌐 Visit: https://your-project.firebaseapp.com
 pause
 ```
 
-### 2. Individual Component Deployment
-
-**Deploy Frontend Only:**
+**Linux/Mac (`scripts/deployment/deploy.sh`):**
 ```bash
+#!/bin/bash
+echo "🚀 Starting deployment process..."
+
 cd client
+npm install
 npm run build
 cd ..
+
 firebase deploy --only hosting
-```
 
-**Deploy Backend Only:**
-```bash
-firebase deploy --only functions
-```
-
-**Deploy Database Rules:**
-```bash
-firebase deploy --only firestore:rules,storage
+echo "✅ Deployment complete!"
 ```
 
 ## Firebase Configuration
 
-### 1. Firebase Hosting Configuration
-
-**`firebase.json`**:
+### `firebase.json`
 ```json
 {
   "hosting": {
@@ -148,6 +118,58 @@ firebase deploy --only firestore:rules,storage
         "source": "**",
         "destination": "/index.html"
       }
+    ]
+  }
+}
+```
+
+## Supabase Configuration
+
+### Row Level Security (RLS)
+RLS is disabled for this app since authentication is handled by Firebase. The Supabase `user_id` column stores Firebase UIDs.
+
+### Required Tables
+Ensure these tables exist in your Supabase project:
+- `transactions`
+- `companies`
+- `payees`
+- `classification_rules`
+- `csv_imports`
+- `income_sources`
+- `receipts`
+- `uploads`
+
+Run the migrations in `supabase/migrations/` to set up the schema.
+
+## Post-Deployment Checklist
+
+- [ ] Verify Firebase Hosting is live at `https://your-project.firebaseapp.com`
+- [ ] Test user authentication (sign up, login, logout)
+- [ ] Test CSV import functionality
+- [ ] Verify transactions are saved to Supabase
+- [ ] Test classification rules
+- [ ] Generate a test report
+
+## Troubleshooting
+
+### "Forbidden use of secret API key in browser"
+You're using the Supabase **secret** key instead of the **publishable** key. Update `VITE_SUPABASE_ANON_KEY` to use the publishable key from Supabase Dashboard → Settings → API → Publishable keys.
+
+### Authentication Issues
+1. Ensure Firebase Auth is enabled in Firebase Console
+2. Check that the Firebase config in `.env.production` matches your project
+3. Verify the authorized domains in Firebase Console → Authentication → Settings
+
+### Database Connection Issues
+1. Check Supabase project is active (not paused)
+2. Verify `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` are correct
+3. Check browser console for specific error messages
+
+## Security Notes
+
+1. **Never commit `.env` files** - They're in `.gitignore`
+2. **Rotate compromised keys** - If keys are exposed, regenerate them immediately
+3. **Use environment variables** - Never hardcode secrets in source code
     ],
     "headers": [
       {
