@@ -141,7 +141,7 @@ export async function createRecurringSchedule(scheduleData) {
   
   // name is required - generate one if not provided
   const name = scheduleData.name || 
-    `Recurring ${scheduleData.frequency || 'monthly'} - ${new Date().toLocaleDateString()}`;
+    `Recurring ${scheduleData.frequency || 'monthly'} - ${new Date().toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' })}`;
   
   console.log('[recurringService] Creating schedule:', {
     name,

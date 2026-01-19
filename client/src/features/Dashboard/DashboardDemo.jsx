@@ -143,7 +143,7 @@ const Dashboard = () => {
                       {transaction.type === 'income' ? '+' : ''}${Math.abs(transaction.amount).toLocaleString()}
                     </div>
                     <div className="text-sm text-gray-500 dark:text-gray-400 transition-colors">
-                      {new Date(transaction.date).toLocaleDateString()}
+                      {new Date(transaction.date).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' })}
                     </div>
                   </div>
                 </div>

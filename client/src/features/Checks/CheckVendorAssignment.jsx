@@ -439,7 +439,7 @@ const CheckVendorAssignment = ({ onAssignmentComplete }) => {
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                   {transaction.date && !isNaN(new Date(transaction.date))
-                    ? new Date(transaction.date).toLocaleDateString()
+                    ? new Date(transaction.date).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' })
                     : ''}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">

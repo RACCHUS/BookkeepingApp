@@ -2965,7 +2965,7 @@ async function generatePDFFromData(title, data, params) {
       <h1>${title}</h1>
       <div class="period">Period: ${params.startDate || 'Start'} to ${params.endDate || 'End'}</div>
       ${formatReportContent(data)}
-      <div class="footer">Generated on ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}</div>
+      <div class="footer">Generated on ${new Date().toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' })} at ${new Date().toLocaleTimeString()}</div>
     </body>
     </html>
   `;

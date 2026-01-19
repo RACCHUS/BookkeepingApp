@@ -404,7 +404,7 @@ const TransactionList = () => {
             const uploadedAt = u.uploadedAt || u.createdAt || u.timestamp;
             if (!displayName) {
               if (uploadedAt) {
-                displayName = `PDF Statement (${new Date(uploadedAt).toLocaleDateString()})`;
+                displayName = `PDF Statement (${new Date(uploadedAt).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' })})`;
               } else {
                 displayName = `PDF Statement`;
               }
@@ -429,7 +429,7 @@ const TransactionList = () => {
             const uploadedAt = c.created_at || c.createdAt;
             let displayName = fileName || bankName;
             if (!displayName) {
-              displayName = uploadedAt ? `CSV Import (${new Date(uploadedAt).toLocaleDateString()})` : 'CSV Import';
+              displayName = uploadedAt ? `CSV Import (${new Date(uploadedAt).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' })})` : 'CSV Import';
             }
             return {
               id: String(id),

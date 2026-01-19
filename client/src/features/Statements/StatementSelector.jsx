@@ -36,7 +36,7 @@ const StatementSelector = ({ value, onChange, statements = [], onRefresh }) => {
           let displayName = s.name && s.name !== 'undefined' ? s.name : '';
           if (!displayName) {
             if (s.uploadedAt) {
-              displayName = `Statement (${new Date(s.uploadedAt).toLocaleDateString()}) [${String(s.id).slice(-6)}]`;
+              displayName = `Statement (${new Date(s.uploadedAt).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' })}) [${String(s.id).slice(-6)}]`;
             } else {
               displayName = `Statement [${s.id}]`;
             }

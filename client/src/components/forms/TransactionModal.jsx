@@ -44,12 +44,12 @@ const TransactionModal = ({ transaction, isOpen, onClose, onSave, mode = 'edit',
           const uploadedAt = u.uploadedAt || u.createdAt || u.timestamp;
           if (!displayName) {
             if (uploadedAt) {
-              displayName = `Statement (${new Date(uploadedAt).toLocaleDateString()}) [${String(id).slice(-6)}]`;
+              displayName = `Statement (${new Date(uploadedAt).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' })}) [${String(id).slice(-6)}]`;
             } else {
               displayName = `Statement [${id}]`;
             }
           } else {
-            displayName = `${displayName} (${uploadedAt ? new Date(uploadedAt).toLocaleDateString() : ''}) [${String(id).slice(-6)}]`;
+            displayName = `${displayName} (${uploadedAt ? new Date(uploadedAt).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' }) : ''}) [${String(id).slice(-6)}]`;
           }
           return {
             id: String(id),
@@ -78,9 +78,9 @@ const TransactionModal = ({ transaction, isOpen, onClose, onSave, mode = 'edit',
           const uploadedAt = c.created_at || c.createdAt;
           let displayName = fileName || bankName;
           if (!displayName) {
-            displayName = uploadedAt ? `CSV Import (${new Date(uploadedAt).toLocaleDateString()})` : 'CSV Import';
+            displayName = uploadedAt ? `CSV Import (${new Date(uploadedAt).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' })})` : 'CSV Import';
           } else {
-            displayName = `${displayName} (${uploadedAt ? new Date(uploadedAt).toLocaleDateString() : ''})`;
+            displayName = `${displayName} (${uploadedAt ? new Date(uploadedAt).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' }) : ''})`;
           }
           return {
             id: String(id),

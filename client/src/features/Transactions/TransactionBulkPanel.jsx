@@ -843,7 +843,7 @@ const TransactionBulkPanel = ({
                     <option value="">Unlink receipt</option>
                     {receipts.map(r => (
                       <option key={r.id} value={r.id}>
-                        {r.vendor || 'Receipt'} - ${r.amount?.toFixed(2)} ({new Date(r.date).toLocaleDateString()})
+                        {r.vendor || 'Receipt'} - ${r.amount?.toFixed(2)} ({new Date(r.date).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' })})
                       </option>
                     ))}
                   </select>

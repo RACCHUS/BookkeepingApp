@@ -349,7 +349,7 @@ const BulkAddChecksModal = ({ isOpen, onClose, onSubmit, isLoading }) => {
                           </span>
                         </div>
                         <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-                          <span>{new Date(transaction.date).toLocaleDateString()}</span>
+                          <span>{new Date(transaction.date).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' })}</span>
                           {transaction.checkNumber && (
                             <span className="px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-600 text-xs">
                               Check #{transaction.checkNumber}

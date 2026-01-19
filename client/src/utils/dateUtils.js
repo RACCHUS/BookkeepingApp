@@ -41,10 +41,14 @@ export const getCurrentDate = () => {
 /**
  * Format a date string for display
  * @param {string} dateString - Date string in YYYY-MM-DD format
- * @returns {string} Formatted date string
+ * @returns {string} Formatted date string (M/D/YYYY)
  */
 export const formatDateForDisplay = (dateString) => {
-  return new Date(dateString + 'T00:00:00').toLocaleDateString();
+  return new Date(dateString + 'T00:00:00').toLocaleDateString('en-US', {
+    month: 'numeric',
+    day: 'numeric',
+    year: 'numeric'
+  });
 };
 
 /**
@@ -85,7 +89,11 @@ export const formatDate = (date) => {
     parsedDate = new Date(date);
   }
   if (parsedDate && !isNaN(parsedDate.getTime())) {
-    return parsedDate.toLocaleDateString();
+    return parsedDate.toLocaleDateString('en-US', {
+      month: 'numeric',
+      day: 'numeric',
+      year: 'numeric'
+    });
   }
   return '';
 };

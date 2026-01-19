@@ -52,7 +52,7 @@ export const getDatePresets = () => {
       icon: ArrowPathIcon,
       start: currentYearRange.start,
       end: getCurrentDate(),
-      description: `Jan 1 - ${today.toLocaleDateString()}, ${currentYear}`
+      description: `Jan 1 - ${today.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' })}, ${currentYear}`
     },
     {
       id: 'last-12-months',

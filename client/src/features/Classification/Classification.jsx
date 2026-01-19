@@ -315,7 +315,7 @@ const Classification = () => {
                     {transaction.description}
                   </p>
                   <p className="text-sm text-gray-600 dark:text-gray-400">
-                    {new Date(transaction.date).toLocaleDateString()} • ${Math.abs(transaction.amount).toFixed(2)}
+                    {new Date(transaction.date).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' })} • ${Math.abs(transaction.amount).toFixed(2)}
                   </p>
                 </div>
                 <span className="px-2 py-1 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300 text-xs rounded">

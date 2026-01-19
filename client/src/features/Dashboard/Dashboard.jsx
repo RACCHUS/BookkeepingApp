@@ -125,7 +125,7 @@ const Dashboard = () => {
           {showingRecentData ? (
             <>Last 30 days (no transactions in {startOfMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })})</>
           ) : (
-            <>Overview for {startOfMonth.toLocaleDateString()} - {endOfMonth.toLocaleDateString()}</>
+            <>Overview for {startOfMonth.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' })} - {endOfMonth.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' })}</>
           )}
         </p>
       </div>
@@ -178,7 +178,7 @@ const Dashboard = () => {
                       {transactions.map((transaction, index) => (
                         <tr key={transaction.id} className={index % 2 === 0 ? 'table-row' : 'table-row-alt'}>
                           <td className="table-cell w-28">
-                            {new Date(transaction.date).toLocaleDateString()}
+                            {new Date(transaction.date).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' })}
                           </td>
                           <td className="table-cell max-w-0">
                             <p className="font-medium truncate" title={transaction.description}>{transaction.description}</p>

@@ -347,7 +347,7 @@ const BulkAddReceiptsModal = ({ isOpen, onClose, onSubmit, isLoading }) => {
                         {transaction.payee || transaction.description}
                       </p>
                       <p className="text-xs text-gray-500 dark:text-gray-400">
-                        {new Date(transaction.date).toLocaleDateString()}
+                        {new Date(transaction.date).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' })}
                         {transaction.category && ` • ${transaction.category}`}
                       </p>
                     </div>
