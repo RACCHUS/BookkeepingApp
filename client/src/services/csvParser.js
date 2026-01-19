@@ -99,6 +99,64 @@ export const BANK_FORMATS = {
 };
 
 /**
+ * Map bank transaction types to standardized payment methods
+ * @param {string} bankType - Bank's transaction type (e.g., 'DEBIT_CARD', 'ACH_CREDIT')
+ * @returns {string} Standardized payment method
+ */
+function mapBankTypeToPaymentMethod(bankType) {
+  if (!bankType) return 'other';
+  
+  const type = bankType.toUpperCase();
+  
+  // Debit/ATM card transactions
+  if (type.includes('DEBIT') || type.includes('POS') || type.includes('POINT_OF_SALE')) {
+    return 'debit_card';
+  }
+  
+  // Credit card transactions
+  if (type.includes('CREDIT_CARD') || type.includes('VISA') || type.includes('MASTERCARD')) {
+    return 'credit_card';
+  }
+  
+  // ACH/Electronic transfers
+  if (type.includes('ACH') || type.includes('TRANSFER') || type.includes('WIRE') || type.includes('EFT')) {
+    return 'bank_transfer';
+  }
+  
+  // ATM transactions (cash)
+  if (type.includes('ATM')) {
+    return 'cash';
+  }
+  
+  // Check transactions
+  if (type.includes('CHECK') || type.includes('CHK')) {
+    return 'check';
+  }
+  
+  // Deposits
+  if (type.includes('DEPOSIT') || type.includes('DSLIP')) {
+    return 'bank_transfer';
+  }
+  
+  // Zelle
+  if (type.includes('ZELLE')) {
+    return 'zelle';
+  }
+  
+  // PayPal
+  if (type.includes('PAYPAL')) {
+    return 'paypal';
+  }
+  
+  // Venmo
+  if (type.includes('VENMO')) {
+    return 'venmo';
+  }
+  
+  return 'other';
+}
+
+/**
  * Find value from a row using possible column names
  */
 function getFieldValue(row, possibleNames) {
@@ -285,6 +343,10 @@ export function parseCSVFile(file, options = {}) {
               const checkNumber = getFieldValue(row, selectedFormat.mapping.checkNumber);
               const referenceNumber = getFieldValue(row, selectedFormat.mapping.referenceNumber);
               const category = getFieldValue(row, selectedFormat.mapping.category);
+              
+              // Get bank type and map to payment method
+              const bankType = getFieldValue(row, selectedFormat.mapping.type);
+              const paymentMethod = mapBankTypeToPaymentMethod(bankType);
 
               transactions.push({
                 date,
@@ -292,6 +354,7 @@ export function parseCSVFile(file, options = {}) {
                 amount: Math.abs(amount),
                 type,
                 category: category || null,
+                paymentMethod: paymentMethod,
                 checkNumber: checkNumber || null,
                 referenceNumber: referenceNumber || null,
                 companyId: companyId || null,

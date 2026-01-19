@@ -1606,6 +1606,7 @@ export const supabaseClient = {
         source_file: fileName,
         csv_import_id: csvImportId,
         bank_name: t.bankName || null,
+        payment_method: t.paymentMethod || null,
         check_number: t.checkNumber || null,
         reference_number: t.referenceNumber || null,
         original_description: t.originalDescription || t.description,
