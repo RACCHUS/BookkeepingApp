@@ -1129,9 +1129,12 @@ export const NEUTRAL_CATEGORIES = {
 export const PAYMENT_METHODS = {
   CASH: 'cash',
   CHECK: 'check',
+  CHECK_DEPOSIT: 'check_deposit',
   CREDIT_CARD: 'credit_card',
   DEBIT_CARD: 'debit_card',
   BANK_TRANSFER: 'bank_transfer',
+  WIRE_TRANSFER: 'wire_transfer',
+  ACH: 'ach',
   PAYPAL: 'paypal',
   VENMO: 'venmo',
   ZELLE: 'zelle',

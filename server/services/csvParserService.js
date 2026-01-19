@@ -23,10 +23,10 @@ function mapBankTypeToPaymentMethod(bankType) {
   
   const type = bankType.toUpperCase();
   
-  // Check deposits (mobile/remote deposits) - must check BEFORE general CHECK
-  // These are bank transfers, not check payments
-  if (type.includes('CHECK_DEPOSIT') || type.includes('DEPOSIT') || type.includes('DSLIP')) {
-    return PAYMENT_METHODS.BANK_TRANSFER;
+  // Check deposits (mobile/remote deposits) - must check BEFORE general CHECK and DEBIT
+  // These are deposited checks (income), not payments made
+  if (type === 'CHECK_DEPOSIT' || type === 'DSLIP') {
+    return PAYMENT_METHODS.CHECK_DEPOSIT;
   }
   
   // Check transactions (actual checks written/paid) - CHECK_PAID, etc.
