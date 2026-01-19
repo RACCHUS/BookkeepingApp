@@ -125,7 +125,7 @@ export class CategoryBreakdownReport extends BaseReportGenerator {
 
       doc.fillColor('#059669')
          .font('Helvetica-Bold')
-         .text(`+$${data.total.toLocaleString()}`, { align: 'right' });
+         .text(`+$${data.total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, { align: 'right' });
 
       doc.fillColor('black')
          .font('Helvetica')
@@ -155,7 +155,7 @@ export class CategoryBreakdownReport extends BaseReportGenerator {
 
       doc.fillColor('#DC2626')
          .font('Helvetica-Bold')
-         .text(`-$${Math.abs(data.total).toLocaleString()}`, { align: 'right' });
+         .text(`-$${Math.abs(data.total).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, { align: 'right' });
 
       doc.fillColor('black')
          .font('Helvetica')

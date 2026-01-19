@@ -177,7 +177,7 @@ export function TaxFormsDashboard() {
             <div className="ml-4">
               <p className="text-sm text-gray-500 dark:text-gray-400">1099 Total</p>
               <p className="text-2xl font-semibold text-gray-900 dark:text-white">
-                ${(form1099Stats.totalAmount || 0).toLocaleString()}
+                ${(form1099Stats.totalAmount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </p>
             </div>
           </div>
@@ -207,7 +207,7 @@ export function TaxFormsDashboard() {
             <div className="ml-4">
               <p className="text-sm text-gray-500 dark:text-gray-400">Total Wages</p>
               <p className="text-2xl font-semibold text-gray-900 dark:text-white">
-                ${(formW2Stats.totalWages || 0).toLocaleString()}
+                ${(formW2Stats.totalWages || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </p>
             </div>
           </div>

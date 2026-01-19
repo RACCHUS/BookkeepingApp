@@ -141,7 +141,7 @@ class ChecksPaidReport extends BaseReportGenerator {
 
     const summaryData = [
       ['Total Check Payments:', checksPaidData.totalTransactions.toLocaleString()],
-      ['Total Amount Paid:', `$${checksPaidData.totalAmount.toLocaleString()}`],
+      ['Total Amount Paid:', `$${checksPaidData.totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`],
       ['Number of Payees:', Object.keys(checksPaidData.payeeGroups).length.toLocaleString()]
     ];
 
@@ -188,7 +188,7 @@ class ChecksPaidReport extends BaseReportGenerator {
 
       doc.fillColor('#DC2626') // Red for expenses/payments
          .font('Helvetica-Bold')
-         .text(`$${payeeData.totalAmount.toLocaleString()}`, { align: 'right' });
+         .text(`$${payeeData.totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, { align: 'right' });
 
       doc.fillColor('black')
          .font('Helvetica')
@@ -247,7 +247,7 @@ class ChecksPaidReport extends BaseReportGenerator {
 
       doc.fontSize(10)
          .font('Helvetica')
-         .text(`Total: $${payeeData.totalAmount.toLocaleString()} (${payeeData.transactionCount} payments)`, 70);
+         .text(`Total: $${payeeData.totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (${payeeData.transactionCount} payments)`, 70);
 
       doc.moveDown(0.3);
 
@@ -264,7 +264,7 @@ class ChecksPaidReport extends BaseReportGenerator {
 
       transactionsToShow.forEach(transaction => {
         const date = new Date(transaction.date).toLocaleDateString();
-        const amount = `$${Math.abs(transaction.amount).toLocaleString()}`;
+        const amount = `$${Math.abs(transaction.amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
         const description = transaction.description?.substring(0, 50) || 'N/A';
         
         doc.fontSize(9)

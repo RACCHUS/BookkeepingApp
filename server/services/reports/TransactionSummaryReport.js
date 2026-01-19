@@ -60,9 +60,9 @@ export class TransactionSummaryReport extends BaseReportGenerator {
 
     const summaryData = [
       ['Total Transactions:', summary.transactionCount?.toLocaleString() || '0'],
-      ['Total Income:', `$${Math.abs(summary.totalIncome || 0).toLocaleString()}`],
-      ['Total Expenses:', `$${Math.abs(summary.totalExpenses || 0).toLocaleString()}`],
-      ['Net Income:', `$${(summary.netIncome || 0).toLocaleString()}`, summary.netIncome >= 0 ? 'green' : 'red']
+      ['Total Income:', `$${Math.abs(summary.totalIncome || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`],
+      ['Total Expenses:', `$${Math.abs(summary.totalExpenses || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`],
+      ['Net Income:', `$${Math.abs(summary.netIncome || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, summary.netIncome >= 0 ? 'green' : 'red']
     ];
 
     summaryData.forEach(([label, value, color]) => {
@@ -97,7 +97,7 @@ export class TransactionSummaryReport extends BaseReportGenerator {
 
     sortedCategories.forEach(([category, amount]) => {
       const isIncome = amount > 0;
-      const displayAmount = `${isIncome ? '+' : '-'}$${Math.abs(amount).toLocaleString()}`;
+      const displayAmount = `${isIncome ? '+' : '-'}$${Math.abs(amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
       
       doc.fontSize(10)
          .font('Helvetica')
@@ -161,7 +161,7 @@ export class TransactionSummaryReport extends BaseReportGenerator {
       this.checkPageBreak(doc, 50);
 
       const isIncome = transaction.type === 'income';
-      const displayAmount = `${isIncome ? '+' : '-'}$${Math.abs(transaction.amount).toLocaleString()}`;
+      const displayAmount = `${isIncome ? '+' : '-'}$${Math.abs(transaction.amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
       const date = new Date(transaction.date).toLocaleDateString();
       const rowY = doc.y;
       

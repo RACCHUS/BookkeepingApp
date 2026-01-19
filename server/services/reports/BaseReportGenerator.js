@@ -233,11 +233,20 @@ export class BaseReportGenerator {
   }
 
   /**
+   * Format a number as currency with 2 decimal places
+   * @param {number} amount - Amount to format
+   * @returns {string} Formatted currency string without $ sign
+   */
+  formatAmount(amount) {
+    return Math.abs(amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  /**
    * Format currency amount with proper sign and color
    */
   addCurrencyText(doc, amount, isIncome, options = {}) {
     const { align = 'left', fontSize = 10 } = options;
-    const displayAmount = `${isIncome ? '+' : '-'}$${Math.abs(amount).toLocaleString()}`;
+    const displayAmount = `${isIncome ? '+' : '-'}$${this.formatAmount(amount)}`;
     
     doc.fillColor(isIncome ? this.config.colors.income : this.config.colors.expense)
        .fontSize(fontSize)

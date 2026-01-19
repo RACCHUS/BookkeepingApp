@@ -40,21 +40,21 @@ const Dashboard = () => {
   const stats = [
     {
       name: 'Total Income',
-      value: `$${summaryData.totalIncome.toLocaleString()}`,
+      value: `$${summaryData.totalIncome.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
       icon: ArrowTrendingUpIcon,
       color: 'text-green-600',
       bgColor: 'bg-green-100'
     },
     {
       name: 'Total Expenses',
-      value: `$${summaryData.totalExpenses.toLocaleString()}`,
+      value: `$${summaryData.totalExpenses.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
       icon: ArrowTrendingDownIcon,
       color: 'text-red-600',
       bgColor: 'bg-red-100'
     },
     {
       name: 'Net Income',
-      value: `$${summaryData.netIncome.toLocaleString()}`,
+      value: `$${summaryData.netIncome.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
       icon: CurrencyDollarIcon,
       color: summaryData.netIncome >= 0 ? 'text-green-600' : 'text-red-600',
       bgColor: summaryData.netIncome >= 0 ? 'bg-green-100' : 'bg-red-100'
@@ -140,7 +140,7 @@ const Dashboard = () => {
                     <div className={`text-sm font-medium ${
                       transaction.type === 'income' ? 'text-green-600' : 'text-red-600'
                     }`}>
-                      {transaction.type === 'income' ? '+' : ''}${Math.abs(transaction.amount).toLocaleString()}
+                      {transaction.type === 'income' ? '+' : ''}${Math.abs(transaction.amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </div>
                     <div className="text-sm text-gray-500 dark:text-gray-400 transition-colors">
                       {new Date(transaction.date).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' })}

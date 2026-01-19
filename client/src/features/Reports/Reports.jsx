@@ -437,19 +437,19 @@ const Reports = () => {
         <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-4 md:p-6 transition-colors">
           <div className="text-xs md:text-sm font-medium text-gray-500 dark:text-gray-400">Total Income</div>
           <div className="text-lg md:text-2xl font-bold text-green-600 dark:text-green-400">
-            ${Math.abs(summary.totalIncome || 0).toLocaleString()}
+            ${Math.abs(summary.totalIncome || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
         </div>
         <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-4 md:p-6 transition-colors">
           <div className="text-xs md:text-sm font-medium text-gray-500 dark:text-gray-400">Total Expenses</div>
           <div className="text-lg md:text-2xl font-bold text-red-600 dark:text-red-400">
-            ${Math.abs(summary.totalExpenses || 0).toLocaleString()}
+            ${Math.abs(summary.totalExpenses || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
         </div>
         <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-4 md:p-6 transition-colors">
           <div className="text-xs md:text-sm font-medium text-gray-500 dark:text-gray-400">Net Income</div>
           <div className={`text-lg md:text-2xl font-bold ${(summary.netIncome || 0) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-            ${Math.abs(summary.netIncome || 0).toLocaleString()}
+            ${Math.abs(summary.netIncome || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
         </div>
         <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-4 md:p-6 transition-colors">
@@ -630,7 +630,7 @@ const Reports = () => {
                           {category}
                         </span>
                         <span className={`text-sm font-bold ${isIncome ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                          {isIncome ? '+' : '-'}${Math.abs(amount).toLocaleString()}
+                          {isIncome ? '+' : '-'}${Math.abs(amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </span>
                       </div>
                       <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">

@@ -77,21 +77,21 @@ const Dashboard = () => {
   const stats = [
     {
       name: 'Total Income',
-      value: `$${(displaySummary.totalIncome || 0).toLocaleString()}`,
+      value: `$${(displaySummary.totalIncome || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
       icon: ArrowTrendingUpIcon,
       color: 'text-green-600',
       bgColor: 'bg-green-100'
     },
     {
       name: 'Total Expenses',
-      value: `$${(displaySummary.totalExpenses || 0).toLocaleString()}`,
+      value: `$${(displaySummary.totalExpenses || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
       icon: ArrowTrendingDownIcon,
       color: 'text-red-600',
       bgColor: 'bg-red-100'
     },
     {
       name: 'Net Income',
-      value: `$${(displaySummary.netIncome || 0).toLocaleString()}`,
+      value: `$${(displaySummary.netIncome || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
       icon: CurrencyDollarIcon,
       color: displaySummary.netIncome >= 0 ? 'text-green-600' : 'text-red-600',
       bgColor: displaySummary.netIncome >= 0 ? 'bg-green-100' : 'bg-red-100'
@@ -193,7 +193,7 @@ const Dashboard = () => {
                               transaction.type === 'income' ? 'text-green-600' : 'text-red-600'
                             }`}>
                               {transaction.type === 'income' ? '+' : '-'}$
-                              {Math.abs(transaction.amount).toLocaleString()}
+                              {Math.abs(transaction.amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </span>
                           </td>
                         </tr>
