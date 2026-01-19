@@ -54,8 +54,9 @@ const CompactTransactionRow = memo(({
       }
     }
     return new Date(isoDate + 'T12:00:00').toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric'
+      month: 'numeric',
+      day: 'numeric',
+      year: 'numeric'
     });
   };
 
