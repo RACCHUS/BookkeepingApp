@@ -1035,6 +1035,8 @@ export const supabaseClient = {
 
       if (params.companyId) query = query.eq('company_id', params.companyId);
       if (params.type) query = query.eq('type', params.type);
+      if (params.paymentMethod) query = query.eq('payment_method', params.paymentMethod);
+      if (params.sectionCode) query = query.eq('section_code', params.sectionCode);
       
       const limit = params.limit || 100;
       const offset = params.offset || 0;
@@ -1043,10 +1045,45 @@ export const supabaseClient = {
       const { data, error, count } = await query;
       if (error) throw error;
 
+      const transactions = (data || []).map(transformTransaction);
       return {
         success: true,
+        transactions, // Direct access for components
         data: { 
-          transactions: (data || []).map(transformTransaction),
+          transactions,
+          total: count || 0
+        }
+      };
+    },
+
+    getTransactionsWithoutVendors: async (params = {}) => {
+      const userId = await getUserId();
+      
+      let query = supabase
+        .from('transactions')
+        .select('*', { count: 'exact' })
+        .eq('user_id', userId)
+        .is('vendor_id', null)
+        .order('date', { ascending: false });
+
+      if (params.companyId) query = query.eq('company_id', params.companyId);
+      if (params.type) query = query.eq('type', params.type);
+      if (params.paymentMethod) query = query.eq('payment_method', params.paymentMethod);
+      if (params.sectionCode) query = query.eq('section_code', params.sectionCode);
+      
+      const limit = params.limit || 500;
+      const offset = params.offset || 0;
+      query = query.range(offset, offset + limit - 1);
+
+      const { data, error, count } = await query;
+      if (error) throw error;
+
+      const transactions = (data || []).map(transformTransaction);
+      return {
+        success: true,
+        transactions, // Direct access for components
+        data: { 
+          transactions,
           total: count || 0
         }
       };

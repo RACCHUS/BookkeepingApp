@@ -19,10 +19,10 @@ const CheckVendorAssignment = ({ onAssignmentComplete }) => {
 
   const queryClient = useQueryClient();
 
-  // Fetch unassigned check transactions
+  // Fetch unassigned check transactions (checks without vendor assigned)
   const { data: transactionsData, isLoading: loadingTransactions, error: transactionsError } = useQuery({
     queryKey: ['unassigned-check-vendor-transactions'],
-    queryFn: () => api.payees.getTransactionsWithoutPayees({ sectionCode: 'checks' }),
+    queryFn: () => api.payees.getTransactionsWithoutVendors({ paymentMethod: 'check' }),
     retry: 2,
     onError: (error) => {
       console.error('Error fetching transactions:', error);

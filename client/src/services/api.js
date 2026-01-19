@@ -826,6 +826,15 @@ const apiClient = {
         headers: { Authorization: `Bearer ${token}` }
       });
     },
+    getTransactionsWithoutVendors: async (params) => {
+      const user = auth.currentUser;
+      if (!user) throw new Error('User not authenticated');
+      const token = await user.getIdToken();
+      return api.get('/payees/transactions-without-vendors', {
+        params,
+        headers: { Authorization: `Bearer ${token}` }
+      });
+    },
     assignToTransaction: async (transactionId, payeeId, payeeName) => {
       const user = auth.currentUser;
       if (!user) throw new Error('User not authenticated');
