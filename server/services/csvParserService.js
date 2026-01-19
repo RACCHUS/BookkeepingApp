@@ -23,6 +23,17 @@ function mapBankTypeToPaymentMethod(bankType) {
   
   const type = bankType.toUpperCase();
   
+  // Check deposits (mobile/remote deposits) - must check BEFORE general CHECK
+  // These are bank transfers, not check payments
+  if (type.includes('CHECK_DEPOSIT') || type.includes('DEPOSIT') || type.includes('DSLIP')) {
+    return PAYMENT_METHODS.BANK_TRANSFER;
+  }
+  
+  // Check transactions (actual checks written/paid) - CHECK_PAID, etc.
+  if (type.includes('CHECK') || type.includes('CHK')) {
+    return PAYMENT_METHODS.CHECK;
+  }
+  
   // Debit/ATM card transactions
   if (type.includes('DEBIT') || type.includes('POS') || type.includes('POINT_OF_SALE')) {
     return PAYMENT_METHODS.DEBIT_CARD;
@@ -41,16 +52,6 @@ function mapBankTypeToPaymentMethod(bankType) {
   // ATM transactions (cash)
   if (type.includes('ATM')) {
     return PAYMENT_METHODS.CASH;
-  }
-  
-  // Check transactions
-  if (type.includes('CHECK') || type.includes('CHK')) {
-    return PAYMENT_METHODS.CHECK;
-  }
-  
-  // Deposits
-  if (type.includes('DEPOSIT') || type.includes('DSLIP')) {
-    return PAYMENT_METHODS.BANK_TRANSFER;
   }
   
   // Zelle
@@ -326,11 +327,19 @@ function normalizeTransaction(row, format, headers, index) {
   }
 
   // Optional fields
-  const checkNumber = findColumnValue(row, mapping.checkNumber) || '';
   const referenceNumber = findColumnValue(row, mapping.referenceNumber) || '';
   const category = findColumnValue(row, mapping.category) || '';
   const bankType = findColumnValue(row, mapping.type) || '';
   const paymentMethod = mapBankTypeToPaymentMethod(bankType);
+  
+  // Get check number - but NOT for deposit slips (DSLIP/CHECK_DEPOSIT)
+  // The "slip #" for deposits is not a check number
+  const rawCheckNumber = findColumnValue(row, mapping.checkNumber) || '';
+  const isDepositSlip = bankType && (
+    bankType.toUpperCase().includes('DEPOSIT') || 
+    bankType.toUpperCase().includes('DSLIP')
+  );
+  const checkNumber = isDepositSlip ? '' : rawCheckNumber;
 
   return {
     date: parsedDate,

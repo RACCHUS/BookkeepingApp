@@ -602,7 +602,7 @@ const TransactionModal = ({ transaction, isOpen, onClose, onSave, mode = 'edit',
                     setValue('isContractorPayment', true);
                   }
                 }}
-                className="form-input"
+                className={`form-input ${!watch('payeeId') ? 'text-gray-400 dark:text-gray-500' : ''}`}
               >
                 <option value="">-- Select a Payee --</option>
                 {payees.filter(p => p.isActive !== false).map(p => (
@@ -631,7 +631,7 @@ const TransactionModal = ({ transaction, isOpen, onClose, onSave, mode = 'edit',
                   setValue('vendorId', e.target.value);
                   setValue('vendorName', selectedVendor?.name || '');
                 }}
-                className="form-input"
+                className={`form-input ${!watch('vendorId') ? 'text-gray-400 dark:text-gray-500' : ''}`}
               >
                 <option value="">-- Select a Vendor --</option>
                 {vendors.map(v => (

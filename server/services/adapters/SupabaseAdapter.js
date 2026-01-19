@@ -876,7 +876,11 @@ class SupabaseAdapter extends DatabaseAdapter {
       .is('payee_id', null)
       .order('date', { ascending: false });
 
-    if (paymentMethod) {
+    if (paymentMethod === 'check') {
+      // For checks, also match by check_number or description pattern
+      // This handles old transactions imported before payment_method was tracked
+      query = query.or(`payment_method.eq.check,and(payment_method.is.null,check_number.neq.),and(payment_method.is.null,description.ilike.CHECK %)`);
+    } else if (paymentMethod) {
       query = query.eq('payment_method', paymentMethod);
     }
 

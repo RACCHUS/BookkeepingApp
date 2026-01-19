@@ -108,6 +108,17 @@ function mapBankTypeToPaymentMethod(bankType) {
   
   const type = bankType.toUpperCase();
   
+  // Check deposits (mobile/remote deposits) - must check BEFORE general CHECK
+  // These are bank transfers, not check payments
+  if (type.includes('CHECK_DEPOSIT') || type.includes('DEPOSIT') || type.includes('DSLIP')) {
+    return 'bank_transfer';
+  }
+  
+  // Check transactions (actual checks written/paid) - CHECK_PAID, etc.
+  if (type.includes('CHECK') || type.includes('CHK')) {
+    return 'check';
+  }
+  
   // Debit/ATM card transactions
   if (type.includes('DEBIT') || type.includes('POS') || type.includes('POINT_OF_SALE')) {
     return 'debit_card';
@@ -126,16 +137,6 @@ function mapBankTypeToPaymentMethod(bankType) {
   // ATM transactions (cash)
   if (type.includes('ATM')) {
     return 'cash';
-  }
-  
-  // Check transactions
-  if (type.includes('CHECK') || type.includes('CHK')) {
-    return 'check';
-  }
-  
-  // Deposits
-  if (type.includes('DEPOSIT') || type.includes('DSLIP')) {
-    return 'bank_transfer';
   }
   
   // Zelle
@@ -340,13 +341,21 @@ export function parseCSVFile(file, options = {}) {
               const type = amount >= 0 ? 'income' : 'expense';
 
               // Get optional fields
-              const checkNumber = getFieldValue(row, selectedFormat.mapping.checkNumber);
               const referenceNumber = getFieldValue(row, selectedFormat.mapping.referenceNumber);
               const category = getFieldValue(row, selectedFormat.mapping.category);
               
               // Get bank type and map to payment method
               const bankType = getFieldValue(row, selectedFormat.mapping.type);
               const paymentMethod = mapBankTypeToPaymentMethod(bankType);
+              
+              // Get check number - but NOT for deposit slips (DSLIP/CHECK_DEPOSIT)
+              // The "slip #" for deposits is not a check number
+              const rawCheckNumber = getFieldValue(row, selectedFormat.mapping.checkNumber);
+              const isDepositSlip = bankType && (
+                bankType.toUpperCase().includes('DEPOSIT') || 
+                bankType.toUpperCase().includes('DSLIP')
+              );
+              const checkNumber = isDepositSlip ? null : (rawCheckNumber || null);
 
               transactions.push({
                 date,
@@ -355,7 +364,7 @@ export function parseCSVFile(file, options = {}) {
                 type,
                 category: category || null,
                 paymentMethod: paymentMethod,
-                checkNumber: checkNumber || null,
+                checkNumber: checkNumber,
                 referenceNumber: referenceNumber || null,
                 companyId: companyId || null,
                 source: 'csv',
