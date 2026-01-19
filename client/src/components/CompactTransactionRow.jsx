@@ -157,7 +157,7 @@ const CompactTransactionRow = memo(({
       
       case 'paymentMethod':
         return transaction.paymentMethod ? (
-          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-cyan-100 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-300">
+          <span className="inline-flex items-center justify-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-cyan-100 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-300 whitespace-nowrap">
             {getPaymentMethodDisplay ? getPaymentMethodDisplay(transaction.paymentMethod) : transaction.paymentMethod}
           </span>
         ) : renderEmpty();
