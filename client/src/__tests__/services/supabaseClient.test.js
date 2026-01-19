@@ -99,8 +99,8 @@ describe('supabaseClient', () => {
     describe('getAll', () => {
       it('should fetch all transactions for user', async () => {
         const mockTransactions = [
-          { id: '1', description: 'Test 1', amount: 100, date: '2024-01-01', user_id: 'test-user-123', type: 'expense' },
-          { id: '2', description: 'Test 2', amount: 200, date: '2024-01-02', user_id: 'test-user-123', type: 'income' },
+          { id: '1', description: 'Test 1', amount: 100, date: '2024-01-01', user_id: 'test-user-123', type: 'expense', companies: { name: 'Test Co' }, income_sources: null },
+          { id: '2', description: 'Test 2', amount: 200, date: '2024-01-02', user_id: 'test-user-123', type: 'income', companies: null, income_sources: { name: 'Client A' } },
         ];
         
         const chainMock = createChainMock(mockTransactions);
@@ -109,7 +109,11 @@ describe('supabaseClient', () => {
         const result = await supabaseClient.transactions.getAll();
         
         expect(supabase.from).toHaveBeenCalledWith('transactions');
-        expect(chainMock.select).toHaveBeenCalledWith('*', { count: 'exact' });
+        // Query now joins with companies and income_sources tables
+        expect(chainMock.select).toHaveBeenCalledWith(
+          expect.stringContaining('companies:company_id(name)'),
+          { count: 'exact' }
+        );
         expect(chainMock.eq).toHaveBeenCalledWith('user_id', 'test-user-123');
         expect(result.success).toBe(true);
         expect(result.data.transactions).toHaveLength(2);

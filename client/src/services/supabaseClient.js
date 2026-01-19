@@ -141,10 +141,12 @@ const transformTransaction = (row) => {
     payee: row.payee,
     payeeId: row.payee_id,
     companyId: row.company_id,
+    companyName: row.companies?.name || null,
     uploadId: row.upload_id,
     statementId: row.statement_id,
     csvImportId: row.csv_import_id,
     incomeSourceId: row.income_source_id,
+    incomeSourceName: row.income_sources?.name || null,
     bankName: row.bank_name,
     accountLastFour: row.account_last_four,
     checkNumber: row.check_number,
@@ -275,7 +277,11 @@ export const supabaseClient = {
       
       let query = supabase
         .from('transactions')
-        .select('*', { count: 'exact' })
+        .select(`
+          *,
+          companies:company_id(name),
+          income_sources:income_source_id(name)
+        `, { count: 'exact' })
         .eq('user_id', userId)
         .order('date', { ascending: false });
 

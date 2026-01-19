@@ -124,6 +124,7 @@ const TransactionList = () => {
     hasCheckNumber: '',
     source: '',
     hasPdfSource: '',
+    paymentMethod: '',
     amountRange: { min: '', max: '' },
     dateRange: { start: '', end: '' }
   });
@@ -1138,6 +1139,15 @@ const TransactionList = () => {
         filtered = filtered.filter(tx => tx.uploadId || tx.statementId || tx.sourceFile);
       } else if (f.hasPdfSource === 'no') {
         filtered = filtered.filter(tx => !tx.uploadId && !tx.statementId && !tx.sourceFile);
+      }
+    }
+
+    // Payment method filter
+    if (f.paymentMethod) {
+      if (f.paymentMethod === '__none') {
+        filtered = filtered.filter(tx => !tx.paymentMethod || tx.paymentMethod === '');
+      } else {
+        filtered = filtered.filter(tx => tx.paymentMethod === f.paymentMethod);
       }
     }
 

@@ -336,7 +336,7 @@ const TransactionFilterPanel = ({
         )}
 
         {/* Action Buttons */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap min-w-fit">
           {showRefresh && (
             <button
               onClick={handleRefresh}
@@ -666,6 +666,30 @@ const TransactionFilterPanel = ({
                 <option value="">All</option>
                 <option value="yes">Has Check #</option>
                 <option value="no">No Check #</option>
+              </select>
+            </div>
+
+            {/* Payment Method */}
+            <div>
+              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                Payment Method
+              </label>
+              <select
+                value={filters.paymentMethod || ''}
+                onChange={(e) => handleFilterChange('paymentMethod', e.target.value)}
+                className={selectClassName}
+              >
+                <option value="">All Methods</option>
+                <option value="cash">Cash</option>
+                <option value="check">Check</option>
+                <option value="credit_card">Credit Card</option>
+                <option value="debit_card">Debit Card</option>
+                <option value="bank_transfer">Bank Transfer</option>
+                <option value="zelle">Zelle</option>
+                <option value="paypal">PayPal</option>
+                <option value="venmo">Venmo</option>
+                <option value="other">Other</option>
+                <option value="__none">Not Set</option>
               </select>
             </div>
 
