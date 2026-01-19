@@ -53,6 +53,10 @@ const TransactionFilterPanel = ({
 }) => {
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [localSearchTerm, setLocalSearchTerm] = useState(filters.searchTerm || '');
+  const [localDateRange, setLocalDateRange] = useState({
+    start: filters.dateRange?.start || '',
+    end: filters.dateRange?.end || ''
+  });
   const [lastRefreshTime, setLastRefreshTime] = useState(0);
   const [refreshCooldown, setRefreshCooldown] = useState(0);
   
@@ -68,12 +72,43 @@ const TransactionFilterPanel = ({
     return () => clearTimeout(timer);
   }, [localSearchTerm]);
 
+  // Debounce date range - wait for user to finish entering date
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const startChanged = localDateRange.start !== (filters.dateRange?.start || '');
+      const endChanged = localDateRange.end !== (filters.dateRange?.end || '');
+      
+      if (startChanged || endChanged) {
+        // Only update if we have a valid date or empty string
+        const isValidStart = !localDateRange.start || /^\d{4}-\d{2}-\d{2}$/.test(localDateRange.start);
+        const isValidEnd = !localDateRange.end || /^\d{4}-\d{2}-\d{2}$/.test(localDateRange.end);
+        
+        if (isValidStart && isValidEnd) {
+          onFiltersChange?.({
+            ...filters,
+            dateRange: localDateRange
+          });
+        }
+      }
+    }, 500); // 500ms debounce for date input
+    return () => clearTimeout(timer);
+  }, [localDateRange]);
+
   // Sync local search term with external filters
   useEffect(() => {
     if (filters.searchTerm !== undefined && filters.searchTerm !== localSearchTerm) {
       setLocalSearchTerm(filters.searchTerm);
     }
   }, [filters.searchTerm]);
+
+  // Sync local date range with external filters
+  useEffect(() => {
+    const externalStart = filters.dateRange?.start || '';
+    const externalEnd = filters.dateRange?.end || '';
+    if (externalStart !== localDateRange.start || externalEnd !== localDateRange.end) {
+      setLocalDateRange({ start: externalStart, end: externalEnd });
+    }
+  }, [filters.dateRange?.start, filters.dateRange?.end]);
 
   // Refresh cooldown timer
   useEffect(() => {
@@ -107,13 +142,11 @@ const TransactionFilterPanel = ({
   };
 
   const handleDateRangeChange = (field, value) => {
-    onFiltersChange?.({
-      ...filters,
-      dateRange: {
-        ...filters.dateRange,
-        [field]: value
-      }
-    });
+    // Update local state - debounced effect will update parent
+    setLocalDateRange(prev => ({
+      ...prev,
+      [field]: value
+    }));
   };
 
   const handleAmountRangeChange = (field, value) => {
@@ -214,6 +247,9 @@ const TransactionFilterPanel = ({
       end = `${today.getFullYear() - 1}-12-31`;
     }
     
+    // Update local state immediately for quick presets
+    setLocalDateRange({ start, end });
+    // Also update parent immediately for presets (no need to debounce clicks)
     onFiltersChange?.({
       ...filters,
       dateRange: { start, end }
@@ -462,7 +498,7 @@ const TransactionFilterPanel = ({
               </label>
               <input
                 type="date"
-                value={filters.dateRange?.start || ''}
+                value={localDateRange.start}
                 onChange={(e) => handleDateRangeChange('start', e.target.value)}
                 className={inputClassName}
               />
@@ -473,7 +509,7 @@ const TransactionFilterPanel = ({
               </label>
               <input
                 type="date"
-                value={filters.dateRange?.end || ''}
+                value={localDateRange.end}
                 onChange={(e) => handleDateRangeChange('end', e.target.value)}
                 className={inputClassName}
               />
