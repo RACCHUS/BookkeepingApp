@@ -256,113 +256,100 @@ const TransactionFilterPanel = ({
     });
   };
 
-  const selectClassName = "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm";
-  const inputClassName = "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm";
+  const selectClassName = "w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm";
+  const inputClassName = "w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm";
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 space-y-4">
-      {/* Primary Filters Row */}
-      <div className="flex flex-wrap items-center gap-3">
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-3 space-y-2">
+      {/* Row 1: Search, Category, Type, Company, Sources + Buttons */}
+      <div className="flex items-center gap-2">
         {/* Search */}
         {showSearch && (
-          <div className="relative w-48">
-            <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+          <div className="relative flex-shrink-0" style={{ width: '160px' }}>
+            <MagnifyingGlassIcon className="absolute left-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
             <input
               type="text"
-              placeholder="Search transactions..."
+              placeholder="Search..."
               value={localSearchTerm}
               onChange={(e) => setLocalSearchTerm(e.target.value)}
-              className={`${inputClassName} pl-9`}
+              className={`${inputClassName} pl-8`}
             />
           </div>
         )}
 
         {/* Category */}
-        <select
-          value={filters.category || ''}
-          onChange={(e) => handleFilterChange('category', e.target.value)}
-          className={`${selectClassName} w-40`}
-        >
-          <option value="">All Categories</option>
-          {Object.entries(CATEGORY_GROUPS).map(([group, cats]) => (
-            <optgroup key={group} label={group.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}>
-              {cats.filter(cat => cat !== 'Uncategorized').map(cat => (
-                <option key={cat} value={cat}>{cat}</option>
-              ))}
-            </optgroup>
-          ))}
-          <option value="__uncategorized__">Uncategorized</option>
-        </select>
+        <div className="flex-1 min-w-0">
+          <select
+            value={filters.category || ''}
+            onChange={(e) => handleFilterChange('category', e.target.value)}
+            className={selectClassName}
+          >
+            <option value="">All Categories</option>
+            {Object.entries(CATEGORY_GROUPS).map(([group, cats]) => (
+              <optgroup key={group} label={group.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}>
+                {cats.filter(cat => cat !== 'Uncategorized').map(cat => (
+                  <option key={cat} value={cat}>{cat}</option>
+                ))}
+              </optgroup>
+            ))}
+            <option value="__uncategorized__">Uncategorized</option>
+          </select>
+        </div>
 
         {/* Type (only show if variant is 'all') */}
         {variant === 'all' && (
-          <select
-            value={filters.type || ''}
-            onChange={(e) => handleFilterChange('type', e.target.value)}
-            className={`${selectClassName} w-32`}
-          >
-            {typeOptions.map(opt => (
-              <option key={opt.value} value={opt.value}>{opt.label}</option>
-            ))}
-          </select>
+          <div className="flex-1 min-w-0">
+            <select
+              value={filters.type || ''}
+              onChange={(e) => handleFilterChange('type', e.target.value)}
+              className={selectClassName}
+            >
+              {typeOptions.map(opt => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+          </div>
         )}
 
         {/* Company */}
-        <select
-          value={filters.companyId || ''}
-          onChange={(e) => handleFilterChange('companyId', e.target.value)}
-          className={`${selectClassName} w-40`}
-        >
-          <option value="">All Companies</option>
-          <option value="__no_company">No Company</option>
-          {companies.map(company => (
-            <option key={company.id} value={company.id}>{company.name}</option>
-          ))}
-        </select>
+        <div className="flex-1 min-w-0">
+          <select
+            value={filters.companyId || ''}
+            onChange={(e) => handleFilterChange('companyId', e.target.value)}
+            className={selectClassName}
+          >
+            <option value="">All Companies</option>
+            <option value="__no_company">No Company</option>
+            {companies.map(company => (
+              <option key={company.id} value={company.id}>{company.name}</option>
+            ))}
+          </select>
+        </div>
 
         {/* Statement/Source */}
         {statements.length > 0 && (
-          <select
-            value={filters.statementId || ''}
-            onChange={(e) => handleFilterChange('statementId', e.target.value)}
-            className={`${selectClassName} w-36`}
-          >
-            <option value="">All Sources</option>
-            <option value="__manual">Manual/Unlinked</option>
-            {statements.map(s => (
-              <option key={s.id} value={s.id}>{s.name || s.filename}</option>
-            ))}
-          </select>
+          <div className="flex-1 min-w-0">
+            <select
+              value={filters.statementId || ''}
+              onChange={(e) => handleFilterChange('statementId', e.target.value)}
+              className={selectClassName}
+            >
+              <option value="">All Sources</option>
+              <option value="__manual">Manual/Unlinked</option>
+              {statements.map(s => (
+                <option key={s.id} value={s.id}>{s.name || s.filename}</option>
+              ))}
+            </select>
+          </div>
         )}
 
-        {/* Payment Method - moved from advanced */}
-        <select
-          value={filters.paymentMethod || ''}
-          onChange={(e) => handleFilterChange('paymentMethod', e.target.value)}
-          className={`${selectClassName} w-36`}
-        >
-          <option value="">All Methods</option>
-          <option value="cash">Cash</option>
-          <option value="check">Check</option>
-          <option value="check_deposit">Check Deposit</option>
-          <option value="credit_card">Credit Card</option>
-          <option value="debit_card">Debit Card</option>
-          <option value="bank_transfer">Bank Transfer</option>
-          <option value="ach">ACH</option>
-          <option value="zelle">Zelle</option>
-          <option value="paypal">PayPal</option>
-          <option value="venmo">Venmo</option>
-          <option value="other">Other</option>
-          <option value="__none">Not Set</option>
-        </select>
-
         {/* Action Buttons */}
-        <div className="flex items-center gap-2 ml-auto">
+        <div className="flex items-center gap-1.5 flex-shrink-0">
           {showRefresh && (
             <button
               onClick={handleRefresh}
               disabled={isLoading || refreshCooldown > 0}
-              className={`flex items-center gap-1 px-3 py-2 rounded-lg transition-colors text-sm ${
+              className={`flex items-center gap-1 px-2 py-1.5 rounded-md transition-colors text-sm ${
                 refreshCooldown > 0 
                   ? 'text-gray-400 dark:text-gray-500 bg-gray-100 dark:bg-gray-700 cursor-not-allowed'
                   : 'text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600'
@@ -370,22 +357,22 @@ const TransactionFilterPanel = ({
               title={refreshCooldown > 0 ? `Wait ${refreshCooldown}s` : 'Refresh transactions'}
             >
               <ArrowPathIcon className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-              {refreshCooldown > 0 ? `${refreshCooldown}s` : 'Refresh'}
+              Refresh
             </button>
           )}
           
           <button
             onClick={onReset}
-            className="flex items-center gap-1 px-3 py-2 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-sm"
+            className="flex items-center gap-1 px-2 py-1.5 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-sm"
           >
             <XMarkIcon className="w-4 h-4" />
-            Reset {activeFilterCount > 0 && `(${activeFilterCount})`}
+            Reset
           </button>
 
           {showAdvanced && (
             <button
               onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-              className={`flex items-center gap-1 px-3 py-2 rounded-lg transition-colors text-sm ${
+              className={`flex items-center gap-1 px-2 py-1.5 rounded-md transition-colors text-sm ${
                 showAdvancedFilters 
                   ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-300 dark:border-blue-600' 
                   : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
@@ -399,49 +386,112 @@ const TransactionFilterPanel = ({
         </div>
       </div>
 
+      {/* Row 2: Payment Method, Payee, Vendor, Date Range */}
+      <div className="flex items-center gap-2">
+        {/* Payment Method */}
+        <div className="flex-1 min-w-0">
+          <select
+            value={filters.paymentMethod || ''}
+            onChange={(e) => handleFilterChange('paymentMethod', e.target.value)}
+            className={selectClassName}
+          >
+            <option value="">All Methods</option>
+            <option value="cash">Cash</option>
+            <option value="check">Check</option>
+            <option value="check_deposit">Check Deposit</option>
+            <option value="credit_card">Credit Card</option>
+            <option value="debit_card">Debit Card</option>
+            <option value="bank_transfer">Bank Transfer</option>
+            <option value="ach">ACH</option>
+            <option value="zelle">Zelle</option>
+            <option value="paypal">PayPal</option>
+            <option value="venmo">Venmo</option>
+            <option value="other">Other</option>
+            <option value="__none">Not Set</option>
+          </select>
+        </div>
+
+        {/* Payee Filter */}
+        <div className="flex-1 min-w-0">
+          <select
+            value={filters.payee || filters.payeeId || ''}
+            onChange={(e) => handleFilterChange('payee', e.target.value)}
+            className={selectClassName}
+          >
+            <option value="">All Payees</option>
+            <option value="__no_payee">No Payee</option>
+            {payees.map(p => (
+              <option key={p.id || p} value={p.id || p}>{p.name || p}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Vendor Filter */}
+        <div className="flex-1 min-w-0">
+          <select
+            value={filters.vendor || filters.vendorId || ''}
+            onChange={(e) => handleFilterChange('vendor', e.target.value)}
+            className={selectClassName}
+          >
+            <option value="">All Vendors</option>
+            <option value="__no_vendor">No Vendor</option>
+            {vendors.map(v => (
+              <option key={v.id || v} value={v.id || v}>{v.name || v}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Start Date */}
+        <div className="flex-shrink-0" style={{ width: '140px' }}>
+          <input
+            type="date"
+            value={localDateRange.start}
+            onChange={(e) => handleDateRangeChange('start', e.target.value)}
+            className={inputClassName}
+            title="Start Date"
+          />
+        </div>
+
+        {/* End Date */}
+        <div className="flex-shrink-0" style={{ width: '140px' }}>
+          <input
+            type="date"
+            value={localDateRange.end}
+            onChange={(e) => handleDateRangeChange('end', e.target.value)}
+            className={inputClassName}
+            title="End Date"
+          />
+        </div>
+      </div>
+
       {/* Advanced Filters */}
       {showAdvanced && showAdvancedFilters && (
-        <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4 space-y-4">
-          <h4 className="text-sm font-medium text-gray-900 dark:text-white">Advanced Filters</h4>
+        <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3 space-y-3">
+          <div className="flex items-center justify-between">
+            <h4 className="text-sm font-medium text-gray-900 dark:text-white">Advanced Filters</h4>
+            {/* Quick Date Presets */}
+            <div className="flex items-center gap-1">
+              <span className="text-xs text-gray-500 dark:text-gray-400">Quick:</span>
+              {[
+                { key: 'week', label: '7d' },
+                { key: 'month', label: '30d' },
+                { key: 'quarter', label: '90d' },
+                { key: 'year', label: 'YTD' },
+                { key: 'lastyear', label: 'Last Yr' }
+              ].map(preset => (
+                <button
+                  key={preset.key}
+                  onClick={() => handleDatePreset(preset.key)}
+                  className="px-1.5 py-0.5 text-xs bg-gray-100 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-500 transition-colors"
+                >
+                  {preset.label}
+                </button>
+              ))}
+            </div>
+          </div>
           
-          {/* Row 1: Payee, Vendor, Income Source */}
-          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-3">
-            {/* Payee Filter */}
-            <div>
-              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
-                Payee <span className="text-gray-400">(who you pay)</span>
-              </label>
-              <select
-                value={filters.payee || filters.payeeId || ''}
-                onChange={(e) => handleFilterChange('payee', e.target.value)}
-                className={selectClassName}
-              >
-                <option value="">All Payees</option>
-                <option value="__no_payee">No Payee</option>
-                {payees.map(p => (
-                  <option key={p.id || p} value={p.id || p}>{p.name || p}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* Vendor Filter */}
-            <div>
-              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
-                Vendor <span className="text-gray-400">(purchase from)</span>
-              </label>
-              <select
-                value={filters.vendor || filters.vendorId || ''}
-                onChange={(e) => handleFilterChange('vendor', e.target.value)}
-                className={selectClassName}
-              >
-                <option value="">All Vendors</option>
-                <option value="__no_vendor">No Vendor</option>
-                {vendors.map(v => (
-                  <option key={v.id || v} value={v.id || v}>{v.name || v}</option>
-                ))}
-              </select>
-            </div>
-
+          {/* Row 1: Income Source, CSV Import, Amount Range */}
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2">
             {/* Income Source (for income variant) */}
             {(variant === 'income' || variant === 'all') && incomeSources.length > 0 && (
               <div>
@@ -481,27 +531,27 @@ const TransactionFilterPanel = ({
                 </select>
               </div>
             )}
-          </div>
 
-          {/* Row 2: Amount Range */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+            {/* Min Amount */}
             <div>
               <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
-                Min Amount ($)
+                Min Amount
               </label>
               <input
                 type="number"
                 step="0.01"
                 min="0"
-                placeholder="0.00"
+                placeholder="$0"
                 value={filters.amountRange?.min || ''}
                 onChange={(e) => handleAmountRangeChange('min', e.target.value)}
                 className={inputClassName}
               />
             </div>
+
+            {/* Max Amount */}
             <div>
               <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
-                Max Amount ($)
+                Max Amount
               </label>
               <input
                 type="number"
@@ -513,57 +563,11 @@ const TransactionFilterPanel = ({
                 className={inputClassName}
               />
             </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
-                Start Date
-              </label>
-              <input
-                type="date"
-                value={localDateRange.start}
-                onChange={(e) => handleDateRangeChange('start', e.target.value)}
-                className={inputClassName}
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
-                End Date
-              </label>
-              <input
-                type="date"
-                value={localDateRange.end}
-                onChange={(e) => handleDateRangeChange('end', e.target.value)}
-                className={inputClassName}
-              />
-            </div>
-          </div>
 
-          {/* Row 3: Quick Date Presets */}
-          <div className="flex flex-wrap gap-2">
-            <span className="text-xs text-gray-500 dark:text-gray-400 py-1">Quick dates:</span>
-            {[
-              { key: 'today', label: 'Today' },
-              { key: 'week', label: 'Last 7 Days' },
-              { key: 'month', label: 'Last 30 Days' },
-              { key: 'quarter', label: 'Last 90 Days' },
-              { key: 'year', label: 'This Year' },
-              { key: 'lastyear', label: 'Last Year' }
-            ].map(preset => (
-              <button
-                key={preset.key}
-                onClick={() => handleDatePreset(preset.key)}
-                className="px-2 py-1 text-xs bg-gray-100 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-500 transition-colors"
-              >
-                {preset.label}
-              </button>
-            ))}
-          </div>
-
-          {/* Row 4: Boolean Filters */}
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
-            {/* Has Category */}
+            {/* Category Status */}
             <div>
               <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
-                Category Status
+                Category
               </label>
               <select
                 value={filters.hasCategory || ''}
@@ -587,11 +591,14 @@ const TransactionFilterPanel = ({
                 className={selectClassName}
               >
                 <option value="">All</option>
-                <option value="with">With Notes</option>
-                <option value="without">Without Notes</option>
+                <option value="with">Has Notes</option>
+                <option value="without">No Notes</option>
               </select>
             </div>
+          </div>
 
+          {/* Row 2: Boolean Filters */}
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2">
             {/* 1099 Status (expense variant) */}
             {(variant === 'expense' || variant === 'all') && (
               <div>
@@ -604,7 +611,7 @@ const TransactionFilterPanel = ({
                   className={selectClassName}
                 >
                   <option value="">All</option>
-                  <option value="yes">1099 Payment</option>
+                  <option value="yes">1099</option>
                   <option value="no">Not 1099</option>
                 </select>
               </div>
@@ -613,7 +620,7 @@ const TransactionFilterPanel = ({
             {/* Reconciliation */}
             <div>
               <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
-                Reconciliation
+                Reconciled
               </label>
               <select
                 value={filters.isReconciled || ''}
@@ -621,15 +628,15 @@ const TransactionFilterPanel = ({
                 className={selectClassName}
               >
                 <option value="">All</option>
-                <option value="yes">Reconciled</option>
-                <option value="no">Not Reconciled</option>
+                <option value="yes">Yes</option>
+                <option value="no">No</option>
               </select>
             </div>
 
             {/* Review Status */}
             <div>
               <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
-                Review Status
+                Reviewed
               </label>
               <select
                 value={filters.isReviewed || ''}
@@ -637,15 +644,15 @@ const TransactionFilterPanel = ({
                 className={selectClassName}
               >
                 <option value="">All</option>
-                <option value="yes">Reviewed</option>
-                <option value="no">Not Reviewed</option>
+                <option value="yes">Yes</option>
+                <option value="no">No</option>
               </select>
             </div>
 
             {/* Tax Deductible */}
             <div>
               <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
-                Tax Deductible
+                Deductible
               </label>
               <select
                 value={filters.taxDeductible || ''}
@@ -653,8 +660,8 @@ const TransactionFilterPanel = ({
                 className={selectClassName}
               >
                 <option value="">All</option>
-                <option value="yes">Deductible</option>
-                <option value="no">Not Deductible</option>
+                <option value="yes">Yes</option>
+                <option value="no">No</option>
               </select>
             </div>
 
@@ -669,15 +676,15 @@ const TransactionFilterPanel = ({
                 className={selectClassName}
               >
                 <option value="">All</option>
-                <option value="yes">Has Receipt</option>
-                <option value="no">No Receipt</option>
+                <option value="yes">Has</option>
+                <option value="no">None</option>
               </select>
             </div>
 
             {/* Has Check Number */}
             <div>
               <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
-                Check Number
+                Check #
               </label>
               <select
                 value={filters.hasCheckNumber || ''}
@@ -685,33 +692,32 @@ const TransactionFilterPanel = ({
                 className={selectClassName}
               >
                 <option value="">All</option>
-                <option value="yes">Has Check #</option>
-                <option value="no">No Check #</option>
+                <option value="yes">Has</option>
+                <option value="no">None</option>
               </select>
             </div>
 
             {/* Transaction Source */}
             <div>
               <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
-                Source
+                Source Type
               </label>
               <select
                 value={filters.source || ''}
                 onChange={(e) => handleFilterChange('source', e.target.value)}
                 className={selectClassName}
               >
-                <option value="">All Sources</option>
-                <option value="manual">Manual Entry</option>
-                <option value="pdf_import">PDF Import</option>
-                <option value="csv_import">CSV Import</option>
-                <option value="bank_sync">Bank Sync</option>
+                <option value="">All</option>
+                <option value="manual">Manual</option>
+                <option value="pdf_import">PDF</option>
+                <option value="csv_import">CSV</option>
               </select>
             </div>
 
             {/* Has PDF/Source File */}
             <div>
               <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
-                PDF/File
+                Has File
               </label>
               <select
                 value={filters.hasPdfSource || ''}
@@ -719,8 +725,8 @@ const TransactionFilterPanel = ({
                 className={selectClassName}
               >
                 <option value="">All</option>
-                <option value="yes">Has PDF/File</option>
-                <option value="no">No PDF/File</option>
+                <option value="yes">Yes</option>
+                <option value="no">No</option>
               </select>
             </div>
           </div>
