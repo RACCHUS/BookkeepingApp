@@ -14,7 +14,7 @@ const corsHeaders = {
 
 // Gemini API configuration (Free Tier limits)
 const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent";
-const MAX_BATCH_SIZE = 50; // Process up to 50 transactions per batch
+const MAX_BATCH_SIZE = 200; // Process up to 200 transactions per batch (safe within 32K token limit)
 const RATE_LIMIT_DELAY = 4000; // 4 seconds between batches (15 RPM = 4s)
 
 // IRS Schedule C Categories for classification

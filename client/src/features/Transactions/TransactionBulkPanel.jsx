@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   XMarkIcon,
   ChevronDownIcon,
@@ -6,9 +6,11 @@ import {
   CheckIcon,
   PencilSquareIcon,
   TrashIcon,
-  ArrowPathIcon
+  ArrowPathIcon,
+  SparklesIcon
 } from '@heroicons/react/24/outline';
 import { CATEGORY_GROUPS, PAYMENT_METHODS } from '@shared/constants/categories';
+import { ClassifyWithAIButton } from '../../components/classification';
 
 // Payment method display labels
 const PAYMENT_METHOD_LABELS = {
@@ -119,6 +121,13 @@ const TransactionBulkPanel = ({
   const incomeCount = selectedTransactionsData.filter(t => t.type === 'income' || t.amount > 0).length;
   const expenseCount = selectedTransactionsData.filter(t => t.type === 'expense' || t.amount < 0).length;
   const categorizedCount = selectedTransactionsData.filter(t => t.category).length;
+  
+  // Get uncategorized transactions for AI classification
+  const uncategorizedTransactions = useMemo(() => 
+    selectedTransactionsData.filter(t => !t.category),
+    [selectedTransactionsData]
+  );
+  const uncategorizedCount = uncategorizedTransactions.length;
 
   const handleFieldToggle = (field) => {
     setFieldsToUpdate(prev => ({
@@ -886,14 +895,26 @@ const TransactionBulkPanel = ({
 
           {/* Action Buttons */}
           <div className="flex items-center justify-between pt-4 border-t border-blue-200 dark:border-blue-700">
-            <button
-              onClick={onBulkDelete}
-              disabled={isUpdating}
-              className="flex items-center gap-2 px-4 py-2 bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 rounded-lg hover:bg-red-200 dark:hover:bg-red-900/50 disabled:opacity-50 transition-colors"
-            >
-              <TrashIcon className="h-4 w-4" />
-              Delete {selectedCount} Transaction{selectedCount !== 1 ? 's' : ''}
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={onBulkDelete}
+                disabled={isUpdating}
+                className="flex items-center gap-2 px-4 py-2 bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 rounded-lg hover:bg-red-200 dark:hover:bg-red-900/50 disabled:opacity-50 transition-colors"
+              >
+                <TrashIcon className="h-4 w-4" />
+                Delete {selectedCount}
+              </button>
+              
+              {/* AI Classify Button for uncategorized */}
+              {uncategorizedCount > 0 && (
+                <ClassifyWithAIButton
+                  transactions={uncategorizedTransactions}
+                  variant="secondary"
+                  size="md"
+                  saveRules={true}
+                />
+              )}
+            </div>
 
             <div className="flex items-center gap-3">
               {enabledFieldsCount > 0 && (

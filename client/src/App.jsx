@@ -19,6 +19,7 @@ import Dashboard from './features/Dashboard/Dashboard';
 import TransactionList from './features/Transactions/TransactionList';
 import PDFUpload from './features/PDFUpload/PDFUpload';
 import Classification from './features/Classification/Classification';
+import RulesManagement from './features/Classification/RulesManagement';
 import Reports from './features/Reports/Reports';
 import MonthlyReports from './features/Reports/MonthlyReports';
 import CompanyManagement from './features/Companies/CompanyManagement';
@@ -157,6 +158,7 @@ function App() {
                   <Route path="upload" element={<PDFUpload />} />
                   <Route path="uploads" element={<UploadManagement />} />
                   <Route path="classification" element={<Classification />} />
+                  <Route path="classification/rules" element={<RulesManagement />} />
                   <Route path="reports" element={<Reports />} />
                   <Route path="reports/monthly" element={<MonthlyReports />} />
                   <Route path="companies" element={<CompanyManagement />} />

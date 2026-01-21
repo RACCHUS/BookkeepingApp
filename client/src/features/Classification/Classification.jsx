@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import api from '../../services/api';
 import { ALL_TRANSACTIONS_KEY } from '../../hooks/useAllTransactions';
 import { IRS_CATEGORIES } from '@shared/constants/categories';
 import { LoadingSpinner } from '../../components/ui';
+import { AdjustmentsHorizontalIcon } from '@heroicons/react/24/outline';
 
 // React Query cache settings to prevent excessive Firestore reads
 const QUERY_CONFIG = {
@@ -165,6 +167,13 @@ const Classification = () => {
             Manage rule-based transaction categorization. Rules map keywords to IRS categories. If no rule matches, the category is left empty.
           </p>
         </div>
+        <Link
+          to="/classification/rules"
+          className="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+        >
+          <AdjustmentsHorizontalIcon className="w-5 h-5" />
+          Manage Rules
+        </Link>
       </div>
 
       {/* Create New Rule */}

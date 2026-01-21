@@ -5,6 +5,7 @@
  */
 
 export { default as ManualReviewQueue } from './ManualReviewQueue';
+export { default as RulesManagement } from './RulesManagement';
 
 // Re-export hooks for convenience
 export { 
@@ -16,6 +17,12 @@ export {
   useDeleteRule,
   useUnclassifiedCount,
 } from '../../hooks/useClassification';
+
+// Re-export Gemini classification hook
+export { 
+  useGeminiClassification,
+  useUnclassifiedTransactions,
+} from '../../hooks/useGeminiClassification';
 
 // Re-export service functions
 export {

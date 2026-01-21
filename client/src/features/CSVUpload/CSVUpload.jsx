@@ -12,6 +12,7 @@ import api from '../../services/api'; // Use default export (hybridApiClient)
 import { ALL_TRANSACTIONS_KEY } from '../../hooks/useAllTransactions';
 import { LoadingSpinner } from '../../components/ui';
 import { CompanySelector } from '../../components/common';
+import { ClassifyWithAIButton } from '../../components/classification';
 import {
   DocumentTextIcon,
   CheckCircleIcon,
@@ -19,6 +20,7 @@ import {
   CloudArrowUpIcon,
   ArrowPathIcon,
   XMarkIcon,
+  SparklesIcon,
 } from '@heroicons/react/24/outline';
 
 /**
@@ -36,6 +38,7 @@ const CSVUpload = () => {
   const [uploadState, setUploadState] = useState('idle'); // idle, uploading, preview, importing, success, error
   const [previewData, setPreviewData] = useState(null);
   const [skipDuplicates, setSkipDuplicates] = useState(true);
+  const [importResult, setImportResult] = useState(null); // Track import results for AI classification
 
   // Fetch supported banks
   const { data: banksData } = useQuery({
@@ -90,7 +93,17 @@ const CSVUpload = () => {
       if (response.success) {
         setUploadState('success');
         
-        const { imported, duplicates, classified } = response.data;
+        const { imported, duplicates, classified, unclassified, unclassifiedTransactions } = response.data;
+        
+        // Store result for AI classification
+        setImportResult({
+          imported,
+          duplicates,
+          classified,
+          unclassified: unclassified || (imported - (classified || 0)),
+          unclassifiedTransactions: unclassifiedTransactions || [],
+        });
+        
         let message = `Successfully imported ${imported} transactions`;
         if (duplicates > 0) {
           message += ` (${duplicates} duplicates skipped)`;
@@ -150,6 +163,7 @@ const CSVUpload = () => {
   const resetState = () => {
     setUploadState('idle');
     setPreviewData(null);
+    setImportResult(null);
   };
 
   // Handle confirm import
@@ -387,14 +401,83 @@ const CSVUpload = () => {
 
       {/* Success State */}
       {uploadState === 'success' && (
-        <div className="bg-white dark:bg-gray-800 rounded-lg p-8 border border-gray-200 dark:border-gray-700 text-center">
-          <CheckCircleIcon className="mx-auto h-16 w-16 text-green-500" />
-          <h3 className="mt-4 text-lg font-medium text-gray-900 dark:text-white">
-            Import Complete!
-          </h3>
-          <p className="mt-2 text-gray-500 dark:text-gray-400">
-            Your transactions have been imported successfully.
-          </p>
+        <div className="bg-white dark:bg-gray-800 rounded-lg p-8 border border-gray-200 dark:border-gray-700">
+          <div className="text-center">
+            <CheckCircleIcon className="mx-auto h-16 w-16 text-green-500" />
+            <h3 className="mt-4 text-lg font-medium text-gray-900 dark:text-white">
+              Import Complete!
+            </h3>
+            <p className="mt-2 text-gray-500 dark:text-gray-400">
+              {importResult?.imported || 0} transactions imported successfully.
+            </p>
+          </div>
+
+          {/* Import Stats */}
+          {importResult && (
+            <div className="mt-6 grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 text-center">
+                <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                  {importResult.imported}
+                </div>
+                <div className="text-sm text-blue-700 dark:text-blue-300">Imported</div>
+              </div>
+              {importResult.duplicates > 0 && (
+                <div className="bg-yellow-50 dark:bg-yellow-900/20 rounded-lg p-4 text-center">
+                  <div className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">
+                    {importResult.duplicates}
+                  </div>
+                  <div className="text-sm text-yellow-700 dark:text-yellow-300">Duplicates</div>
+                </div>
+              )}
+              <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4 text-center">
+                <div className="text-2xl font-bold text-green-600 dark:text-green-400">
+                  {importResult.classified || 0}
+                </div>
+                <div className="text-sm text-green-700 dark:text-green-300">Classified</div>
+              </div>
+              {importResult.unclassified > 0 && (
+                <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-4 text-center">
+                  <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
+                    {importResult.unclassified}
+                  </div>
+                  <div className="text-sm text-purple-700 dark:text-purple-300">Needs Review</div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* AI Classification Prompt */}
+          {importResult?.unclassified > 0 && (
+            <div className="mt-6 p-4 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-700 rounded-lg">
+              <div className="flex items-start gap-3">
+                <SparklesIcon className="w-6 h-6 text-purple-600 dark:text-purple-400 flex-shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <h4 className="font-medium text-purple-900 dark:text-purple-200">
+                    {importResult.unclassified} transactions need classification
+                  </h4>
+                  <p className="mt-1 text-sm text-purple-700 dark:text-purple-300">
+                    Use AI to automatically classify these transactions into IRS tax categories.
+                    High-confidence results will be saved as rules for future imports.
+                  </p>
+                  <div className="mt-3">
+                    <ClassifyWithAIButton
+                      transactions={importResult.unclassifiedTransactions || []}
+                      variant="primary"
+                      size="md"
+                      saveRules={true}
+                      onComplete={() => {
+                        // Refresh data after classification
+                        queryClient.invalidateQueries({ queryKey: ['transactions'] });
+                        toast.success('AI classification complete!');
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Action Buttons */}
           <div className="mt-6 flex justify-center space-x-4">
             <button
               onClick={handleViewTransactions}
