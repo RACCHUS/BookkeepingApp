@@ -23,18 +23,10 @@ const VendorManagement = () => {
     queryFn: () => api.payees.getVendors()
   });
 
-  // Fetch checks without vendors for badge count (no payee AND no vendor = unassigned)
+  // Fetch checks without vendors for badge count - use same API as CheckVendorAssignment
   const { data: checksData } = useQuery({
-    queryKey: ['checks-without-vendors'],
-    queryFn: async () => {
-      const result = await api.transactions.getAll({ sectionCode: 'checks', limit: 200 });
-      const transactions = result?.data?.transactions || [];
-      // Filter to those without vendor AND without payee
-      return transactions.filter(t => 
-        (!t.vendorId && !t.vendorName) &&
-        (!t.payee || t.payee.trim() === '' || t.payee === 'Unknown Payee')
-      );
-    }
+    queryKey: ['unassigned-check-vendor-transactions'],
+    queryFn: () => api.payees.getTransactionsWithoutVendors({ paymentMethod: 'check' })
   });
 
   // Fetch receipts without vendors for badge count
@@ -51,7 +43,9 @@ const VendorManagement = () => {
 
   const vendorsRaw = vendorsData?.data?.vendors || vendorsData?.vendors || vendorsData?.data?.payees || vendorsData?.payees;
   const vendors = Array.isArray(vendorsRaw) ? vendorsRaw : [];
-  const unassignedCheckCount = Array.isArray(checksData) ? checksData.length : 0;
+  // checksData comes from getTransactionsWithoutVendors which returns { transactions: [...] }
+  const unassignedChecks = checksData?.transactions || checksData || [];
+  const unassignedCheckCount = Array.isArray(unassignedChecks) ? unassignedChecks.length : 0;
   const unassignedReceiptCount = Array.isArray(receiptsData) ? receiptsData.length : 0;
 
   const handleCreateVendor = () => {
