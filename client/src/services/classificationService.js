@@ -1,0 +1,575 @@
+/**
+ * Transaction Classification Service
+ * 
+ * Three-layer classification system:
+ * 1. Local Rules - User-defined patterns (highest priority)
+ * 2. Default Vendors - Built-in vendor mappings
+ * 3. Gemini API - AI classification (batched, free tier)
+ * 
+ * Unclassified transactions go to Manual Review Queue
+ */
+
+import Fuse from 'fuse.js';
+import { supabase } from './supabase';
+import { DEFAULT_VENDORS, TRANSACTION_PREFIXES, TRANSACTION_SUFFIXES } from '../../../shared/constants/defaultVendors';
+
+// Classification sources for tracking
+export const CLASSIFICATION_SOURCE = {
+  USER_RULE: 'user_rule',
+  DEFAULT_VENDOR: 'default_vendor',
+  GEMINI_API: 'gemini_api',
+  MANUAL: 'manual',
+  UNCLASSIFIED: 'unclassified',
+};
+
+// Confidence thresholds
+const CONFIDENCE = {
+  USER_RULE_EXACT: 1.0,
+  USER_RULE_FUZZY: 0.85,
+  DEFAULT_VENDOR_EXACT: 0.9,
+  DEFAULT_VENDOR_FUZZY: 0.75,
+  GEMINI_HIGH: 0.8,
+  GEMINI_LOW: 0.5,
+  MANUAL_REVIEW_THRESHOLD: 0.5,
+};
+
+/**
+ * Clean transaction description for better matching
+ * @param {string} description - Raw transaction description
+ * @returns {string} - Cleaned description
+ */
+export function cleanDescription(description) {
+  if (!description || typeof description !== 'string') {
+    return '';
+  }
+
+  let cleaned = description.toUpperCase().trim();
+
+  // Remove common prefixes
+  for (const prefix of TRANSACTION_PREFIXES) {
+    if (cleaned.startsWith(prefix)) {
+      cleaned = cleaned.substring(prefix.length).trim();
+    }
+  }
+
+  // Remove common suffixes using regex patterns
+  for (const suffix of TRANSACTION_SUFFIXES) {
+    cleaned = cleaned.replace(suffix, '').trim();
+  }
+
+  // Remove extra whitespace
+  cleaned = cleaned.replace(/\s+/g, ' ');
+
+  return cleaned;
+}
+
+/**
+ * Extract likely vendor name from transaction description
+ * @param {string} description - Transaction description
+ * @returns {string} - Extracted vendor name
+ */
+export function extractVendor(description) {
+  const cleaned = cleanDescription(description);
+  
+  if (!cleaned) {
+    return '';
+  }
+
+  // Take first 2-3 words as vendor name (most bank descriptions start with vendor)
+  const words = cleaned.split(' ');
+  const vendorWords = words.slice(0, Math.min(3, words.length));
+  
+  return vendorWords.join(' ').trim();
+}
+
+/**
+ * Create Fuse.js search index for user rules
+ * @param {Array} rules - Array of classification rules
+ * @returns {Fuse} - Configured Fuse instance
+ */
+function createRulesIndex(rules) {
+  return new Fuse(rules, {
+    keys: ['pattern', 'vendor_name'],
+    threshold: 0.3,
+    ignoreLocation: true,
+    includeScore: true,
+  });
+}
+
+/**
+ * Create Fuse.js search index for default vendors
+ * @returns {Fuse} - Configured Fuse instance
+ */
+function createDefaultVendorsIndex() {
+  const vendorEntries = Object.entries(DEFAULT_VENDORS).map(([pattern, data]) => ({
+    pattern,
+    ...data,
+  }));
+
+  return new Fuse(vendorEntries, {
+    keys: ['pattern', 'vendor'],
+    threshold: 0.3,
+    ignoreLocation: true,
+    includeScore: true,
+  });
+}
+
+/**
+ * Fetch user's classification rules from database
+ * @param {string} userId - User ID
+ * @returns {Promise<Array>} - Array of rules
+ */
+export async function fetchUserRules(userId) {
+  try {
+    const { data, error } = await supabase
+      .from('classification_rules')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('is_active', true)
+      .order('match_count', { ascending: false }); // Prioritize frequently used rules
+
+    if (error) {
+      console.error('Error fetching user rules:', error);
+      return [];
+    }
+
+    return data || [];
+  } catch (err) {
+    console.error('Failed to fetch user rules:', err);
+    return [];
+  }
+}
+
+/**
+ * Match transaction against user rules
+ * @param {string} description - Transaction description
+ * @param {Array} rules - User's classification rules
+ * @returns {Object|null} - Match result or null
+ */
+function matchUserRules(description, rules) {
+  if (!rules || rules.length === 0) {
+    return null;
+  }
+
+  const cleaned = cleanDescription(description);
+  const extracted = extractVendor(description);
+
+  // First try exact match on pattern
+  for (const rule of rules) {
+    const pattern = rule.pattern.toUpperCase();
+    
+    if (rule.pattern_type === 'exact' && cleaned === pattern) {
+      return {
+        category: rule.category,
+        subcategory: rule.subcategory,
+        vendor: rule.vendor_name,
+        confidence: CONFIDENCE.USER_RULE_EXACT,
+        source: CLASSIFICATION_SOURCE.USER_RULE,
+        ruleId: rule.id,
+      };
+    }
+
+    if (rule.pattern_type === 'contains' && cleaned.includes(pattern)) {
+      return {
+        category: rule.category,
+        subcategory: rule.subcategory,
+        vendor: rule.vendor_name,
+        confidence: CONFIDENCE.USER_RULE_EXACT,
+        source: CLASSIFICATION_SOURCE.USER_RULE,
+        ruleId: rule.id,
+      };
+    }
+
+    if (rule.pattern_type === 'starts_with' && cleaned.startsWith(pattern)) {
+      return {
+        category: rule.category,
+        subcategory: rule.subcategory,
+        vendor: rule.vendor_name,
+        confidence: CONFIDENCE.USER_RULE_EXACT,
+        source: CLASSIFICATION_SOURCE.USER_RULE,
+        ruleId: rule.id,
+      };
+    }
+  }
+
+  // Then try fuzzy match
+  const fuseIndex = createRulesIndex(rules);
+  const results = fuseIndex.search(extracted);
+
+  if (results.length > 0 && results[0].score < 0.3) {
+    const match = results[0].item;
+    return {
+      category: match.category,
+      subcategory: match.subcategory,
+      vendor: match.vendor_name,
+      confidence: CONFIDENCE.USER_RULE_FUZZY * (1 - results[0].score),
+      source: CLASSIFICATION_SOURCE.USER_RULE,
+      ruleId: match.id,
+    };
+  }
+
+  return null;
+}
+
+/**
+ * Match transaction against default vendor mappings
+ * @param {string} description - Transaction description
+ * @returns {Object|null} - Match result or null
+ */
+function matchDefaultVendors(description) {
+  const cleaned = cleanDescription(description);
+  const extracted = extractVendor(description);
+
+  // Sort patterns by length (longest first) for more specific matching
+  const sortedPatterns = Object.entries(DEFAULT_VENDORS)
+    .sort(([a], [b]) => b.length - a.length);
+
+  // First try exact match (longer patterns checked first)
+  for (const [pattern, data] of sortedPatterns) {
+    if (cleaned.includes(pattern) || extracted.includes(pattern)) {
+      return {
+        category: data.category,
+        subcategory: data.subcategory,
+        vendor: data.vendor,
+        confidence: CONFIDENCE.DEFAULT_VENDOR_EXACT,
+        source: CLASSIFICATION_SOURCE.DEFAULT_VENDOR,
+      };
+    }
+  }
+
+  // Then try fuzzy match
+  const fuseIndex = createDefaultVendorsIndex();
+  const results = fuseIndex.search(extracted);
+
+  if (results.length > 0 && results[0].score < 0.3) {
+    const match = results[0].item;
+    return {
+      category: match.category,
+      subcategory: match.subcategory,
+      vendor: match.vendor,
+      confidence: CONFIDENCE.DEFAULT_VENDOR_FUZZY * (1 - results[0].score),
+      source: CLASSIFICATION_SOURCE.DEFAULT_VENDOR,
+    };
+  }
+
+  return null;
+}
+
+/**
+ * Classify a single transaction using local rules
+ * @param {Object} transaction - Transaction object with description
+ * @param {Array} userRules - User's classification rules
+ * @returns {Object} - Classification result
+ */
+export function classifyLocal(transaction, userRules = []) {
+  const description = transaction.description || transaction.payee || '';
+
+  if (!description) {
+    return {
+      ...transaction,
+      classification: {
+        category: null,
+        subcategory: null,
+        vendor: null,
+        confidence: 0,
+        source: CLASSIFICATION_SOURCE.UNCLASSIFIED,
+        needsReview: true,
+      },
+    };
+  }
+
+  // Layer 1: User Rules
+  const userMatch = matchUserRules(description, userRules);
+  if (userMatch) {
+    return {
+      ...transaction,
+      classification: {
+        ...userMatch,
+        needsReview: userMatch.confidence < CONFIDENCE.MANUAL_REVIEW_THRESHOLD,
+      },
+    };
+  }
+
+  // Layer 2: Default Vendors
+  const defaultMatch = matchDefaultVendors(description);
+  if (defaultMatch) {
+    return {
+      ...transaction,
+      classification: {
+        ...defaultMatch,
+        needsReview: defaultMatch.confidence < CONFIDENCE.MANUAL_REVIEW_THRESHOLD,
+      },
+    };
+  }
+
+  // No local match - needs Gemini or manual review
+  return {
+    ...transaction,
+    classification: {
+      category: null,
+      subcategory: null,
+      vendor: extractVendor(description),
+      confidence: 0,
+      source: CLASSIFICATION_SOURCE.UNCLASSIFIED,
+      needsReview: true,
+    },
+  };
+}
+
+/**
+ * Classify multiple transactions locally (batch)
+ * @param {Array} transactions - Array of transactions
+ * @param {Array} userRules - User's classification rules
+ * @returns {Object} - { classified: [], unclassified: [], stats: {} }
+ */
+export function batchClassifyLocal(transactions, userRules = []) {
+  const classified = [];
+  const unclassified = [];
+  const stats = {
+    total: transactions.length,
+    classifiedByUserRules: 0,
+    classifiedByDefaultVendors: 0,
+    unclassified: 0,
+  };
+
+  for (const transaction of transactions) {
+    const result = classifyLocal(transaction, userRules);
+    
+    if (result.classification.source === CLASSIFICATION_SOURCE.USER_RULE) {
+      stats.classifiedByUserRules++;
+      classified.push(result);
+    } else if (result.classification.source === CLASSIFICATION_SOURCE.DEFAULT_VENDOR) {
+      stats.classifiedByDefaultVendors++;
+      classified.push(result);
+    } else {
+      stats.unclassified++;
+      unclassified.push(result);
+    }
+  }
+
+  return { classified, unclassified, stats };
+}
+
+/**
+ * Send unclassified transactions to Gemini API for classification
+ * @param {Array} transactions - Unclassified transactions
+ * @param {string} userId - User ID for rate limiting
+ * @returns {Promise<Array>} - Classified transactions
+ */
+export async function classifyWithGemini(transactions, userId) {
+  if (!transactions || transactions.length === 0) {
+    return [];
+  }
+
+  try {
+    // Call Supabase Edge Function
+    const { data, error } = await supabase.functions.invoke('classify-transactions', {
+      body: {
+        transactions: transactions.map(t => ({
+          id: t.id,
+          description: t.description || t.payee,
+          amount: t.amount,
+          date: t.date,
+        })),
+        userId,
+      },
+    });
+
+    if (error) {
+      console.error('Gemini classification error:', error);
+      // Return transactions with unclassified status
+      return transactions.map(t => ({
+        ...t,
+        classification: {
+          ...t.classification,
+          geminiError: error.message,
+        },
+      }));
+    }
+
+    // Merge Gemini results back into transactions
+    const resultMap = new Map(data.results.map(r => [r.id, r]));
+    
+    return transactions.map(t => {
+      const geminiResult = resultMap.get(t.id);
+      if (geminiResult && geminiResult.category) {
+        return {
+          ...t,
+          classification: {
+            category: geminiResult.category,
+            subcategory: geminiResult.subcategory,
+            vendor: geminiResult.vendor || t.classification?.vendor,
+            confidence: geminiResult.confidence || CONFIDENCE.GEMINI_LOW,
+            source: CLASSIFICATION_SOURCE.GEMINI_API,
+            needsReview: (geminiResult.confidence || 0) < CONFIDENCE.MANUAL_REVIEW_THRESHOLD,
+          },
+        };
+      }
+      return t;
+    });
+  } catch (err) {
+    console.error('Failed to call Gemini classification:', err);
+    return transactions.map(t => ({
+      ...t,
+      classification: {
+        ...t.classification,
+        geminiError: err.message,
+      },
+    }));
+  }
+}
+
+/**
+ * Full classification pipeline: Local → Gemini → Manual Queue
+ * @param {Array} transactions - Transactions to classify
+ * @param {string} userId - User ID
+ * @param {Object} options - { skipGemini: boolean }
+ * @returns {Promise<Object>} - Classification results
+ */
+export async function classifyTransactions(transactions, userId, options = {}) {
+  const { skipGemini = false } = options;
+
+  try {
+    // Fetch user rules
+    const userRules = await fetchUserRules(userId);
+
+    // Layer 1 & 2: Local classification
+    const localResults = batchClassifyLocal(transactions, userRules);
+
+    // If skipGemini or no unclassified, return local results
+    if (skipGemini || localResults.unclassified.length === 0) {
+      return {
+        results: [...localResults.classified, ...localResults.unclassified],
+        stats: localResults.stats,
+        needsManualReview: localResults.unclassified,
+      };
+    }
+
+    // Layer 3: Gemini API for unclassified
+    const geminiResults = await classifyWithGemini(localResults.unclassified, userId);
+
+    // Split Gemini results
+    const geminiClassified = geminiResults.filter(
+      t => t.classification?.source === CLASSIFICATION_SOURCE.GEMINI_API
+    );
+    const stillUnclassified = geminiResults.filter(
+      t => t.classification?.source !== CLASSIFICATION_SOURCE.GEMINI_API
+    );
+
+    // Update stats
+    const finalStats = {
+      ...localResults.stats,
+      classifiedByGemini: geminiClassified.length,
+      unclassified: stillUnclassified.length,
+    };
+
+    return {
+      results: [...localResults.classified, ...geminiClassified, ...stillUnclassified],
+      stats: finalStats,
+      needsManualReview: stillUnclassified,
+    };
+  } catch (err) {
+    console.error('Classification pipeline error:', err);
+    throw new Error(`Classification failed: ${err.message}`);
+  }
+}
+
+/**
+ * Save a new classification rule (from manual classification)
+ * @param {Object} rule - Rule to save
+ * @param {string} userId - User ID
+ * @returns {Promise<Object>} - Saved rule
+ */
+export async function saveClassificationRule(rule, userId) {
+  try {
+    const { data, error } = await supabase
+      .from('classification_rules')
+      .insert({
+        user_id: userId,
+        pattern: rule.pattern.toUpperCase(),
+        pattern_type: rule.patternType || 'contains',
+        vendor_name: rule.vendor,
+        category: rule.category,
+        subcategory: rule.subcategory,
+        confidence: 1.0,
+        source: 'manual',
+        is_active: true,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error saving rule:', error);
+      throw error;
+    }
+
+    return data;
+  } catch (err) {
+    console.error('Failed to save classification rule:', err);
+    throw new Error(`Failed to save rule: ${err.message}`);
+  }
+}
+
+/**
+ * Increment match count for a rule (track usage)
+ * @param {string} ruleId - Rule ID
+ */
+export async function incrementRuleMatchCount(ruleId) {
+  try {
+    const { error } = await supabase.rpc('increment_rule_match_count', {
+      rule_id: ruleId,
+    });
+
+    if (error) {
+      console.error('Error incrementing rule count:', error);
+    }
+  } catch (err) {
+    console.error('Failed to increment rule match count:', err);
+  }
+}
+
+/**
+ * Get classification statistics for user
+ * @param {string} userId - User ID
+ * @returns {Promise<Object>} - Statistics
+ */
+export async function getClassificationStats(userId) {
+  try {
+    const { data: rules, error } = await supabase
+      .from('classification_rules')
+      .select('source, match_count')
+      .eq('user_id', userId);
+
+    if (error) {
+      throw error;
+    }
+
+    const stats = {
+      totalRules: rules?.length || 0,
+      totalMatches: rules?.reduce((sum, r) => sum + (r.match_count || 0), 0) || 0,
+      rulesBySource: {},
+    };
+
+    for (const rule of (rules || [])) {
+      stats.rulesBySource[rule.source] = (stats.rulesBySource[rule.source] || 0) + 1;
+    }
+
+    return stats;
+  } catch (err) {
+    console.error('Failed to get classification stats:', err);
+    return { totalRules: 0, totalMatches: 0, rulesBySource: {} };
+  }
+}
+
+export default {
+  classifyLocal,
+  batchClassifyLocal,
+  classifyWithGemini,
+  classifyTransactions,
+  saveClassificationRule,
+  fetchUserRules,
+  cleanDescription,
+  extractVendor,
+  getClassificationStats,
+  CLASSIFICATION_SOURCE,
+};

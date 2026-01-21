@@ -8,31 +8,31 @@
 import { supabase } from './supabase';
 import { auth } from './firebase';
 import { parseCSVFile, getSupportedBanks } from './csvParser';
+import { 
+  batchClassifyLocal, 
+  fetchUserRules, 
+  CLASSIFICATION_SOURCE 
+} from './classificationService';
 
 /**
- * Apply classification rules to transactions
+ * Apply classification rules to transactions using 3-layer system
+ * Layer 1: User Rules (from classification_rules table)
+ * Layer 2: Default Vendors (from defaultVendors.js)
+ * Layer 3: Gemini API (optional, called separately if needed)
+ * 
  * @param {string} userId - User ID
- * @param {string[]} transactionIds - Array of transaction IDs to classify (optional, if not provided classifies all uncategorized)
- * @returns {Promise<{classified: number, rules: number}>}
+ * @param {string[]} transactionIds - Array of transaction IDs to classify (optional)
+ * @returns {Promise<{classified: number, rules: number, unclassified: number}>}
  */
 const applyClassificationRules = async (userId, transactionIds = null) => {
   try {
-    // Fetch all active classification rules for the user
-    const { data: rules, error: rulesError } = await supabase
-      .from('classification_rules')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('is_active', true)
-      .order('priority', { ascending: false });
-
-    if (rulesError || !rules || rules.length === 0) {
-      return { classified: 0, rules: 0 };
-    }
+    // Fetch user's classification rules
+    const userRules = await fetchUserRules(userId);
 
     // Fetch transactions to classify
     let query = supabase
       .from('transactions')
-      .select('id, description, payee')
+      .select('id, description, payee, amount, date')
       .eq('user_id', userId)
       .or('category.is.null,category.eq.');
 
@@ -43,45 +43,56 @@ const applyClassificationRules = async (userId, transactionIds = null) => {
     const { data: transactions, error: txError } = await query;
 
     if (txError || !transactions || transactions.length === 0) {
-      return { classified: 0, rules: rules.length };
+      return { classified: 0, rules: userRules.length, unclassified: 0 };
     }
 
-    // Group transactions by matching rule
-    const updates = [];
-    
-    for (const tx of transactions) {
-      const searchText = `${tx.description || ''} ${tx.payee || ''}`.toLowerCase();
-      
-      // Find first matching rule (rules are sorted by priority)
-      for (const rule of rules) {
-        const keywords = rule.pattern ? rule.pattern.split(',').map(k => k.trim().toLowerCase()) : [];
-        const matches = keywords.some(keyword => searchText.includes(keyword));
-        
-        if (matches) {
-          updates.push({ id: tx.id, category: rule.category });
-          break; // Stop at first match (highest priority)
-        }
-      }
-    }
+    // Use 3-layer local classification (User Rules + Default Vendors)
+    const { classified, unclassified, stats } = batchClassifyLocal(transactions, userRules);
+
+    // Prepare batch updates
+    const updates = classified.map(tx => ({
+      id: tx.id,
+      category: tx.classification.category,
+      subcategory: tx.classification.subcategory,
+      vendor_name: tx.classification.vendor,
+      classification_source: tx.classification.source,
+      classification_confidence: tx.classification.confidence,
+    }));
 
     if (updates.length === 0) {
-      return { classified: 0, rules: rules.length };
+      return { 
+        classified: 0, 
+        rules: userRules.length, 
+        unclassified: transactions.length,
+        stats 
+      };
     }
 
     // Batch update transactions by category to minimize queries
     const updatesByCategory = {};
     for (const update of updates) {
-      if (!updatesByCategory[update.category]) {
-        updatesByCategory[update.category] = [];
+      const key = `${update.category}|${update.subcategory || ''}|${update.vendor_name || ''}|${update.classification_source}`;
+      if (!updatesByCategory[key]) {
+        updatesByCategory[key] = {
+          category: update.category,
+          subcategory: update.subcategory,
+          vendor_name: update.vendor_name,
+          classification_source: update.classification_source,
+          ids: [],
+        };
       }
-      updatesByCategory[update.category].push(update.id);
+      updatesByCategory[key].ids.push(update.id);
     }
 
-    for (const [category, ids] of Object.entries(updatesByCategory)) {
+    // Execute batch updates
+    for (const { category, subcategory, vendor_name, classification_source, ids } of Object.values(updatesByCategory)) {
       await supabase
         .from('transactions')
         .update({ 
           category,
+          subcategory: subcategory || null,
+          vendor_name: vendor_name || null,
+          classification_source,
           updated_at: new Date().toISOString(),
           last_modified_by: userId
         })
@@ -89,10 +100,41 @@ const applyClassificationRules = async (userId, transactionIds = null) => {
         .eq('user_id', userId);
     }
 
-    return { classified: updates.length, rules: rules.length };
+    // Increment match counts for user rules that were used
+    const usedRuleIds = classified
+      .filter(tx => tx.classification.source === CLASSIFICATION_SOURCE.USER_RULE && tx.classification.ruleId)
+      .map(tx => tx.classification.ruleId);
+
+    if (usedRuleIds.length > 0) {
+      // Batch increment (simple approach - individual increments would need RPC)
+      const uniqueRuleIds = [...new Set(usedRuleIds)];
+      for (const ruleId of uniqueRuleIds) {
+        const count = usedRuleIds.filter(id => id === ruleId).length;
+        // Note: This could be optimized with an RPC function
+        const { data: rule } = await supabase
+          .from('classification_rules')
+          .select('match_count')
+          .eq('id', ruleId)
+          .single();
+        
+        if (rule) {
+          await supabase
+            .from('classification_rules')
+            .update({ match_count: (rule.match_count || 0) + count })
+            .eq('id', ruleId);
+        }
+      }
+    }
+
+    return { 
+      classified: classified.length, 
+      rules: userRules.length, 
+      unclassified: unclassified.length,
+      stats 
+    };
   } catch (error) {
     console.error('Error applying classification rules:', error);
-    return { classified: 0, rules: 0, error: error.message };
+    return { classified: 0, rules: 0, unclassified: 0, error: error.message };
   }
 };
 
