@@ -53,11 +53,10 @@ const VendorManagement = () => {
   const unassignedCheckCount = Array.isArray(unassignedChecks) ? unassignedChecks.length : 0;
   const unassignedReceiptCount = Array.isArray(receiptsData) ? receiptsData.length : 0;
   
-  // Calculate unassigned expense count (excludes checks and receipts)
+  // Calculate unassigned expense count (excludes checks only)
   const unassignedExpenseCount = expenseTransactions.filter(tx => {
     const isCheck = tx.paymentMethod === 'check' || tx.sectionCode === 'checks';
-    const hasReceipt = !!tx.receiptId;
-    if (isCheck || hasReceipt) return false;
+    if (isCheck) return false;
     return !tx.vendorId && !tx.vendorName;
   }).length;
 
