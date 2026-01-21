@@ -152,12 +152,27 @@ export function useAllTransactions(options = {}) {
   // Memoized filtered arrays for common use cases
   const incomeTransactions = useMemo(() => {
     if (!query.data) return [];
-    return query.data.filter(isIncomeTransaction);
+    const result = query.data.filter(isIncomeTransaction);
+    console.log(`[useAllTransactions] Income: ${result.length} of ${query.data.length} total`);
+    return result;
   }, [query.data]);
 
   const expenseTransactions = useMemo(() => {
     if (!query.data) return [];
-    return query.data.filter(isExpenseTransaction);
+    const result = query.data.filter(isExpenseTransaction);
+    console.log(`[useAllTransactions] Expenses: ${result.length} of ${query.data.length} total`);
+    // Debug: log a sample of what's being filtered out
+    if (query.data.length > 0 && result.length < query.data.length / 2) {
+      const sample = query.data.slice(0, 5);
+      console.log('[useAllTransactions] Sample transactions:', sample.map(tx => ({
+        id: tx.id,
+        type: tx.type,
+        amount: tx.amount,
+        sectionCode: tx.sectionCode,
+        description: tx.description?.substring(0, 30)
+      })));
+    }
+    return result;
   }, [query.data]);
 
   const unassignedCheckTransactions = useMemo(() => {

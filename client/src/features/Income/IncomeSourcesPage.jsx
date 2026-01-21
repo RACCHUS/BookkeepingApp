@@ -12,6 +12,7 @@ import IncomeSourceList from './IncomeSourceList';
 import IncomeSourceForm from './IncomeSourceForm';
 import IncomeAssignment from './IncomeAssignment';
 import api from '../../services/api';
+import { useAllTransactions, isIncomeTransaction, ALL_TRANSACTIONS_KEY } from '../../hooks/useAllTransactions';
 
 // React Query cache settings to prevent excessive Firestore reads
 const QUERY_CONFIG = {
@@ -36,25 +37,8 @@ const IncomeSourcesPage = () => {
   const [editingSource, setEditingSource] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
 
-  // Income categories for filtering
-  const incomeCategories = [
-    'Gross Receipts', 'Gross Receipts - Sales', 'Gross Receipts - Services',
-    'Interest Income', 'Dividend Income', 'Rental Income', 'Other Income', 'Business Income'
-  ];
-
-  // Check if a transaction is income
-  const isIncomeTransaction = (tx) => {
-    if (tx.type === 'income') return true;
-    if (tx.type === 'expense') return false;
-    if (tx.category) {
-      const catLower = tx.category.toLowerCase();
-      if (incomeCategories.some(cat => catLower.includes(cat.toLowerCase()))) return true;
-      if (catLower.includes('income') || catLower.includes('receipt') || catLower.includes('revenue')) return true;
-    }
-    // Positive amounts typically indicate income
-    if (tx.amount > 0) return true;
-    return false;
-  };
+  // Use shared transaction data from useAllTransactions hook
+  const { transactions: allTransactions = [], isLoading: transactionsLoading } = useAllTransactions();
 
   // Fetch income sources with React Query caching
   const { 
@@ -87,27 +71,14 @@ const IncomeSourcesPage = () => {
   // Ensure sources is always an array
   const sources = Array.isArray(sourcesData) ? sourcesData : [];
 
-  // Fetch unassigned count with React Query caching
-  const { 
-    data: unassignedCount = 0, 
-    refetch: refetchUnassignedCount 
-  } = useQuery({
-    queryKey: ['income-unassigned-count'],
-    queryFn: async () => {
-      const response = await api.transactions.getAll({ limit: 200 });
-      const allTransactions = response?.data?.transactions || response?.transactions || [];
-      const incomeTransactions = allTransactions.filter(isIncomeTransaction);
-      return incomeTransactions.filter(tx => !tx.incomeSourceId).length;
-    },
-    ...QUERY_CONFIG,
-    onError: (error) => {
-      console.error('Error fetching unassigned count:', error);
-    },
-  });
+  // Calculate unassigned count from shared transaction data
+  const unassignedCount = allTransactions
+    .filter(isIncomeTransaction)
+    .filter(tx => !tx.incomeSourceId).length;
 
   const handleRefresh = () => {
     refetchSources();
-    refetchUnassignedCount();
+    queryClient.invalidateQueries({ queryKey: [ALL_TRANSACTIONS_KEY] });
   };
 
   const handleAddSource = () => {

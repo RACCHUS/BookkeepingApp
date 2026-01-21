@@ -6,6 +6,7 @@ import {
 } from '@heroicons/react/24/outline';
 import IncomeBulkEdit from './IncomeBulkEdit';
 import api from '../../services/api';
+import { useIncomeTransactions, ALL_TRANSACTIONS_KEY } from '../../hooks/useAllTransactions';
 
 // Cache time configuration - 5 minutes stale time prevents rapid refetching
 const QUERY_CONFIG = {
@@ -13,25 +14,6 @@ const QUERY_CONFIG = {
   cacheTime: 10 * 60 * 1000,   // Keep in cache for 10 minutes
   refetchOnWindowFocus: false, // Don't refetch on tab focus
   retry: 1,                    // Only retry once on failure
-};
-
-// Income categories from IRS Schedule C
-const incomeCategories = [
-  'Gross Receipts', 'Gross Receipts - Sales', 'Gross Receipts - Services',
-  'Interest Income', 'Dividend Income', 'Rental Income', 'Other Income', 'Business Income'
-];
-
-// Check if a transaction is income
-const isIncomeTransaction = (tx) => {
-  if (tx.type === 'income') return true;
-  if (tx.type === 'expense') return false;
-  if (tx.category) {
-    const catLower = tx.category.toLowerCase();
-    if (incomeCategories.some(cat => catLower.includes(cat.toLowerCase()))) return true;
-    if (catLower.includes('income') || catLower.includes('receipt') || catLower.includes('revenue')) return true;
-  }
-  if (tx.sectionCode === 'deposits') return true;
-  return false;
 };
 
 /**
@@ -123,31 +105,27 @@ const IncomeManagement = () => {
     ...QUERY_CONFIG,
   });
 
-  // Fetch income stats with caching
-  const { data: statsData, isLoading, refetch: refetchStats } = useQuery({
-    queryKey: ['income-stats'],
-    queryFn: async () => {
-      const response = await api.transactions.getAll({ limit: 200 });
-      const allTransactions = response?.data?.transactions || response?.transactions || [];
-      const incomeTransactions = allTransactions.filter(isIncomeTransaction);
-      
-      return {
-        incomeCount: incomeTransactions.length,
-        uncategorizedCount: incomeTransactions.filter(tx => !tx.category).length
-      };
-    },
-    ...QUERY_CONFIG,
-  });
+  // Use shared income transactions hook for stats
+  const { 
+    transactions: incomeTransactions = [], 
+    isLoading: statsLoading 
+  } = useIncomeTransactions();
+  
+  const statsData = {
+    incomeCount: incomeTransactions.length,
+    uncategorizedCount: incomeTransactions.filter(tx => !tx.category).length
+  };
 
   const sources = Array.isArray(sourcesData) ? sourcesData : [];
   const companies = Array.isArray(companiesData) ? companiesData : [];
   const payees = Array.isArray(payeesData) ? payeesData : [];
   const vendors = Array.isArray(vendorsData) ? vendorsData : [];
   const statements = Array.isArray(statementsData) ? statementsData : [];
+  const isLoading = statsLoading;
 
   const handleRefresh = () => {
-    queryClient.invalidateQueries(['income-stats']);
-    queryClient.invalidateQueries(['income-sources']);
+    queryClient.invalidateQueries({ queryKey: [ALL_TRANSACTIONS_KEY] });
+    queryClient.invalidateQueries({ queryKey: ['income-sources'] });
   };
 
   return (

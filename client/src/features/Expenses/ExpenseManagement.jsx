@@ -7,6 +7,7 @@ import {
 } from '@heroicons/react/24/outline';
 import ExpenseBulkEdit from './ExpenseBulkEdit';
 import api from '../../services/api';
+import { useExpenseTransactions, ALL_TRANSACTIONS_KEY } from '../../hooks/useAllTransactions';
 
 // Cache time configuration - 5 minutes stale time prevents rapid refetching
 const QUERY_CONFIG = {
@@ -109,34 +110,18 @@ const ExpenseManagement = () => {
     ...QUERY_CONFIG,
   });
 
-  // Fetch expense stats with caching
-  const { data: statsData, isLoading, refetch: refetchStats } = useQuery({
-    queryKey: ['expense-stats'],
-    queryFn: async () => {
-      const response = await api.transactions.getAll({ limit: 200 });
-      const allTransactions = response?.data?.transactions || response?.transactions || [];
-      
-      // Filter to expenses
-      const expenses = allTransactions.filter(tx => {
-        if (tx.type === 'expense') return true;
-        if (tx.type === 'income') return false;
-        if (tx.amount < 0) return true;
-        return false;
-      });
-
-      const uncategorized = expenses.filter(tx => !tx.category).length;
-      const total1099 = expenses.filter(tx => tx.is1099Payment).length;
-      const totalAmount = expenses.reduce((sum, tx) => sum + Math.abs(tx.amount || 0), 0);
-
-      return {
-        totalExpenses: expenses.length,
-        uncategorized,
-        total1099,
-        totalAmount
-      };
-    },
-    ...QUERY_CONFIG,
-  });
+  // Use shared expense transactions hook for stats
+  const { 
+    transactions: expenses = [], 
+    isLoading: statsLoading 
+  } = useExpenseTransactions();
+  
+  const statsData = {
+    totalExpenses: expenses.length,
+    uncategorized: expenses.filter(tx => !tx.category).length,
+    total1099: expenses.filter(tx => tx.is1099Payment).length,
+    totalAmount: expenses.reduce((sum, tx) => sum + Math.abs(tx.amount || 0), 0)
+  };
 
   const companies = Array.isArray(companiesData) ? companiesData : [];
   const payees = Array.isArray(payeesData) ? payeesData : [];
@@ -144,10 +129,11 @@ const ExpenseManagement = () => {
   const incomeSources = Array.isArray(incomeSourcesData) ? incomeSourcesData : [];
   const statements = Array.isArray(statementsData) ? statementsData : [];
   const stats = statsData || { totalExpenses: 0, uncategorized: 0, total1099: 0, totalAmount: 0 };
+  const isLoading = statsLoading;
 
   const handleRefresh = () => {
-    // Invalidate the stats cache to trigger refetch
-    queryClient.invalidateQueries(['expense-stats']);
+    // Invalidate the shared transactions cache
+    queryClient.invalidateQueries({ queryKey: [ALL_TRANSACTIONS_KEY] });
   };
 
   const formatCurrency = (amount) => {

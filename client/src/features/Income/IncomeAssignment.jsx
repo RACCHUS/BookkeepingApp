@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { 
   MagnifyingGlassIcon, 
   ArrowPathIcon,
@@ -13,14 +13,7 @@ import {
 import api from '../../services/api';
 import { toast } from 'react-hot-toast';
 import { TransactionModal } from '../../components/forms';
-
-// React Query cache settings to prevent excessive Firestore reads
-const QUERY_CONFIG = {
-  staleTime: 5 * 60 * 1000, // Data stays fresh for 5 minutes
-  cacheTime: 10 * 60 * 1000, // Cache persists for 10 minutes
-  refetchOnWindowFocus: false,
-  retry: 1,
-};
+import { useIncomeTransactions, ALL_TRANSACTIONS_KEY } from '../../hooks/useAllTransactions';
 
 /**
  * IncomeAssignment - Assign income transactions to income sources/customers
@@ -41,75 +34,12 @@ const IncomeAssignment = ({ sources: sourcesProp = [] }) => {
   const [editingTransaction, setEditingTransaction] = useState(null);
   const [isTransactionModalOpen, setIsTransactionModalOpen] = useState(false);
 
-  // Income categories from IRS Schedule C
-  const incomeCategories = [
-    'Gross Receipts',
-    'Gross Receipts - Sales',
-    'Gross Receipts - Services',
-    'Gross Receipts or Sales',
-    'Returns and Allowances',
-    'Interest Income',
-    'Dividend Income',
-    'Rental Income',
-    'Royalties',
-    'Other Income',
-    'Business Income'
-  ];
-
-  // Check if a transaction is income
-  const isIncomeTransaction = (tx) => {
-    // Check type field first (most reliable)
-    if (tx.type === 'income') return true;
-    if (tx.type === 'expense') return false;
-    
-    // Check if category is an income category
-    if (tx.category) {
-      const catLower = tx.category.toLowerCase();
-      if (incomeCategories.some(cat => catLower.includes(cat.toLowerCase()))) {
-        return true;
-      }
-      // Also check for common income keywords
-      if (catLower.includes('income') || catLower.includes('receipt') || catLower.includes('revenue')) {
-        return true;
-      }
-    }
-    
-    // Positive amounts typically indicate income
-    if (tx.amount > 0) return true;
-    
-    return false;
-  };
-
-  // Fetch income transactions with React Query caching
+  // Use shared income transactions hook
   const { 
-    data: transactions = [], 
+    transactions = [], 
     isLoading, 
     refetch: refetchTransactions 
-  } = useQuery({
-    queryKey: ['income-assignment-transactions'],
-    queryFn: async () => {
-      const response = await api.transactions.getAll({ limit: 200 });
-      const allTransactions = response?.data?.transactions || response?.transactions || [];
-      
-      console.log('[IncomeAssignment] Total transactions fetched:', allTransactions.length);
-      
-      const incomeTransactions = allTransactions.filter(tx => {
-        const result = isIncomeTransaction(tx);
-        if (result) {
-          console.log('[IncomeAssignment] Income tx found:', tx.id, tx.type, tx.category);
-        }
-        return result;
-      });
-      
-      console.log('[IncomeAssignment] Income transactions found:', incomeTransactions.length);
-      return incomeTransactions;
-    },
-    ...QUERY_CONFIG,
-    onError: (error) => {
-      console.error('Error fetching income transactions:', error);
-      toast.error('Failed to load income transactions');
-    },
-  });
+  } = useIncomeTransactions();
 
   const filteredTransactions = transactions.filter(tx => {
     // Search filter
