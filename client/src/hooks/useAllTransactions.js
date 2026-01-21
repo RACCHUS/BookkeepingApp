@@ -76,23 +76,13 @@ export function useAllTransactions(options = {}) {
     queryKey: [ALL_TRANSACTIONS_KEY],
     queryFn: async () => {
       try {
-        console.log(`[useAllTransactions] Fetching transactions with limit: ${limit}`);
         const response = await api.transactions.getAll({ limit });
         const transactions = response?.data?.transactions || response?.transactions || [];
-        
-        console.log(`[useAllTransactions] Received ${transactions.length} transactions`);
         
         if (!Array.isArray(transactions)) {
           console.error('Invalid transactions response:', response);
           return [];
         }
-        
-        // Debug: count by type
-        const typeCounts = transactions.reduce((acc, tx) => {
-          acc[tx.type || 'undefined'] = (acc[tx.type || 'undefined'] || 0) + 1;
-          return acc;
-        }, {});
-        console.log('[useAllTransactions] Transaction counts by type:', typeCounts);
         
         return transactions;
       } catch (error) {
@@ -112,27 +102,12 @@ export function useAllTransactions(options = {}) {
   // Memoized filtered arrays for common use cases
   const incomeTransactions = useMemo(() => {
     if (!query.data) return [];
-    const result = query.data.filter(isIncomeTransaction);
-    console.log(`[useAllTransactions] Income: ${result.length} of ${query.data.length} total`);
-    return result;
+    return query.data.filter(isIncomeTransaction);
   }, [query.data]);
 
   const expenseTransactions = useMemo(() => {
     if (!query.data) return [];
-    const result = query.data.filter(isExpenseTransaction);
-    console.log(`[useAllTransactions] Expenses: ${result.length} of ${query.data.length} total`);
-    // Debug: log a sample of what's being filtered out
-    if (query.data.length > 0 && result.length < query.data.length / 2) {
-      const sample = query.data.slice(0, 5);
-      console.log('[useAllTransactions] Sample transactions:', sample.map(tx => ({
-        id: tx.id,
-        type: tx.type,
-        amount: tx.amount,
-        sectionCode: tx.sectionCode,
-        description: tx.description?.substring(0, 30)
-      })));
-    }
-    return result;
+    return query.data.filter(isExpenseTransaction);
   }, [query.data]);
 
   const unassignedCheckTransactions = useMemo(() => {

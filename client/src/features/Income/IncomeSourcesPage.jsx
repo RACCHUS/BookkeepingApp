@@ -281,10 +281,7 @@ const IncomeSourcesPage = () => {
 
         {activeTab === 'assignment' && (
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow">
-            <IncomeAssignment 
-              sources={sources}
-              onAssignmentChange={refetchUnassignedCount}
-            />
+            <IncomeAssignment sources={sources} />
           </div>
         )}
       </div>
