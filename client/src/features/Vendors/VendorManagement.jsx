@@ -11,6 +11,8 @@ import VendorList from './VendorList';
 import VendorForm from './VendorForm';
 import { CheckVendorAssignment } from '../Checks';
 import { ReceiptVendorAssignment } from '../Receipts';
+import { ExpenseVendorAssignment } from '../Expenses';
+import { useExpenseTransactions } from '../../hooks/useAllTransactions';
 
 const VendorManagement = () => {
   const [activeTab, setActiveTab] = useState('vendors');
@@ -41,12 +43,23 @@ const VendorManagement = () => {
     }
   });
 
+  // Get expense transactions for unassigned expense count
+  const { transactions: expenseTransactions = [] } = useExpenseTransactions();
+
   const vendorsRaw = vendorsData?.data?.vendors || vendorsData?.vendors || vendorsData?.data?.payees || vendorsData?.payees;
   const vendors = Array.isArray(vendorsRaw) ? vendorsRaw : [];
   // checksData comes from getTransactionsWithoutVendors which returns { transactions: [...] }
   const unassignedChecks = checksData?.transactions || checksData || [];
   const unassignedCheckCount = Array.isArray(unassignedChecks) ? unassignedChecks.length : 0;
   const unassignedReceiptCount = Array.isArray(receiptsData) ? receiptsData.length : 0;
+  
+  // Calculate unassigned expense count (excludes checks and receipts)
+  const unassignedExpenseCount = expenseTransactions.filter(tx => {
+    const isCheck = tx.paymentMethod === 'check' || tx.sectionCode === 'checks';
+    const hasReceipt = !!tx.receiptId;
+    if (isCheck || hasReceipt) return false;
+    return !tx.vendorId && !tx.vendorName;
+  }).length;
 
   const handleCreateVendor = () => {
     setEditingVendor(null);
@@ -81,6 +94,12 @@ const VendorManagement = () => {
 
   const tabs = [
     { key: 'vendors', label: 'All Vendors', icon: '🏢' },
+    { 
+      key: 'expense-assignment', 
+      label: 'Expense Assignment', 
+      icon: '💰',
+      badge: unassignedExpenseCount 
+    },
     { 
       key: 'check-assignment', 
       label: 'Check Assignment', 
@@ -156,6 +175,13 @@ const VendorManagement = () => {
             isLoading={isLoading}
             onEdit={handleEditVendor}
             onDelete={handleDeleteVendor}
+          />
+        )}
+        {activeTab === 'expense-assignment' && (
+          <ExpenseVendorAssignment 
+            onAssignmentComplete={() => {
+              refetch();
+            }}
           />
         )}
         {activeTab === 'check-assignment' && (
