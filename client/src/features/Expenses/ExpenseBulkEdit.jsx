@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { 
   ArrowPathIcon,
   PencilIcon,
@@ -13,14 +13,7 @@ import TransactionBulkPanel from '../Transactions/TransactionBulkPanel';
 import TransactionFilterPanel from '../Transactions/TransactionFilterPanel';
 import TransactionSortPanel from '../Transactions/TransactionSortPanel';
 import { createDefaultSorts, multiLevelSort } from '@shared/constants/sorting';
-
-// Cache configuration to prevent excessive refetching
-const QUERY_CONFIG = {
-  staleTime: 5 * 60 * 1000,    // Data is fresh for 5 minutes
-  cacheTime: 10 * 60 * 1000,   // Keep in cache for 10 minutes
-  refetchOnWindowFocus: false, // Don't refetch on tab focus
-  retry: 1,                    // Only retry once on failure
-};
+import { useExpenseTransactions, ALL_TRANSACTIONS_KEY } from '../../hooks/useAllTransactions';
 
 /**
  * ExpenseBulkEdit - Bulk edit expense transactions
@@ -112,35 +105,15 @@ const ExpenseBulkEdit = ({
     'Uncategorized'
   ];
 
-  // Check if a transaction is an expense
-  const isExpenseTransaction = (tx) => {
-    if (tx.type === 'expense') return true;
-    if (tx.type === 'income') return false;
-    
-    // Negative amounts typically indicate expenses
-    if (tx.amount < 0) return true;
-    
-    return false;
-  };
-
-  // Fetch expense transactions with React Query caching
+  // Use shared transactions hook - filters to expenses automatically
   const { 
-    data: transactions = [], 
+    transactions = [], 
     isLoading, 
-    refetch: refetchTransactions 
-  } = useQuery({
-    queryKey: ['expense-transactions'],
-    queryFn: async () => {
-      const response = await api.transactions.getAll({ limit: 200 });
-      const allTransactions = response?.data?.transactions || response?.transactions || [];
-      return allTransactions.filter(isExpenseTransaction);
-    },
-    ...QUERY_CONFIG,
-    onError: (error) => {
-      console.error('Error fetching expense transactions:', error);
-      toast.error('Failed to load expense transactions');
-    },
-  });
+    refetch: refetchTransactions,
+    updateMultipleInCache,
+    removeMultipleFromCache,
+    invalidateAll
+  } = useExpenseTransactions();
 
   // Apply filters
   const filteredTransactions = transactions.filter(tx => {
@@ -301,9 +274,8 @@ const ExpenseBulkEdit = ({
   const handleSaveTransaction = async (transactionData) => {
     try {
       await api.transactions.update(editingTransaction.id, transactionData);
-      queryClient.invalidateQueries({ queryKey: ['transactions'] });
-      queryClient.invalidateQueries({ queryKey: ['recent-transactions'] });
-      queryClient.invalidateQueries({ queryKey: ['transaction-summary'] });
+      // Invalidate shared transactions cache - updates all views
+      invalidateAll();
       toast.success('Transaction updated successfully');
       handleCloseTransactionModal();
     } catch (error) {

@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { 
   ArrowPathIcon,
   PencilIcon,
@@ -13,14 +13,7 @@ import TransactionBulkPanel from '../Transactions/TransactionBulkPanel';
 import TransactionFilterPanel from '../Transactions/TransactionFilterPanel';
 import TransactionSortPanel from '../Transactions/TransactionSortPanel';
 import { createDefaultSorts, multiLevelSort } from '@shared/constants/sorting';
-
-// React Query cache settings to prevent excessive Firestore reads
-const QUERY_CONFIG = {
-  staleTime: 5 * 60 * 1000, // Data stays fresh for 5 minutes
-  cacheTime: 10 * 60 * 1000, // Cache persists for 10 minutes
-  refetchOnWindowFocus: false,
-  retry: 1,
-};
+import { useIncomeTransactions, ALL_TRANSACTIONS_KEY } from '../../hooks/useAllTransactions';
 
 /**
  * IncomeBulkEdit - Bulk edit income transactions
@@ -116,46 +109,15 @@ const IncomeBulkEdit = ({
     'Uncategorized'
   ];
 
-  // Check if a transaction is income
-  const isIncomeTransaction = (tx) => {
-    if (tx.type === 'income') return true;
-    if (tx.type === 'expense') return false;
-    
-    // Check for income indicators
-    if (tx.category) {
-      const catLower = tx.category.toLowerCase();
-      if (incomeCategories.some(cat => catLower.includes(cat.toLowerCase()))) {
-        return true;
-      }
-      if (catLower.includes('income') || catLower.includes('receipt') || catLower.includes('revenue')) {
-        return true;
-      }
-    }
-    
-    // Positive amounts typically indicate income
-    if (tx.amount > 0) return true;
-    
-    return false;
-  };
-
-  // Fetch income transactions with React Query caching
+  // Use shared transactions hook - filters to income automatically
   const { 
-    data: transactions = [], 
+    transactions = [], 
     isLoading, 
-    refetch: refetchTransactions 
-  } = useQuery({
-    queryKey: ['income-transactions'],
-    queryFn: async () => {
-      const response = await api.transactions.getAll({ limit: 200 });
-      const allTransactions = response?.data?.transactions || response?.transactions || [];
-      return allTransactions.filter(isIncomeTransaction);
-    },
-    ...QUERY_CONFIG,
-    onError: (error) => {
-      console.error('Error fetching income transactions:', error);
-      toast.error('Failed to load income transactions');
-    },
-  });
+    refetch: refetchTransactions,
+    updateMultipleInCache,
+    removeMultipleFromCache,
+    invalidateAll
+  } = useIncomeTransactions();
 
   // Apply filters
   const filteredTransactions = transactions.filter(tx => {
@@ -312,9 +274,8 @@ const IncomeBulkEdit = ({
   const handleSaveTransaction = async (transactionData) => {
     try {
       await api.transactions.update(editingTransaction.id, transactionData);
-      queryClient.invalidateQueries({ queryKey: ['transactions'] });
-      queryClient.invalidateQueries({ queryKey: ['recent-transactions'] });
-      queryClient.invalidateQueries({ queryKey: ['transaction-summary'] });
+      // Invalidate shared transactions cache - updates all views
+      invalidateAll();
       toast.success('Transaction updated successfully');
       handleCloseTransactionModal();
     } catch (error) {
