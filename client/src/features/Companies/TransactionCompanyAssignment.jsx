@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-hot-toast';
 import api from '../../services/api.js';
+import { ALL_TRANSACTIONS_KEY } from '../../hooks/useAllTransactions';
 import { formatCurrency } from '../../utils/currencyUtils';
 import { TransactionModal } from '../../components/forms';
 import { PencilIcon } from '@heroicons/react/24/outline';
@@ -72,6 +73,7 @@ const TransactionCompanyAssignment = ({ onAssignmentComplete }) => {
       queryClient.invalidateQueries(['unassigned-company-transactions']);
       queryClient.invalidateQueries(['assigned-company-transactions']);
       queryClient.invalidateQueries(['transactions']);
+      queryClient.invalidateQueries([ALL_TRANSACTIONS_KEY]);
       onAssignmentComplete?.();
     },
     onError: (error) => {
@@ -90,6 +92,7 @@ const TransactionCompanyAssignment = ({ onAssignmentComplete }) => {
       queryClient.invalidateQueries(['unassigned-company-transactions']);
       queryClient.invalidateQueries(['assigned-company-transactions']);
       queryClient.invalidateQueries(['transactions']);
+      queryClient.invalidateQueries([ALL_TRANSACTIONS_KEY]);
       onAssignmentComplete?.();
     },
     onError: (error) => {
@@ -135,6 +138,7 @@ const TransactionCompanyAssignment = ({ onAssignmentComplete }) => {
       queryClient.invalidateQueries({ queryKey: ['unassigned-company-transactions'] });
       queryClient.invalidateQueries({ queryKey: ['assigned-company-transactions'] });
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
+      queryClient.invalidateQueries({ queryKey: [ALL_TRANSACTIONS_KEY] });
       handleCloseTransactionModal();
     } catch (error) {
       console.error('Failed to update transaction:', error);

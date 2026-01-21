@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-hot-toast';
 import api from '../../services/api';
+import { ALL_TRANSACTIONS_KEY } from '../../hooks/useAllTransactions';
 import { formatDate } from '../../utils/dateUtils';
 import { formatCurrency } from '../../utils/currencyUtils';
 import { TransactionModal } from '../../components/forms';
@@ -158,6 +159,7 @@ const CheckPayeeAssignment = ({ onAssignmentComplete }) => {
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
       queryClient.invalidateQueries({ queryKey: ['recent-transactions'] });
       queryClient.invalidateQueries({ queryKey: ['transaction-summary'] });
+      queryClient.invalidateQueries({ queryKey: [ALL_TRANSACTIONS_KEY] });
       handleCloseTransactionModal();
     } catch (error) {
       console.error('Failed to update transaction:', error);

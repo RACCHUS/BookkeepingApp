@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-hot-toast';
 import api from '../../services/api';
+import { ALL_TRANSACTIONS_KEY } from '../../hooks/useAllTransactions';
 import { formatDate } from '../../utils/dateUtils';
 import { formatCurrency } from '../../utils/currencyUtils';
 
@@ -76,6 +77,7 @@ const CheckVendorAssignment = ({ onAssignmentComplete }) => {
       queryClient.invalidateQueries(['unassigned-check-vendor-transactions']);
       queryClient.invalidateQueries(['assigned-check-vendor-transactions']);
       queryClient.invalidateQueries(['transactions']);
+      queryClient.invalidateQueries([ALL_TRANSACTIONS_KEY]);
       onAssignmentComplete?.();
     },
     onError: (error) => {
@@ -99,6 +101,7 @@ const CheckVendorAssignment = ({ onAssignmentComplete }) => {
       queryClient.invalidateQueries(['unassigned-check-vendor-transactions']);
       queryClient.invalidateQueries(['assigned-check-vendor-transactions']);
       queryClient.invalidateQueries(['transactions']);
+      queryClient.invalidateQueries([ALL_TRANSACTIONS_KEY]);
       onAssignmentComplete?.();
     },
     onError: (error) => {

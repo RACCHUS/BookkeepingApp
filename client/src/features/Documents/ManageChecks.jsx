@@ -4,6 +4,7 @@ import { toast } from 'react-hot-toast';
 import { format } from 'date-fns';
 import checkService from '../../services/checkService';
 import api from '../../services/api';
+import { ALL_TRANSACTIONS_KEY } from '../../hooks/useAllTransactions';
 import { LoadingSpinner } from '../../components/ui';
 import { CompanySelector } from '../../components/common';
 import {
@@ -100,6 +101,7 @@ const ManageChecks = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['checks'] });
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
+      queryClient.invalidateQueries({ queryKey: [ALL_TRANSACTIONS_KEY] });
       setShowDeleteModal(false);
       setDeletingCheck(null);
       setDeleteTransaction(false);
@@ -117,6 +119,7 @@ const ManageChecks = () => {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['checks'] });
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
+      queryClient.invalidateQueries({ queryKey: [ALL_TRANSACTIONS_KEY] });
       setShowLinkModal(false);
       setLinkingChecks([]);
       setSelectedTransactionId('');
@@ -132,6 +135,7 @@ const ManageChecks = () => {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['checks'] });
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
+      queryClient.invalidateQueries({ queryKey: [ALL_TRANSACTIONS_KEY] });
       setSelectedIds(new Set());
       toast.success(`Unlinked ${data.data?.successful?.length || 0} checks`);
     },
@@ -144,6 +148,7 @@ const ManageChecks = () => {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['checks'] });
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
+      queryClient.invalidateQueries({ queryKey: [ALL_TRANSACTIONS_KEY] });
       setSelectedIds(new Set());
       toast.success(`Deleted ${data.data?.successful?.length || 0} checks`);
     },

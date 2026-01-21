@@ -9,6 +9,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import api from '../../services/api'; // Use default export (hybridApiClient)
+import { ALL_TRANSACTIONS_KEY } from '../../hooks/useAllTransactions';
 import { LoadingSpinner } from '../../components/ui';
 import { CompanySelector } from '../../components/common';
 import {
@@ -105,6 +106,7 @@ const CSVUpload = () => {
         queryClient.invalidateQueries({ queryKey: ['transaction-summary'], refetchType: 'all' });
         queryClient.invalidateQueries({ queryKey: ['csv-imports'], refetchType: 'all' });
         queryClient.invalidateQueries({ queryKey: ['csv-imports-for-modal'], refetchType: 'all' });
+        queryClient.invalidateQueries({ queryKey: [ALL_TRANSACTIONS_KEY], refetchType: 'all' });
       } else {
         toast.error(response.message || 'Failed to import transactions');
       }

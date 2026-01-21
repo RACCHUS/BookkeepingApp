@@ -5,6 +5,7 @@ import { CompanySelector } from '../../components/common';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-hot-toast';
 import api from '../../services/api';
+import { ALL_TRANSACTIONS_KEY } from '../../hooks/useAllTransactions';
 import receiptService from '../../services/receiptService';
 import checkService from '../../services/checkService';
 import { useAuth } from '../../context/AuthContext';
@@ -579,6 +580,7 @@ const TransactionList = () => {
       queryClient.invalidateQueries(['transactions']);
       queryClient.invalidateQueries(['recent-transactions']);
       queryClient.invalidateQueries(['transaction-summary']);
+      queryClient.invalidateQueries([ALL_TRANSACTIONS_KEY]);
       setDeletingId(null);
     },
     onError: (error, transactionId) => {
@@ -597,6 +599,7 @@ const TransactionList = () => {
       queryClient.invalidateQueries(['transactions']);
       queryClient.invalidateQueries(['recent-transactions']);
       queryClient.invalidateQueries(['transaction-summary']);
+      queryClient.invalidateQueries([ALL_TRANSACTIONS_KEY]);
     },
     onError: (error) => {
       console.error('Create transaction error:', error);
@@ -613,6 +616,7 @@ const TransactionList = () => {
       queryClient.invalidateQueries(['transactions']);
       queryClient.invalidateQueries(['recent-transactions']);
       queryClient.invalidateQueries(['transaction-summary']);
+      queryClient.invalidateQueries([ALL_TRANSACTIONS_KEY]);
     },
     onError: (error) => {
       console.error('Update transaction error:', error);
@@ -629,6 +633,7 @@ const TransactionList = () => {
       queryClient.invalidateQueries(['transactions']);
       queryClient.invalidateQueries(['recent-transactions']);
       queryClient.invalidateQueries(['transaction-summary']);
+      queryClient.invalidateQueries([ALL_TRANSACTIONS_KEY]);
       setSelectedTransactions(new Set());
       setBulkOperating(false);
       // Note: Don't disable select mode - user might want to continue bulk editing
@@ -654,6 +659,7 @@ const TransactionList = () => {
       queryClient.invalidateQueries(['transactions']);
       queryClient.invalidateQueries(['recent-transactions']);
       queryClient.invalidateQueries(['transaction-summary']);
+      queryClient.invalidateQueries([ALL_TRANSACTIONS_KEY]);
       setIsBulkEntryOpen(false);
       setBulkEntryLoading(false);
     },
@@ -673,6 +679,7 @@ const TransactionList = () => {
       queryClient.invalidateQueries(['transactions']);
       queryClient.invalidateQueries(['recent-transactions']);
       queryClient.invalidateQueries(['transaction-summary']);
+      queryClient.invalidateQueries([ALL_TRANSACTIONS_KEY]);
       setEditingCategoryId(null);
       setEditingCategoryValue('');
       toast.success('Category updated successfully');
@@ -695,6 +702,7 @@ const TransactionList = () => {
       queryClient.invalidateQueries(['transactions']);
       queryClient.invalidateQueries(['uploads']);
       queryClient.invalidateQueries(['uploadDetails']);
+      queryClient.invalidateQueries([ALL_TRANSACTIONS_KEY]);
       // Navigate back to upload details
       window.history.back();
     },

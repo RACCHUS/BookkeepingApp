@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-hot-toast';
 import { format } from 'date-fns';
 import { getUploads, renameUpload, deleteUpload, batchDeleteUploads } from '../../services/uploadsService';
+import { ALL_TRANSACTIONS_KEY } from '../../hooks/useAllTransactions';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { LoadingSpinner } from '../../components/ui';
 import { CompanySelector } from '../../components/common';
@@ -103,6 +104,7 @@ const ManageDocuments = () => {
         : 'Upload deleted (transactions preserved)');
       queryClient.invalidateQueries({ queryKey: ['uploads'] });
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
+      queryClient.invalidateQueries({ queryKey: [ALL_TRANSACTIONS_KEY] });
       setShowDeleteModal(false);
       setDeletingUpload(null);
       setDeleteTransactions(false);
@@ -129,6 +131,7 @@ const ManageDocuments = () => {
       
       queryClient.invalidateQueries({ queryKey: ['uploads'] });
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
+      queryClient.invalidateQueries({ queryKey: [ALL_TRANSACTIONS_KEY] });
       setSelectedIds(new Set());
       setShowBulkDeleteModal(false);
       setBulkDeleteTransactions(false);

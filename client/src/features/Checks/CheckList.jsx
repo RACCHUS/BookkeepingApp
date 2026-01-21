@@ -17,6 +17,7 @@ import {
 } from '@heroicons/react/24/outline';
 import checkService from '../../services/checkService';
 import companyService from '../../services/companyService';
+import { ALL_TRANSACTIONS_KEY } from '../../hooks/useAllTransactions';
 import CheckCard from './CheckCard';
 import CheckForm from './CheckForm';
 import CheckDetailModal from './CheckDetailModal';
@@ -130,6 +131,7 @@ const CheckList = () => {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['checks'] });
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
+      queryClient.invalidateQueries({ queryKey: [ALL_TRANSACTIONS_KEY] });
       setShowBulkLink(false);
       const count = data?.data?.successful?.length || data?.successful?.length || 0;
       toast.success(`${count} check${count !== 1 ? 's' : ''} linked to transactions`);

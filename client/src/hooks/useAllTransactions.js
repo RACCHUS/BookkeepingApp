@@ -99,12 +99,12 @@ export const isUnassignedCheckTransaction = (tx) => {
 /**
  * Main hook for fetching all transactions
  * @param {Object} options - Query options
- * @param {number} options.limit - Max transactions to fetch (default: 2000)
+ * @param {number} options.limit - Max transactions to fetch (default: 5000)
  * @param {boolean} options.enabled - Whether to enable the query (default: true)
  * @returns {Object} Query result with transactions and utilities
  */
 export function useAllTransactions(options = {}) {
-  const { limit = 2000, enabled = true } = options;
+  const { limit = 5000, enabled = true } = options;
   const queryClient = useQueryClient();
 
   const query = useQuery({

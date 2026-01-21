@@ -7,6 +7,7 @@ import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-hot-toast';
 import api from '../../services/api'; // Use hybridApiClient (default export)
+import { ALL_TRANSACTIONS_KEY } from '../../hooks/useAllTransactions';
 import { LoadingSpinner } from '../../components/ui';
 import {
   TrashIcon,
@@ -381,6 +382,7 @@ const ManageCSVImports = () => {
       // Refetch the list to show updated data
       refetch();
       queryClient.invalidateQueries({ queryKey: ['transactions'], refetchType: 'all' });
+      queryClient.invalidateQueries({ queryKey: [ALL_TRANSACTIONS_KEY], refetchType: 'all' });
     },
     onError: (error) => {
       toast.error(error.response?.data?.message || error.message || 'Failed to delete import');
@@ -396,6 +398,7 @@ const ManageCSVImports = () => {
       // Refetch the list to show updated data
       refetch();
       queryClient.invalidateQueries({ queryKey: ['transactions'], refetchType: 'all' });
+      queryClient.invalidateQueries({ queryKey: [ALL_TRANSACTIONS_KEY], refetchType: 'all' });
     },
     onError: (error) => {
       toast.error(error.response?.data?.message || error.message || 'Failed to delete transactions');

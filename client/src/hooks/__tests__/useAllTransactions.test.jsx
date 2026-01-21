@@ -187,7 +187,7 @@ describe('useAllTransactions', () => {
     });
 
     expect(result.current.transactions).toHaveLength(9);
-    expect(api.transactions.getAll).toHaveBeenCalledWith({ limit: 2000 });
+    expect(api.transactions.getAll).toHaveBeenCalledWith({ limit: 5000 });
   });
 
   it('filters income transactions correctly', async () => {
