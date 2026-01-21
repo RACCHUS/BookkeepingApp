@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-hot-toast';
+import { ALL_TRANSACTIONS_KEY } from '../../hooks/useAllTransactions';
 import {
   PlusIcon,
   FunnelIcon,
@@ -182,6 +183,7 @@ const ReceiptList = () => {
       queryClient.invalidateQueries(['transactions']);
       queryClient.invalidateQueries(['recent-transactions']);
       queryClient.invalidateQueries(['transaction-summary']);
+      queryClient.invalidateQueries([ALL_TRANSACTIONS_KEY]);
       setShowBulkAdd(false);
       toast.success(`${data.data.successCount} receipts created`);
     },
@@ -196,6 +198,7 @@ const ReceiptList = () => {
       queryClient.invalidateQueries(['transactions']);
       queryClient.invalidateQueries(['recent-transactions']);
       queryClient.invalidateQueries(['transaction-summary']);
+      queryClient.invalidateQueries([ALL_TRANSACTIONS_KEY]);
       setShowQuickEntry(false);
       toast.success(`${data.data?.successCount || 0} receipts & transactions created`);
     },
@@ -718,6 +721,7 @@ const ReceiptList = () => {
           queryClient.invalidateQueries(['transactions']);
           queryClient.invalidateQueries(['recent-transactions']);
           queryClient.invalidateQueries(['transaction-summary']);
+          queryClient.invalidateQueries([ALL_TRANSACTIONS_KEY]);
           return result;
         }}
         isLoading={quickEntryMutation.isPending}

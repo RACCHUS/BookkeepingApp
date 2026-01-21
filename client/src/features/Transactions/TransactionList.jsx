@@ -861,6 +861,7 @@ const TransactionList = () => {
       await Promise.all(deletePromises);
       toast.success(`${selectedTransactions.size} transaction(s) deleted successfully`);
       queryClient.invalidateQueries(['transactions']);
+      queryClient.invalidateQueries([ALL_TRANSACTIONS_KEY]);
       setSelectedTransactions(new Set());
       // Note: Don't disable select mode - user might want to continue bulk operations
     } catch (error) {

@@ -4,6 +4,7 @@ import { toast } from 'react-hot-toast';
 import { format } from 'date-fns';
 import receiptService from '../../services/receiptService';
 import api from '../../services/api';
+import { ALL_TRANSACTIONS_KEY } from '../../hooks/useAllTransactions';
 import { LoadingSpinner } from '../../components/ui';
 import { CompanySelector } from '../../components/common';
 import {
@@ -100,6 +101,7 @@ const ManageReceipts = () => {
       queryClient.invalidateQueries(['transactions']);
       queryClient.invalidateQueries(['recent-transactions']);
       queryClient.invalidateQueries(['transaction-summary']);
+      queryClient.invalidateQueries([ALL_TRANSACTIONS_KEY]);
       setShowDeleteModal(false);
       setDeletingReceipt(null);
       setDeleteTransaction(false);
@@ -119,6 +121,7 @@ const ManageReceipts = () => {
       queryClient.invalidateQueries(['transactions']);
       queryClient.invalidateQueries(['recent-transactions']);
       queryClient.invalidateQueries(['transaction-summary']);
+      queryClient.invalidateQueries([ALL_TRANSACTIONS_KEY]);
       setShowLinkModal(false);
       setLinkingReceipts([]);
       setSelectedTransactionId('');
@@ -136,6 +139,7 @@ const ManageReceipts = () => {
       queryClient.invalidateQueries(['transactions']);
       queryClient.invalidateQueries(['recent-transactions']);
       queryClient.invalidateQueries(['transaction-summary']);
+      queryClient.invalidateQueries([ALL_TRANSACTIONS_KEY]);
       setSelectedIds(new Set());
       toast.success(`Unlinked ${data.data?.successful?.length || 0} receipts`);
     },
@@ -148,6 +152,7 @@ const ManageReceipts = () => {
     onSuccess: (data) => {
       queryClient.invalidateQueries(['receipts']);
       queryClient.invalidateQueries(['transactions']);
+      queryClient.invalidateQueries([ALL_TRANSACTIONS_KEY]);
       setSelectedIds(new Set());
       toast.success(`Deleted ${data.data?.successful?.length || 0} receipts`);
     },

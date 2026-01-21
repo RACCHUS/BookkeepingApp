@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { toast } from 'react-hot-toast';
+import { ALL_TRANSACTIONS_KEY } from '../../hooks/useAllTransactions';
 import {
   CloudArrowUpIcon,
   FolderIcon,
@@ -129,6 +130,7 @@ const DocumentManagement = () => {
       });
       queryClient.invalidateQueries(['receipts']);
       queryClient.invalidateQueries(['transactions']);
+      queryClient.invalidateQueries([ALL_TRANSACTIONS_KEY]);
     },
     onError: (error) => {
       toast.error(error.message || 'Failed to add receipt');
@@ -151,6 +153,7 @@ const DocumentManagement = () => {
       });
       queryClient.invalidateQueries(['checks']);
       queryClient.invalidateQueries(['transactions']);
+      queryClient.invalidateQueries([ALL_TRANSACTIONS_KEY]);
     },
     onError: (error) => {
       toast.error(error.message || 'Failed to add check');

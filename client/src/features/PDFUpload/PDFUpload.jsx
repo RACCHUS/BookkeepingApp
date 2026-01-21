@@ -4,6 +4,7 @@ import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import api from '../../services/api';
+import { ALL_TRANSACTIONS_KEY } from '../../hooks/useAllTransactions';
 import { LoadingSpinner } from '../../components/ui';
 import { CompanySelector } from '../../components/common';
 import {
@@ -123,6 +124,7 @@ const PDFUpload = () => {
       queryClient.invalidateQueries(['transactions']);
       queryClient.invalidateQueries(['recent-transactions']);
       queryClient.invalidateQueries(['transaction-summary']);
+      queryClient.invalidateQueries([ALL_TRANSACTIONS_KEY]);
     },
     onError: (error, {file, tempId}) => {
       toast.error(`Failed to upload ${file.name}: ${error.response?.data?.message || error.message}`);
@@ -252,6 +254,7 @@ const PDFUpload = () => {
             queryClient.invalidateQueries(['transactions']);
             queryClient.invalidateQueries(['recent-transactions']);
             queryClient.invalidateQueries(['transaction-summary']);
+            queryClient.invalidateQueries([ALL_TRANSACTIONS_KEY]);
           } else {
             toast.error('PDF processed but no transactions were saved.');
             setUploadedFiles(prev => prev.map(f => 

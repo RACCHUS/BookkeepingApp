@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-hot-toast';
 import api from '../../services/api';
+import { ALL_TRANSACTIONS_KEY } from '../../hooks/useAllTransactions';
 import { IRS_CATEGORIES } from '@shared/constants/categories';
 import { LoadingSpinner } from '../../components/ui';
 
@@ -109,6 +110,7 @@ const Classification = () => {
             // Invalidate transactions cache
             queryClient.invalidateQueries(['transactions']);
             queryClient.invalidateQueries(['recent-transactions']);
+            queryClient.invalidateQueries([ALL_TRANSACTIONS_KEY]);
           } else {
             toast.info('No matching uncategorized transactions found');
           }

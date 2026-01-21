@@ -78,6 +78,7 @@ const CheckPayeeAssignment = ({ onAssignmentComplete }) => {
       queryClient.invalidateQueries(['transactions']);
       queryClient.invalidateQueries(['recent-transactions']);
       queryClient.invalidateQueries(['transaction-summary']);
+      queryClient.invalidateQueries([ALL_TRANSACTIONS_KEY]);
       onAssignmentComplete?.();
     },
     onError: (error) => {
@@ -97,6 +98,7 @@ const CheckPayeeAssignment = ({ onAssignmentComplete }) => {
       queryClient.invalidateQueries(['transactions']);
       queryClient.invalidateQueries(['recent-transactions']);
       queryClient.invalidateQueries(['transaction-summary']);
+      queryClient.invalidateQueries([ALL_TRANSACTIONS_KEY]);
       onAssignmentComplete?.();
     },
     onError: (error) => {
