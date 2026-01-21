@@ -13,58 +13,71 @@ const corsHeaders = {
 };
 
 // Gemini API configuration (Free Tier limits)
-const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent";
-const MAX_BATCH_SIZE = 200; // Process up to 200 transactions per batch (safe within 32K token limit)
+// Using gemini-2.5-flash - best price-performance model (as of Jan 2026)
+const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
+const MAX_BATCH_SIZE = 100; // With optimized prompt, can handle more transactions
 const RATE_LIMIT_DELAY = 4000; // 4 seconds between batches (15 RPM = 4s)
 
-// IRS Schedule C Categories for classification
+// IRS Schedule C Categories for classification (display names)
 const IRS_CATEGORIES = [
-  "ADVERTISING",
-  "CAR_TRUCK_EXPENSES",
-  "COMMISSIONS_FEES",
-  "CONTRACT_LABOR",
-  "DEPLETION",
-  "DEPRECIATION",
-  "EMPLOYEE_BENEFIT_PROGRAMS",
-  "INSURANCE_OTHER",
-  "INTEREST_MORTGAGE",
-  "INTEREST_OTHER",
-  "LEGAL_PROFESSIONAL",
-  "OFFICE_EXPENSES",
-  "PENSION_PROFIT_SHARING",
-  "RENT_LEASE_VEHICLES",
-  "RENT_LEASE_EQUIPMENT",
-  "RENT_LEASE_PROPERTY",
-  "REPAIRS_MAINTENANCE",
-  "SUPPLIES",
-  "TAXES_LICENSES",
-  "TRAVEL",
-  "MEALS",
-  "UTILITIES",
-  "WAGES",
-  "OTHER_EXPENSES",
-  "GROSS_RECEIPTS",
-  "RETURNS_ALLOWANCES",
-  "COST_OF_GOODS_SOLD",
-  // Non-deductible categories
-  "PERSONAL_EXPENSE",
-  "PERSONAL_TRANSFER",
-  "OWNER_DRAWS",
-  // Extended categories
-  "MATERIALS_SUPPLIES",
-  "SOFTWARE_SUBSCRIPTIONS",
-  "WEB_HOSTING",
-  "BANK_FEES",
-  "TRAINING_EDUCATION",
-  "DUES_MEMBERSHIPS",
-  "TOOLS_EQUIPMENT",
+  // Schedule C Lines 8-27 Expenses
+  "Advertising",
+  "Car and Truck Expenses",
+  "Commissions and Fees",
+  "Contract Labor",
+  "Depletion",
+  "Depreciation and Section 179",
+  "Employee Benefit Programs",
+  "Insurance (Other than Health)",
+  "Interest (Mortgage)",
+  "Interest (Other)",
+  "Legal and Professional Services",
+  "Office Expenses",
+  "Pension and Profit-Sharing Plans",
+  "Rent or Lease (Vehicles, Machinery, Equipment)",
+  "Rent or Lease (Other Business Property)",
+  "Repairs and Maintenance",
+  "Supplies (Not Inventory)",
+  "Taxes and Licenses",
+  "Travel",
+  "Meals",
+  "Utilities",
+  "Wages (Less Employment Credits)",
+  "Other Expenses",
+  // Cost of Goods Sold
+  "Cost of Goods Sold",
+  "Materials and Supplies",
+  "Cost of Labor (not wages)",
+  "Other Costs (shipping, packaging)",
+  // Other Line 27 expenses
+  "Software Subscriptions",
+  "Web Hosting & Domains",
+  "Bank Fees",
+  "Bad Debts",
+  "Dues & Memberships",
+  "Training & Education",
+  "Trade Publications",
+  "Security Services",
+  "Business Gifts",
+  "Uniforms & Safety Gear",
+  "Tools (Under $2,500)",
+  "Business Use of Home",
+  // Income
+  "Gross Receipts or Sales",
+  "Returns and Allowances",
+  "Other Income",
+  // Non-deductible / Neutral
+  "Personal Expense",
+  "Personal Transfer",
+  "Owner Draws/Distributions",
+  "Owner Contribution/Capital",
 ];
 
 interface Transaction {
   id: string;
   description: string;
   amount: number;
-  date: string;
+  type?: string;
 }
 
 interface ClassificationResult {
@@ -85,42 +98,45 @@ interface RequestBody {
  * Build the Gemini prompt for transaction classification
  */
 function buildClassificationPrompt(transactions: Transaction[]): string {
-  const categoryList = IRS_CATEGORIES.join(", ");
-  
-  const transactionLines = transactions.map((t, i) => 
-    `${i + 1}. ID: ${t.id} | Description: "${t.description}" | Amount: $${Math.abs(t.amount).toFixed(2)} | Date: ${t.date}`
+  // Compact transaction format: id|description|amount|type
+  const transactionLines = transactions.map(t => 
+    `${t.id}|${t.description}|${t.amount}|${t.type || (t.amount > 0 ? 'CREDIT' : 'DEBIT')}`
   ).join("\n");
 
-  return `You are a bookkeeping assistant that classifies bank transactions into IRS Schedule C categories for small business tax purposes.
+  return `Classify bank transactions into IRS Schedule C categories for a small business (HVAC/AC service company).
 
-IMPORTANT RULES:
-1. Only use categories from this exact list: ${categoryList}
-2. Be conservative - if unsure, use "OTHER_EXPENSES" for business expenses or "PERSONAL_EXPENSE" if likely personal
-3. Extract the vendor/merchant name from the description
-4. Consider the amount when classifying (small amounts at restaurants = MEALS, large amounts at restaurants = possibly catering/OTHER_EXPENSES)
-5. Common patterns:
-   - Gas stations → CAR_TRUCK_EXPENSES
-   - Software (Adobe, Microsoft, etc.) → SOFTWARE_SUBSCRIPTIONS
-   - Office supplies stores → OFFICE_EXPENSES
-   - Hardware stores → MATERIALS_SUPPLIES or REPAIRS_MAINTENANCE
-   - Shipping (UPS, FedEx) → OTHER_EXPENSES (shipping)
-   - ATM/Cash withdrawals → OWNER_DRAWS
-   - Transfers between accounts → PERSONAL_TRANSFER
+EXPENSE CATEGORIES (ONLY for DEBIT/negative amounts):
+- Schedule C Lines 8-27: Advertising, Car and Truck Expenses, Commissions and Fees, Contract Labor, Depletion, Depreciation and Section 179, Employee Benefit Programs, Insurance (Other than Health), Interest (Mortgage), Interest (Other), Legal and Professional Services, Office Expenses, Pension and Profit-Sharing Plans, Rent or Lease (Vehicles, Machinery, Equipment), Rent or Lease (Other Business Property), Repairs and Maintenance, Supplies (Not Inventory), Taxes and Licenses, Travel, Meals, Utilities, Wages (Less Employment Credits), Other Expenses
+- Cost of Goods Sold: Cost of Goods Sold, Materials and Supplies, Cost of Labor (not wages), Other Costs (shipping, packaging)
+- Other Line 27: Software Subscriptions, Web Hosting & Domains, Bank Fees, Bad Debts, Dues & Memberships, Training & Education, Trade Publications, Security Services, Business Gifts, Uniforms & Safety Gear, Tools (Under $2,500)
+- Special: Business Use of Home, Personal Expense, Owner Draws/Distributions
 
-Classify these transactions. For each, provide:
-- category: The IRS category (must be from the list above)
-- subcategory: A more specific description (can be null)
-- vendor: The merchant/vendor name extracted from description
-- confidence: 0.0 to 1.0 (how confident you are)
-- reasoning: Brief explanation (one sentence)
+INCOME CATEGORIES (for CREDIT/positive amounts that are BUSINESS REVENUE): Gross Receipts or Sales, Returns and Allowances, Other Income
 
-TRANSACTIONS:
+NEUTRAL CATEGORIES (CREDIT or DEBIT - NOT income, NOT deductible expense):
+- Owner Contribution/Capital (owner depositing personal funds INTO business - CREDIT)
+- Personal Transfer (transfer between owner's accounts - can be CREDIT or DEBIT)
+
+STRICT CLASSIFICATION RULES:
+1. FIRST check the transaction type/amount: DEBIT or amount<0 = EXPENSE or NEUTRAL. CREDIT or amount>0 = INCOME or NEUTRAL.
+2. DEBIT transactions can ONLY use EXPENSE or NEUTRAL categories.
+3. CREDIT transactions can be INCOME or NEUTRAL - determine based on source.
+4. ATM CASH DEPOSIT = Owner Contribution/Capital (owner putting personal cash in, NOT income)
+5. TRANSFER FROM another account (Zelle from self, bank transfer) = Owner Contribution/Capital or Personal Transfer (NOT income)
+6. ACH/wire from COMPANIES (property managers, clients, businesses) = Gross Receipts or Sales (real business income)
+7. CHECK DEPOSIT, REMOTE DEPOSIT with check = Gross Receipts or Sales (customer payment)
+8. Generic DEPOSIT without company name = likely Owner Contribution/Capital (NOT income)
+9. GAS STATIONS - look for these patterns: store numbers (#1234), known brands (Wawa, Speedway, Sunoco, Shell, Chevron, Exxon, Mobil, BP), or unfamiliar names with store # in small towns. If amount <$15 = Meals (snacks/drinks), >=$15 = Car and Truck Expenses (fuel)
+10. Restaurants, fast food, TST* (Toast POS) = Meals
+11. ATM WITHDRAWAL = Owner Draws/Distributions
+12. Hardware stores (Home Depot, AC Supply, Gemaire) = Materials and Supplies
+13. Travel is ONLY for hotels, flights, lodging - NOT gas stations even when traveling
+
+TRANSACTIONS (id|description|amount|type):
 ${transactionLines}
 
-Respond ONLY with a valid JSON array. No markdown, no explanation, just the JSON:
-[
-  {"id": "transaction_id", "category": "CATEGORY_NAME", "subcategory": "optional", "vendor": "Vendor Name", "confidence": 0.85, "reasoning": "Brief explanation"}
-]`;
+RESPOND WITH ONLY A JSON ARRAY. NO MARKDOWN. NO EXPLANATIONS. NO TEXT BEFORE OR AFTER.
+Format: [{"id":"...","category":"...","subcategory":"specific type or null","vendor":"extracted name","confidence":0.9}]`;
 }
 
 /**
@@ -142,7 +158,8 @@ async function callGeminiAPI(transactions: Transaction[], apiKey: string): Promi
       ],
       generationConfig: {
         temperature: 0.1, // Low temperature for consistent categorization
-        maxOutputTokens: 4096,
+        maxOutputTokens: 16384, // Increased for larger batches (200 transactions)
+        responseMimeType: "application/json", // Request JSON directly
       },
       safetySettings: [
         {
@@ -173,26 +190,58 @@ async function callGeminiAPI(transactions: Transaction[], apiKey: string): Promi
 
   const data = await response.json();
   
+  // Log full response for debugging
+  console.log("Gemini raw response:", JSON.stringify(data, null, 2));
+  
   // Extract text from Gemini response
   const textContent = data.candidates?.[0]?.content?.parts?.[0]?.text;
   
   if (!textContent) {
-    console.error("No text content in Gemini response:", data);
+    console.error("No text content in Gemini response:", JSON.stringify(data));
     throw new Error("No content in Gemini response");
   }
 
+  console.log("Gemini text content (first 1000 chars):", textContent.substring(0, 1000));
+
   // Parse JSON from response (handle markdown code blocks if present)
   let jsonStr = textContent.trim();
-  if (jsonStr.startsWith("```json")) {
-    jsonStr = jsonStr.slice(7);
+  
+  // Remove markdown code blocks - handle both complete and truncated responses
+  // First try: match complete code block
+  let jsonMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (jsonMatch) {
+    jsonStr = jsonMatch[1].trim();
+  } else if (jsonStr.startsWith("```")) {
+    // Handle truncated response - starts with ``` but no closing
+    jsonStr = jsonStr.replace(/^```(?:json)?\s*/, "").trim();
   }
-  if (jsonStr.startsWith("```")) {
-    jsonStr = jsonStr.slice(3);
+  
+  // If still not valid JSON array, try to extract it
+  if (!jsonStr.startsWith("[")) {
+    const arrayStart = jsonStr.indexOf("[");
+    if (arrayStart !== -1) {
+      jsonStr = jsonStr.substring(arrayStart);
+    }
   }
-  if (jsonStr.endsWith("```")) {
-    jsonStr = jsonStr.slice(0, -3);
+  
+  // If JSON array is incomplete (truncated), try to fix it
+  if (jsonStr.startsWith("[") && !jsonStr.endsWith("]")) {
+    // Find last complete object
+    const lastCompleteObjEnd = jsonStr.lastIndexOf("},");
+    if (lastCompleteObjEnd !== -1) {
+      jsonStr = jsonStr.substring(0, lastCompleteObjEnd + 1) + "]";
+      console.log("Fixed truncated JSON - recovered partial results");
+    } else {
+      // Try finding just a single complete object
+      const lastObjEnd = jsonStr.lastIndexOf("}");
+      if (lastObjEnd !== -1 && lastObjEnd > jsonStr.indexOf("{")) {
+        jsonStr = jsonStr.substring(0, lastObjEnd + 1) + "]";
+        console.log("Fixed truncated JSON - recovered single result");
+      }
+    }
   }
-  jsonStr = jsonStr.trim();
+  
+  console.log("Parsed JSON string (first 500 chars):", jsonStr.substring(0, 500));
 
   try {
     const results: ClassificationResult[] = JSON.parse(jsonStr);

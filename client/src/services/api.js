@@ -248,9 +248,9 @@ const apiClient = {
       const user = auth.currentUser;
       if (!user) throw new Error('User not authenticated');
       const token = await user.getIdToken();
+      // Don't set Content-Type manually - let axios set it with proper boundary
       return api.post('/csv/upload', formData, {
         headers: {
-          'Content-Type': 'multipart/form-data',
           Authorization: `Bearer ${token}`
         }
       });

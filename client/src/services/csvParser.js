@@ -360,8 +360,8 @@ export function parseCSVFile(file, options = {}) {
               transactions.push({
                 date,
                 description: description.trim(),
-                amount: Math.abs(amount),
-                type,
+                amount: amount, // Keep original signed amount for AI classification
+                type, // 'income' or 'expense'
                 category: category || null,
                 paymentMethod: paymentMethod,
                 checkNumber: checkNumber,

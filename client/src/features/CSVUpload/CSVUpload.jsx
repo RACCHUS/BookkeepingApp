@@ -49,17 +49,22 @@ const CSVUpload = () => {
 
   const banks = banksData?.data || [];
 
-  // Upload mutation - now uses client-side parsing
+  // Upload mutation - uses client-side parsing via supabaseClient
   const uploadMutation = useMutation({
     mutationFn: (file) => {
+      console.log('Uploading file:', file.name, file.size);
+      // Pass file directly with options - supabaseClient.csv.upload handles parsing
       return api.csv.upload(file, {
-        bankFormat: selectedBank,
+        bankFormat: selectedBank || 'auto',
         companyId: selectedCompany,
         companyName: selectedCompanyData?.name || '',
       });
     },
     onSuccess: (response) => {
+      console.log('Upload response:', response);
       if (response.success) {
+        console.log('Preview data:', response.data);
+        console.log('Sample transactions:', response.data.sampleTransactions);
         setPreviewData(response.data);
         setUploadState('preview');
         
@@ -318,7 +323,7 @@ const CSVUpload = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                {previewData.sampleTransactions?.slice(0, 10).map((tx, idx) => (
+                {(previewData.sampleTransactions || previewData.transactions || []).slice(0, 10).map((tx, idx) => (
                   <tr key={idx} className="bg-white dark:bg-gray-800">
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                       {tx.date}
@@ -336,6 +341,13 @@ const CSVUpload = () => {
                     </td>
                   </tr>
                 ))}
+                {!(previewData.sampleTransactions || previewData.transactions || []).length && (
+                  <tr>
+                    <td colSpan="4" className="px-6 py-4 text-center text-sm text-gray-500 dark:text-gray-400">
+                      No transactions found in file
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
@@ -465,10 +477,25 @@ const CSVUpload = () => {
                       variant="primary"
                       size="md"
                       saveRules={true}
-                      onComplete={() => {
+                      onComplete={(result) => {
                         // Refresh data after classification
                         queryClient.invalidateQueries({ queryKey: ['transactions'] });
-                        toast.success('AI classification complete!');
+                        queryClient.invalidateQueries({ queryKey: ['classification-rules'] });
+                        
+                        // Update import result to reflect classified transactions
+                        const classified = result?.stats?.classified || 0;
+                        setImportResult(prev => ({
+                          ...prev,
+                          classified: (prev.classified || 0) + classified,
+                          unclassified: Math.max(0, prev.unclassified - classified),
+                          unclassifiedTransactions: [], // Clear the list
+                        }));
+                        
+                        let message = `AI classified ${classified} transactions`;
+                        if (result?.stats?.rulesCreated > 0) {
+                          message += ` and created ${result.stats.rulesCreated} rules`;
+                        }
+                        toast.success(message);
                       }}
                     />
                   </div>

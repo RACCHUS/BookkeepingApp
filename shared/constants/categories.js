@@ -109,6 +109,7 @@ export const IRS_CATEGORIES = {
   PERSONAL_EXPENSE: 'Personal Expense',
   PERSONAL_TRANSFER: 'Personal Transfer',
   OWNER_DRAWS: 'Owner Draws/Distributions',
+  OWNER_CONTRIBUTION: 'Owner Contribution/Capital',
   
   // === SPECIAL CATEGORIES ===
   UNCATEGORIZED: 'Uncategorized',

@@ -25,17 +25,34 @@ const BATCH_DELAY = 4500;
  * @returns {Promise<Object>} - Classification results
  */
 async function callGeminiEdgeFunction(transactions, userId) {
+  console.log('Calling Gemini Edge Function with:', {
+    transactionCount: transactions.length,
+    userId,
+    sampleTransaction: JSON.stringify(transactions[0]),
+  });
+
+  // Call with headers to bypass JWT requirement (we validate userId in the function)
   const { data, error } = await supabase.functions.invoke('classify-transactions', {
     body: {
       transactions: transactions.map(t => ({
         id: t.id,
         description: t.description || t.payee || '',
         amount: t.amount,
-        date: t.date,
+        // Map type correctly: income/expense -> CREDIT/DEBIT, or infer from amount
+        type: t.type === 'income' ? 'CREDIT' : 
+              t.type === 'expense' ? 'DEBIT' : 
+              (t.amount >= 0 ? 'CREDIT' : 'DEBIT'),
       })),
       userId,
     },
+    headers: {
+      // Pass authorization header with anon key for public edge function
+      'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+    },
   });
+
+  console.log('Gemini Edge Function response - data:', JSON.stringify(data, null, 2));
+  console.log('Gemini Edge Function response - error:', error);
 
   if (error) {
     console.error('Gemini Edge Function error:', error);
@@ -54,21 +71,45 @@ async function updateTransactionsWithClassifications(results) {
   let updated = 0;
   let failed = 0;
 
+  // Neutral categories that should have type='transfer' (not income/expense)
+  // Using display names to match what the AI returns
+  const NEUTRAL_CATEGORIES = [
+    'Owner Contribution/Capital', 'Owner Draws/Distributions',
+    'Personal Expense', 'Personal Transfer',
+    'Loan Received', 'Loan Payment',
+    'Transfer Between Accounts',
+  ];
+
+  console.log('updateTransactionsWithClassifications called with', results.length, 'results');
+  console.log('Sample result:', JSON.stringify(results[0]));
+
   for (const result of results) {
     if (!result.category) {
+      console.log(`Skipping transaction ${result.id} - no category`);
       continue; // Skip unclassified
+    }
+
+    console.log(`Updating transaction ${result.id} with category: ${result.category}`);
+    
+    // Determine transaction type based on category
+    const isNeutralCategory = NEUTRAL_CATEGORIES.includes(result.category);
+    const updateData = {
+      category: result.category,
+      subcategory: result.subcategory,
+      vendor_name: result.vendor,
+      classification_source: CLASSIFICATION_SOURCE.GEMINI_API,
+      classification_confidence: result.confidence,
+      updated_at: new Date().toISOString(),
+    };
+    
+    // Set type to 'transfer' for neutral categories
+    if (isNeutralCategory) {
+      updateData.type = 'transfer';
     }
 
     const { error } = await supabase
       .from('transactions')
-      .update({
-        category: result.category,
-        subcategory: result.subcategory,
-        vendor_name: result.vendor,
-        classification_source: CLASSIFICATION_SOURCE.GEMINI_API,
-        classification_confidence: result.confidence,
-        updated_at: new Date().toISOString(),
-      })
+      .update(updateData)
       .eq('id', result.id);
 
     if (error) {
@@ -91,35 +132,71 @@ async function updateTransactionsWithClassifications(results) {
 async function saveGeminiRules(results, userId) {
   let rulesCreated = 0;
 
+  console.log('saveGeminiRules called with', results.length, 'results for user', userId);
+
+  // Vendors that should NOT have rules created (category depends on context/amount)
+  const EXCLUDED_VENDORS = [
+    // Gas stations - could be gas (Car Expenses) or food/drinks (Meals)
+    'WAWA', 'SPEEDWAY', 'SHEETZ', 'SUNOCO', 'SHELL', 'CHEVRON', 'EXXON', 'MOBIL',
+    'BP', 'CITGO', '7-ELEVEN', '7 ELEVEN', 'RACETRAC', 'QUIKTRIP', 'QT', 'CIRCLE K',
+    'CUMBERLAND FARMS', 'KWIK TRIP', 'LOVES', 'PILOT', 'FLYING J', 'TA TRAVEL',
+    'MARATHON', 'VALERO', 'PHILLIPS 66', 'CONOCO', 'ARCO', 'CASEY', 'CASEYS',
+    // Big box stores - could be office supplies, materials, personal, etc.
+    'WALMART', 'WAL-MART', 'TARGET', 'COSTCO', 'SAM\'S CLUB', 'SAMS CLUB', 'BJ\'S',
+    // Amazon - could be anything
+    'AMAZON', 'AMZN',
+  ];
+
   // Only save rules for high-confidence classifications (>= 0.75)
   const highConfidenceResults = results.filter(
     r => r.category && r.confidence >= 0.75 && r.vendor
   );
 
+  console.log('High confidence results (>=0.75 with vendor):', highConfidenceResults.length);
+
   // Group by vendor to avoid duplicate rules
   const vendorMap = new Map();
   for (const result of highConfidenceResults) {
     const vendorKey = result.vendor.toUpperCase();
+    
+    // Skip excluded vendors
+    if (EXCLUDED_VENDORS.some(excluded => vendorKey.includes(excluded))) {
+      console.log('Skipping excluded vendor (context-dependent):', result.vendor);
+      continue;
+    }
+    
     if (!vendorMap.has(vendorKey) || vendorMap.get(vendorKey).confidence < result.confidence) {
       vendorMap.set(vendorKey, result);
     }
   }
 
+  console.log('Unique vendors to save as rules:', vendorMap.size);
+
   for (const result of vendorMap.values()) {
     // Check if rule already exists
-    const { data: existing } = await supabase
+    const { data: existing, error: checkError } = await supabase
       .from('classification_rules')
       .select('id')
       .eq('user_id', userId)
       .eq('pattern', result.vendor.toUpperCase())
       .single();
 
-    if (existing) continue; // Skip if rule exists
+    if (checkError && checkError.code !== 'PGRST116') {
+      console.error('Error checking existing rule:', checkError);
+    }
+
+    if (existing) {
+      console.log('Rule already exists for:', result.vendor);
+      continue;
+    }
+
+    console.log('Creating rule for vendor:', result.vendor, 'category:', result.category);
 
     const { error } = await supabase
       .from('classification_rules')
       .insert({
         user_id: userId,
+        name: result.vendor, // Required field - use vendor name as the rule name
         pattern: result.vendor.toUpperCase(),
         pattern_type: 'contains',
         vendor_name: result.vendor,
@@ -131,11 +208,15 @@ async function saveGeminiRules(results, userId) {
         match_count: 0,
       });
 
-    if (!error) {
+    if (error) {
+      console.error('Failed to create rule for', result.vendor, '- Error:', JSON.stringify(error));
+    } else {
+      console.log('Successfully created rule for:', result.vendor);
       rulesCreated++;
     }
   }
 
+  console.log('Total rules created:', rulesCreated);
   return rulesCreated;
 }
 
@@ -157,7 +238,9 @@ export function useGeminiClassification() {
 
   const classifyMutation = useMutation({
     mutationFn: async ({ transactions, saveRules = true }) => {
-      if (!user?.id) {
+      // Firebase uses 'uid', not 'id'
+      const userId = user?.uid || user?.id;
+      if (!userId) {
         throw new Error('User not authenticated');
       }
 
@@ -192,7 +275,7 @@ export function useGeminiClassification() {
 
         try {
           // Call Gemini Edge Function
-          const response = await callGeminiEdgeFunction(batch, user.id);
+          const response = await callGeminiEdgeFunction(batch, userId);
 
           if (response.success && response.results) {
             allResults.push(...response.results);
@@ -204,7 +287,7 @@ export function useGeminiClassification() {
 
             // Optionally save as rules
             if (saveRules) {
-              const rulesCreated = await saveGeminiRules(response.results, user.id);
+              const rulesCreated = await saveGeminiRules(response.results, userId);
               totalRulesCreated += rulesCreated;
             }
 
@@ -253,12 +336,8 @@ export function useGeminiClassification() {
       queryClient.invalidateQueries(['classification-rules']);
       queryClient.invalidateQueries(['classification-stats']);
 
-      const { stats } = data;
-      let message = `AI classified ${stats.classified} of ${stats.total} transactions`;
-      if (stats.rulesCreated > 0) {
-        message += ` and created ${stats.rulesCreated} new rules`;
-      }
-      toast.success(message);
+      // Don't show toast here - let the onComplete callback handle it
+      // so consumers can customize the message
     },
     onError: (error) => {
       setProgress(prev => ({

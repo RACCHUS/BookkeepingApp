@@ -1,5 +1,28 @@
 # Transaction Classification System - Implementation Plan
 
+## ✅ IMPLEMENTED (January 21, 2026)
+
+### What's Complete:
+- **3-Layer Classification System**: Local Rules → Gemini API → Manual Review
+- **Gemini Edge Function**: Deployed to Supabase, 200 transactions/batch
+- **Classification Service**: Full Fuse.js fuzzy matching with user rules + default vendors
+- **200+ Default Vendors**: Built-in mappings for common businesses
+- **Rules Management UI**: View/edit/delete rules with tabs for User, AI, and Default vendors
+- **AI Classification Button**: In bulk panel and post-import modal
+- **Database Tables**: 
+  - `classification_rules` - User and Gemini-created rules
+  - `disabled_default_vendors` - User preferences for defaults
+  - `classification_usage_logs` - Gemini usage analytics
+
+### Access Points:
+- **Rules Management**: `/classification/rules`
+- **Classification Page**: `/classification` (has "Manage Rules" button)
+- **AI Classification**: 
+  - In TransactionBulkPanel (when unclassified selected)
+  - Post-CSV import success modal
+
+---
+
 ## Overview
 Three-layer system: Local Rules → Gemini API → Manual Review
 

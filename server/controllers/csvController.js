@@ -300,7 +300,16 @@ export const confirmImport = asyncHandler(async (req, res) => {
         delete txToSave.originalType;
 
         const result = await db.createTransaction(userId, txToSave);
-        savedIds.push(result.id);
+        
+        // Track saved transaction with its ID and classification status
+        savedIds.push({
+          id: result.id,
+          description: transaction.description,
+          amount: transaction.amount,
+          date: transaction.date,
+          category: transaction.category || null,
+          isClassified: !!(transaction.category && transaction.category.trim())
+        });
       } catch (err) {
         errors.push({
           transaction: { 
@@ -333,13 +342,29 @@ export const confirmImport = asyncHandler(async (req, res) => {
       requestId: req.id
     });
 
+    // Calculate classification stats
+    const classifiedTransactions = savedIds.filter(t => t.isClassified);
+    const unclassifiedTransactions = savedIds.filter(t => !t.isClassified);
+
     res.status(200).json({
       success: true,
       message: `Successfully imported ${savedIds.length} transactions`,
       data: {
         csvImportId: csvImportId,
+        // New field names expected by frontend
+        imported: savedIds.length,
+        classified: classifiedTransactions.length,
+        unclassified: unclassifiedTransactions.length,
+        // Return unclassified transactions for AI classification
+        unclassifiedTransactions: unclassifiedTransactions.map(t => ({
+          id: t.id,
+          description: t.description,
+          amount: t.amount,
+          date: t.date
+        })),
+        // Keep old field names for backward compatibility
         savedCount: savedIds.length,
-        savedIds,
+        savedIds: savedIds.map(t => t.id),
         duplicateCount: duplicates.length,
         duplicates: duplicates.slice(0, 10), // Only return first 10 duplicates
         errorCount: errors.length,

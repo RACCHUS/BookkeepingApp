@@ -6,6 +6,7 @@
 
 export { default as ManualReviewQueue } from './ManualReviewQueue';
 export { default as RulesManagement } from './RulesManagement';
+export { default as GlobalRulesManager } from './GlobalRulesManager';
 
 // Re-export hooks for convenience
 export { 

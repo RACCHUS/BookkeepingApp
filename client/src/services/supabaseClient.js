@@ -1601,6 +1601,7 @@ export const supabaseClient = {
         success: true,
         data: {
           transactions: result.transactions,
+          sampleTransactions: result.transactions.slice(0, 10), // For preview display
           detectedBank: result.detectedBank,
           detectedBankName: result.detectedBankName,
           headers: result.headers,
@@ -1697,16 +1698,18 @@ export const supabaseClient = {
         original_description: t.originalDescription || t.description,
       }));
 
-      let insertedIds = [];
+      let insertedTransactions = [];
       if (transactionsToInsert.length > 0) {
         const { data: insertedData, error: insertError } = await supabase
           .from('transactions')
           .insert(transactionsToInsert)
-          .select('id');
+          .select('id, description, amount, date, category');
 
         if (insertError) throw insertError;
-        insertedIds = (insertedData || []).map(t => t.id);
+        insertedTransactions = insertedData || [];
       }
+
+      const insertedIds = insertedTransactions.map(t => t.id);
 
       // Apply classification rules to newly imported transactions
       let classificationResult = { classified: 0, rules: 0 };
@@ -1715,6 +1718,27 @@ export const supabaseClient = {
         console.log('Classification result:', classificationResult);
       }
 
+      // Get updated transaction data to see which are classified now
+      let unclassifiedTransactions = [];
+      if (insertedIds.length > 0) {
+        const { data: updatedTransactions } = await supabase
+          .from('transactions')
+          .select('id, description, amount, date, category')
+          .in('id', insertedIds);
+        
+        // Filter to only unclassified (no category)
+        unclassifiedTransactions = (updatedTransactions || [])
+          .filter(t => !t.category || t.category.trim() === '')
+          .map(t => ({
+            id: t.id,
+            description: t.description,
+            amount: t.amount,
+            date: t.date,
+          }));
+      }
+
+      const classifiedCount = insertedIds.length - unclassifiedTransactions.length;
+
       return {
         success: true,
         data: {
@@ -1722,7 +1746,9 @@ export const supabaseClient = {
           duplicates: duplicateCount,
           total: transactions.length,
           importId: csvImportId,
-          classified: classificationResult.classified,
+          classified: classifiedCount,
+          unclassified: unclassifiedTransactions.length,
+          unclassifiedTransactions: unclassifiedTransactions,
           rulesApplied: classificationResult.rules,
         },
       };

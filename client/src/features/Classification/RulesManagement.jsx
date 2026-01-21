@@ -15,7 +15,7 @@ import { toast } from 'react-hot-toast';
 import { supabase } from '../../services/supabase';
 import { useAuth } from '../../context/AuthContext';
 import { DEFAULT_VENDORS } from '../../../../shared/constants/defaultVendors';
-import { IRS_CATEGORIES, IRS_CATEGORY_LABELS } from '../../../../shared/constants/categories';
+import { IRS_CATEGORIES } from '../../../../shared/constants/categories';
 import { LoadingSpinner } from '../../components/ui';
 import {
   MagnifyingGlassIcon,
@@ -31,13 +31,16 @@ import {
   ChevronUpDownIcon,
   EyeIcon,
   EyeSlashIcon,
+  GlobeAltIcon,
 } from '@heroicons/react/24/outline';
+import GlobalRulesManager from './GlobalRulesManager';
 
 // Tab types
 const TABS = {
   USER: 'user',
   GEMINI: 'gemini',
   DEFAULT: 'default',
+  GLOBAL: 'global',
 };
 
 /**
@@ -83,19 +86,22 @@ export default function RulesManagement() {
   const [editingRule, setEditingRule] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
 
+  // Firebase uses uid, not id
+  const userId = user?.uid || user?.id;
+
   // Fetch rules
   const { data: rules = [], isLoading: rulesLoading } = useQuery({
-    queryKey: ['all-classification-rules', user?.id],
-    queryFn: () => fetchAllRules(user?.id),
-    enabled: !!user?.id,
+    queryKey: ['all-classification-rules', userId],
+    queryFn: () => fetchAllRules(userId),
+    enabled: !!userId,
     staleTime: 60 * 1000,
   });
 
   // Fetch disabled default vendors
   const { data: disabledDefaults = [] } = useQuery({
-    queryKey: ['disabled-default-vendors', user?.id],
-    queryFn: () => fetchDisabledDefaults(user?.id),
-    enabled: !!user?.id,
+    queryKey: ['disabled-default-vendors', userId],
+    queryFn: () => fetchDisabledDefaults(userId),
+    enabled: !!userId,
     staleTime: 60 * 1000,
   });
 
@@ -207,7 +213,7 @@ export default function RulesManagement() {
         const { error } = await supabase
           .from('disabled_default_vendors')
           .delete()
-          .eq('user_id', user.id)
+          .eq('user_id', userId)
           .eq('pattern', pattern);
         
         if (error) throw error;
@@ -215,7 +221,7 @@ export default function RulesManagement() {
         // Add to disabled list
         const { error } = await supabase
           .from('disabled_default_vendors')
-          .insert({ user_id: user.id, pattern });
+          .insert({ user_id: userId, pattern });
         
         if (error) throw error;
       }
@@ -236,7 +242,7 @@ export default function RulesManagement() {
         .from('classification_rules')
         .insert({
           ...rule,
-          user_id: user.id,
+          user_id: userId,
           source: 'manual',
           is_active: true,
           match_count: 0,
@@ -346,9 +352,20 @@ export default function RulesManagement() {
             label="Default Vendors"
             count={defaultVendors.length}
           />
+          <TabButton
+            active={activeTab === TABS.GLOBAL}
+            onClick={() => setActiveTab(TABS.GLOBAL)}
+            icon={GlobeAltIcon}
+            label="Global Rules"
+          />
         </nav>
       </div>
 
+      {/* Global Rules Tab - Separate Component */}
+      {activeTab === TABS.GLOBAL ? (
+        <GlobalRulesManager />
+      ) : (
+        <>
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-3 mb-4">
         <div className="relative flex-1">
@@ -368,7 +385,7 @@ export default function RulesManagement() {
           className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
         >
           <option value="">All Categories</option>
-          {Object.entries(IRS_CATEGORY_LABELS).map(([key, label]) => (
+          {Object.entries(IRS_CATEGORIES).map(([key, label]) => (
             <option key={key} value={key}>{label}</option>
           ))}
         </select>
@@ -418,6 +435,8 @@ export default function RulesManagement() {
           onClose={() => setShowAddModal(false)}
           isLoading={createRuleMutation.isPending}
         />
+      )}
+        </>
       )}
     </div>
   );
@@ -530,7 +549,7 @@ function RulesTable({ rules, onEdit, onDelete, onToggleActive, isUpdating, isDel
               </td>
               <td className="px-4 py-3">
                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
-                  {IRS_CATEGORY_LABELS[rule.category] || rule.category}
+                  {IRS_CATEGORIES[rule.category] || rule.category}
                 </span>
               </td>
               <td className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">
@@ -631,7 +650,7 @@ function DefaultVendorsTable({ vendors, onToggle, isToggling }) {
               </td>
               <td className="px-4 py-3">
                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">
-                  {IRS_CATEGORY_LABELS[vendor.category] || vendor.category}
+                  {IRS_CATEGORIES[vendor.category] || vendor.category}
                 </span>
               </td>
               <td className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">
@@ -741,7 +760,7 @@ function EditRuleModal({ rule, onSave, onClose, isLoading }) {
                 required
               >
                 <option value="">Select category...</option>
-                {Object.entries(IRS_CATEGORY_LABELS).map(([key, label]) => (
+                {Object.entries(IRS_CATEGORIES).map(([key, label]) => (
                   <option key={key} value={key}>{label}</option>
                 ))}
               </select>
@@ -866,7 +885,7 @@ function AddRuleModal({ onSave, onClose, isLoading }) {
                 required
               >
                 <option value="">Select category...</option>
-                {Object.entries(IRS_CATEGORY_LABELS).map(([key, label]) => (
+                {Object.entries(IRS_CATEGORIES).map(([key, label]) => (
                   <option key={key} value={key}>{label}</option>
                 ))}
               </select>

@@ -115,6 +115,80 @@ function createDefaultVendorsIndex() {
 }
 
 /**
+ * Fetch user's global rule settings
+ * @param {string} userId - User ID
+ * @returns {Promise<Object>} - Settings object
+ */
+export async function fetchGlobalRuleSettings(userId) {
+  try {
+    const { data, error } = await supabase
+      .from('user_global_rule_settings')
+      .select('*')
+      .eq('user_id', userId)
+      .single();
+
+    if (error && error.code !== 'PGRST116') {
+      console.error('Error fetching global rule settings:', error);
+    }
+
+    // Default to using global rules if no settings exist
+    return data || { use_global_rules: true };
+  } catch (err) {
+    console.error('Failed to fetch global rule settings:', err);
+    return { use_global_rules: true };
+  }
+}
+
+/**
+ * Fetch user's disabled global rules
+ * @param {string} userId - User ID
+ * @returns {Promise<Set>} - Set of disabled rule IDs
+ */
+export async function fetchDisabledGlobalRules(userId) {
+  try {
+    const { data, error } = await supabase
+      .from('user_disabled_global_rules')
+      .select('rule_id')
+      .eq('user_id', userId);
+
+    if (error) {
+      console.error('Error fetching disabled global rules:', error);
+      return new Set();
+    }
+
+    return new Set(data?.map(r => r.rule_id) || []);
+  } catch (err) {
+    console.error('Failed to fetch disabled global rules:', err);
+    return new Set();
+  }
+}
+
+/**
+ * Fetch all active global rules
+ * @returns {Promise<Array>} - Array of global rules
+ */
+export async function fetchGlobalRules() {
+  try {
+    const { data, error } = await supabase
+      .from('classification_rules')
+      .select('*')
+      .eq('is_global', true)
+      .eq('is_active', true)
+      .order('global_vote_count', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching global rules:', error);
+      return [];
+    }
+
+    return data || [];
+  } catch (err) {
+    console.error('Failed to fetch global rules:', err);
+    return [];
+  }
+}
+
+/**
  * Fetch user's classification rules from database
  * @param {string} userId - User ID
  * @returns {Promise<Array>} - Array of rules
@@ -137,6 +211,39 @@ export async function fetchUserRules(userId) {
   } catch (err) {
     console.error('Failed to fetch user rules:', err);
     return [];
+  }
+}
+
+/**
+ * Fetch all rules for a user (user rules + enabled global rules)
+ * User rules take priority over global rules
+ * @param {string} userId - User ID
+ * @returns {Promise<Object>} - { userRules, globalRules, useGlobal }
+ */
+export async function fetchAllRulesForUser(userId) {
+  try {
+    // Fetch all in parallel
+    const [userRules, globalSettings, disabledGlobal, globalRules] = await Promise.all([
+      fetchUserRules(userId),
+      fetchGlobalRuleSettings(userId),
+      fetchDisabledGlobalRules(userId),
+      fetchGlobalRules(),
+    ]);
+
+    // Filter out disabled global rules
+    const enabledGlobalRules = globalSettings.use_global_rules
+      ? globalRules.filter(rule => !disabledGlobal.has(rule.id))
+      : [];
+
+    return {
+      userRules,
+      globalRules: enabledGlobalRules,
+      useGlobal: globalSettings.use_global_rules,
+      disabledGlobalIds: disabledGlobal,
+    };
+  } catch (err) {
+    console.error('Failed to fetch all rules:', err);
+    return { userRules: [], globalRules: [], useGlobal: true, disabledGlobalIds: new Set() };
   }
 }
 
@@ -561,6 +668,115 @@ export async function getClassificationStats(userId) {
   }
 }
 
+// ============================================
+// GLOBAL RULES MANAGEMENT
+// ============================================
+
+/**
+ * Toggle user's global rules setting (master on/off)
+ * @param {string} userId - User ID
+ * @param {boolean} useGlobal - Whether to use global rules
+ * @returns {Promise<Object>} - Updated settings
+ */
+export async function toggleGlobalRules(userId, useGlobal) {
+  try {
+    const { data, error } = await supabase
+      .from('user_global_rule_settings')
+      .upsert({
+        user_id: userId,
+        use_global_rules: useGlobal,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'user_id' })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error toggling global rules:', error);
+      throw error;
+    }
+
+    return data;
+  } catch (err) {
+    console.error('Failed to toggle global rules:', err);
+    throw new Error(`Failed to update setting: ${err.message}`);
+  }
+}
+
+/**
+ * Disable a specific global rule for a user
+ * @param {string} userId - User ID
+ * @param {string} ruleId - Global rule ID to disable
+ * @returns {Promise<void>}
+ */
+export async function disableGlobalRule(userId, ruleId) {
+  try {
+    const { error } = await supabase
+      .from('user_disabled_global_rules')
+      .insert({
+        user_id: userId,
+        rule_id: ruleId,
+      });
+
+    if (error && error.code !== '23505') { // Ignore duplicate key errors
+      console.error('Error disabling global rule:', error);
+      throw error;
+    }
+  } catch (err) {
+    console.error('Failed to disable global rule:', err);
+    throw new Error(`Failed to disable rule: ${err.message}`);
+  }
+}
+
+/**
+ * Re-enable a specific global rule for a user
+ * @param {string} userId - User ID
+ * @param {string} ruleId - Global rule ID to re-enable
+ * @returns {Promise<void>}
+ */
+export async function enableGlobalRule(userId, ruleId) {
+  try {
+    const { error } = await supabase
+      .from('user_disabled_global_rules')
+      .delete()
+      .eq('user_id', userId)
+      .eq('rule_id', ruleId);
+
+    if (error) {
+      console.error('Error enabling global rule:', error);
+      throw error;
+    }
+  } catch (err) {
+    console.error('Failed to enable global rule:', err);
+    throw new Error(`Failed to enable rule: ${err.message}`);
+  }
+}
+
+/**
+ * Get global rules with user's enabled/disabled status
+ * @param {string} userId - User ID
+ * @returns {Promise<Array>} - Global rules with isEnabled flag
+ */
+export async function getGlobalRulesWithStatus(userId) {
+  try {
+    const [globalRules, disabledIds, settings] = await Promise.all([
+      fetchGlobalRules(),
+      fetchDisabledGlobalRules(userId),
+      fetchGlobalRuleSettings(userId),
+    ]);
+
+    return {
+      useGlobal: settings.use_global_rules,
+      rules: globalRules.map(rule => ({
+        ...rule,
+        isEnabled: !disabledIds.has(rule.id),
+      })),
+    };
+  } catch (err) {
+    console.error('Failed to get global rules with status:', err);
+    return { useGlobal: true, rules: [] };
+  }
+}
+
 export default {
   classifyLocal,
   batchClassifyLocal,
@@ -568,6 +784,13 @@ export default {
   classifyTransactions,
   saveClassificationRule,
   fetchUserRules,
+  fetchGlobalRules,
+  fetchAllRulesForUser,
+  fetchGlobalRuleSettings,
+  toggleGlobalRules,
+  disableGlobalRule,
+  enableGlobalRule,
+  getGlobalRulesWithStatus,
   cleanDescription,
   extractVendor,
   getClassificationStats,
