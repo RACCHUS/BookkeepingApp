@@ -38,6 +38,12 @@ const INCOME_CATEGORIES = [
   'Consulting Income', 'Freelance Income', 'Commission Income', 'Refunds Received'
 ];
 
+// Section codes that indicate expenses (withdrawals from bank)
+const EXPENSE_SECTION_CODES = ['checks', 'card', 'electronic'];
+
+// Section codes that indicate income (deposits to bank)
+const INCOME_SECTION_CODES = ['deposits'];
+
 /**
  * Check if a transaction is income
  * @param {Object} tx - Transaction object
@@ -47,6 +53,12 @@ export const isIncomeTransaction = (tx) => {
   if (!tx) return false;
   if (tx.type === 'income') return true;
   if (tx.type === 'expense') return false;
+  
+  // Check for income section code (deposits)
+  if (INCOME_SECTION_CODES.includes(tx.sectionCode)) return true;
+  
+  // Check for expense section code (not income)
+  if (EXPENSE_SECTION_CODES.includes(tx.sectionCode)) return false;
   
   // Check for income category
   if (tx.category) {
@@ -58,9 +70,6 @@ export const isIncomeTransaction = (tx) => {
       return true;
     }
   }
-  
-  // Section code indicates deposits
-  if (tx.sectionCode === 'deposits') return true;
   
   // Positive amounts typically indicate income (fallback)
   if (tx.amount > 0) return true;
@@ -77,6 +86,12 @@ export const isExpenseTransaction = (tx) => {
   if (!tx) return false;
   if (tx.type === 'expense') return true;
   if (tx.type === 'income') return false;
+  
+  // Check for expense section codes (checks, card, electronic withdrawals)
+  if (EXPENSE_SECTION_CODES.includes(tx.sectionCode)) return true;
+  
+  // Check for income section code (not expense)
+  if (INCOME_SECTION_CODES.includes(tx.sectionCode)) return false;
   
   // Negative amounts typically indicate expenses
   if (tx.amount < 0) return true;
