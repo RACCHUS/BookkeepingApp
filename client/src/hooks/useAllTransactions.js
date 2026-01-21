@@ -84,18 +84,19 @@ export const isIncomeTransaction = (tx) => {
  */
 export const isExpenseTransaction = (tx) => {
   if (!tx) return false;
+  
+  // Primary: check the type field (most reliable for DB transactions)
   if (tx.type === 'expense') return true;
   if (tx.type === 'income') return false;
   
-  // Check for expense section codes (checks, card, electronic withdrawals)
+  // Fallback: check for expense section codes (PDF imports)
   if (EXPENSE_SECTION_CODES.includes(tx.sectionCode)) return true;
-  
-  // Check for income section code (not expense)
   if (INCOME_SECTION_CODES.includes(tx.sectionCode)) return false;
   
-  // Negative amounts typically indicate expenses
+  // Last resort: negative amounts (pre-existing data)
   if (tx.amount < 0) return true;
   
+  // Default to false - if we can't determine, don't include
   return false;
 };
 
@@ -126,13 +127,23 @@ export function useAllTransactions(options = {}) {
     queryKey: [ALL_TRANSACTIONS_KEY],
     queryFn: async () => {
       try {
+        console.log(`[useAllTransactions] Fetching transactions with limit: ${limit}`);
         const response = await api.transactions.getAll({ limit });
         const transactions = response?.data?.transactions || response?.transactions || [];
+        
+        console.log(`[useAllTransactions] Received ${transactions.length} transactions`);
         
         if (!Array.isArray(transactions)) {
           console.error('Invalid transactions response:', response);
           return [];
         }
+        
+        // Debug: count by type
+        const typeCounts = transactions.reduce((acc, tx) => {
+          acc[tx.type || 'undefined'] = (acc[tx.type || 'undefined'] || 0) + 1;
+          return acc;
+        }, {});
+        console.log('[useAllTransactions] Transaction counts by type:', typeCounts);
         
         return transactions;
       } catch (error) {
