@@ -29,21 +29,6 @@ const QUERY_CONFIG = {
   retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
 };
 
-// Income categories from IRS Schedule C
-const INCOME_CATEGORIES = [
-  'Gross Receipts', 'Gross Receipts - Sales', 'Gross Receipts - Services',
-  'Gross Receipts or Sales', 'Returns and Allowances', 'Interest Income',
-  'Dividend Income', 'Rental Income', 'Royalties', 'Other Income',
-  'Business Income', 'Customer Payments', 'Service Revenue', 'Product Sales',
-  'Consulting Income', 'Freelance Income', 'Commission Income', 'Refunds Received'
-];
-
-// Section codes that indicate expenses (withdrawals from bank)
-const EXPENSE_SECTION_CODES = ['checks', 'card', 'electronic'];
-
-// Section codes that indicate income (deposits to bank)
-const INCOME_SECTION_CODES = ['deposits'];
-
 /**
  * Check if a transaction is income
  * @param {Object} tx - Transaction object
@@ -51,30 +36,7 @@ const INCOME_SECTION_CODES = ['deposits'];
  */
 export const isIncomeTransaction = (tx) => {
   if (!tx) return false;
-  if (tx.type === 'income') return true;
-  if (tx.type === 'expense') return false;
-  
-  // Check for income section code (deposits)
-  if (INCOME_SECTION_CODES.includes(tx.sectionCode)) return true;
-  
-  // Check for expense section code (not income)
-  if (EXPENSE_SECTION_CODES.includes(tx.sectionCode)) return false;
-  
-  // Check for income category
-  if (tx.category) {
-    const catLower = tx.category.toLowerCase();
-    if (INCOME_CATEGORIES.some(cat => catLower.includes(cat.toLowerCase()))) {
-      return true;
-    }
-    if (catLower.includes('income') || catLower.includes('receipt') || catLower.includes('revenue')) {
-      return true;
-    }
-  }
-  
-  // Positive amounts typically indicate income (fallback)
-  if (tx.amount > 0) return true;
-  
-  return false;
+  return tx.type === 'income';
 };
 
 /**
@@ -84,20 +46,7 @@ export const isIncomeTransaction = (tx) => {
  */
 export const isExpenseTransaction = (tx) => {
   if (!tx) return false;
-  
-  // Primary: check the type field (most reliable for DB transactions)
-  if (tx.type === 'expense') return true;
-  if (tx.type === 'income') return false;
-  
-  // Fallback: check for expense section codes (PDF imports)
-  if (EXPENSE_SECTION_CODES.includes(tx.sectionCode)) return true;
-  if (INCOME_SECTION_CODES.includes(tx.sectionCode)) return false;
-  
-  // Last resort: negative amounts (pre-existing data)
-  if (tx.amount < 0) return true;
-  
-  // Default to false - if we can't determine, don't include
-  return false;
+  return tx.type === 'expense';
 };
 
 /**
