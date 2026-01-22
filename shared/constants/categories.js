@@ -948,9 +948,9 @@ export const TRANSACTION_TYPES = {
 };
 
 // Neutral/Non-Taxable Transaction Categories (not counted as income or expense)
+// NOTE: Owner Draws is NOT neutral - it's tracked as EXPENSE for tax purposes (in IRS_CATEGORIES)
 export const NEUTRAL_CATEGORIES = {
   OWNER_CONTRIBUTION: 'Owner Contribution/Capital',
-  OWNER_DRAW: 'Owner Draw/Distribution',
   LOAN_RECEIVED: 'Loan Received',
   LOAN_PAYMENT: 'Loan Payment (Principal)',
   TRANSFER_BETWEEN_ACCOUNTS: 'Transfer Between Accounts',
@@ -1057,7 +1057,6 @@ export const CATEGORY_GROUPS = {
   ],
   NEUTRAL: [
     NEUTRAL_CATEGORIES.OWNER_CONTRIBUTION,
-    NEUTRAL_CATEGORIES.OWNER_DRAW,
     NEUTRAL_CATEGORIES.TRANSFER_BETWEEN_ACCOUNTS,
     NEUTRAL_CATEGORIES.LOAN_RECEIVED,
     NEUTRAL_CATEGORIES.LOAN_PAYMENT,

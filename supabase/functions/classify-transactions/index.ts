@@ -78,14 +78,14 @@ const IRS_CATEGORIES = [
   // === PERSONAL (Non-Deductible but tracked) ===
   "Personal Expense",
   "Personal Transfer",
-  "Owner Draws/Distributions",
+  "Owner Draws/Distributions",  // EXPENSE - tracked for tax purposes, NOT neutral
   "Owner Contribution/Capital",
   "Uncategorized",
   "Split Transaction",
   
   // === NEUTRAL CATEGORIES (type='transfer') ===
+  // NOTE: Owner Draws is NOT here - it's an expense category
   "Owner Contribution/Capital",
-  "Owner Draw/Distribution",
   "Transfer Between Accounts",
   "Loan Received",
   "Loan Payment (Principal)",
