@@ -145,13 +145,17 @@ const BulkReceiptEntry = ({ isOpen, onClose, onSubmit, isLoading }) => {
     if (validEntries.length === 0) return;
 
     try {
-      const receiptsToCreate = validEntries.map(entry => ({
-        vendor: entry.vendor?.trim() || 'Unknown Vendor',
-        amount: parseFloat(entry.amount),
-        date: entry.date || new Date().toISOString().split('T')[0],
-        category: entry.category || null,
-        createTransaction: true
-      }));
+      const receiptsToCreate = validEntries.map(entry => {
+        // Use vendor if provided, otherwise use category name, otherwise 'Unknown'
+        const vendorName = entry.vendor?.trim() || entry.category || 'Unknown Vendor';
+        return {
+          vendor: vendorName,
+          amount: parseFloat(entry.amount),
+          date: entry.date || new Date().toISOString().split('T')[0],
+          category: entry.category || null,
+          createTransaction: true
+        };
+      });
 
       const response = await onSubmit(receiptsToCreate);
       
