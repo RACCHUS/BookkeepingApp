@@ -12,6 +12,7 @@
 import Fuse from 'fuse.js';
 import { supabase } from './supabase';
 import { DEFAULT_VENDORS, TRANSACTION_PREFIXES, TRANSACTION_SUFFIXES } from '../../../shared/constants/defaultVendors';
+import { IRS_CATEGORIES } from '../../../shared/constants/categories';
 
 // Classification sources for tracking
 export const CLASSIFICATION_SOURCE = {
@@ -32,6 +33,24 @@ const CONFIDENCE = {
   GEMINI_LOW: 0.5,
   MANUAL_REVIEW_THRESHOLD: 0.5,
 };
+
+/**
+ * Convert category key to its proper IRS_CATEGORIES value
+ * @param {string} categoryKey - Category key like 'MEALS' or already proper value like 'Meals'
+ * @returns {string} - Proper category value like 'Meals'
+ */
+function getCategoryValue(categoryKey) {
+  if (!categoryKey) return null;
+  
+  // If categoryKey is already a proper value (exists in IRS_CATEGORIES values), return as-is
+  const allValues = Object.values(IRS_CATEGORIES);
+  if (allValues.includes(categoryKey)) {
+    return categoryKey;
+  }
+  
+  // Otherwise, look up the key and return its value
+  return IRS_CATEGORIES[categoryKey] || categoryKey;
+}
 
 /**
  * Clean transaction description for better matching
@@ -344,19 +363,27 @@ function matchUserRules(description, rules, amount = 0) {
   return null;
 }
 
-// Income categories that should match positive amounts
-const INCOME_CATEGORIES = [
+// Income categories that should match positive amounts (use KEYS for comparison with DEFAULT_VENDORS)
+const INCOME_CATEGORY_KEYS = [
   'INCOME', 'GROSS_RECEIPTS', 'RENTAL_INCOME', 'INTEREST_INCOME', 
   'DIVIDEND_INCOME', 'CAPITAL_GAINS', 'OTHER_INCOME', 'OWNER_CONTRIBUTION'
 ];
 
+// Income category VALUES for comparing with already-converted categories
+const INCOME_CATEGORY_VALUES = [
+  'Gross Receipts or Sales', 'Other Income', 'Owner Contribution/Capital'
+];
+
 /**
  * Get the expected direction for a vendor based on its category
- * @param {string} category - The category key
+ * @param {string} category - The category key or value
  * @returns {string} - 'positive' for income, 'negative' for expenses
  */
 function getVendorDirection(category) {
-  return INCOME_CATEGORIES.includes(category) ? 'positive' : 'negative';
+  // Check both keys (for DEFAULT_VENDORS) and values (for already-converted categories)
+  return INCOME_CATEGORY_KEYS.includes(category) || INCOME_CATEGORY_VALUES.includes(category) 
+    ? 'positive' 
+    : 'negative';
 }
 
 /**
@@ -392,8 +419,10 @@ function matchDefaultVendors(description, amount = 0) {
       if (!directionMatchesAmount(data.category, amount)) {
         continue; // Skip this match - direction doesn't match
       }
+      // Convert category key to proper IRS_CATEGORIES value
+      const categoryValue = getCategoryValue(data.category);
       return {
-        category: data.category,
+        category: categoryValue,
         subcategory: data.subcategory,
         vendor: data.vendor,
         confidence: CONFIDENCE.DEFAULT_VENDOR_EXACT,
@@ -413,8 +442,10 @@ function matchDefaultVendors(description, amount = 0) {
     if (!directionMatchesAmount(match.category, amount)) {
       return null; // Direction doesn't match
     }
+    // Convert category key to proper IRS_CATEGORIES value
+    const categoryValue = getCategoryValue(match.category);
     return {
-      category: match.category,
+      category: categoryValue,
       subcategory: match.subcategory,
       vendor: match.vendor,
       confidence: CONFIDENCE.DEFAULT_VENDOR_FUZZY * (1 - results[0].score),

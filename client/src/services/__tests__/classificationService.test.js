@@ -84,20 +84,20 @@ describe('extractVendor', () => {
 
 describe('classifyLocal - Default Vendors', () => {
   // Note: All expense vendor tests need negative amounts due to direction-aware matching
-  it('should classify gas stations as CAR_TRUCK_EXPENSES', () => {
+  it('should classify gas stations as Car and Truck Expenses', () => {
     const transaction = { description: 'SHELL OIL 12345', amount: -45.00 };
     const result = classifyLocal(transaction);
     
-    expect(result.classification.category).toBe('CAR_TRUCK_EXPENSES');
+    expect(result.classification.category).toBe('Car and Truck Expenses');
     expect(result.classification.source).toBe(CLASSIFICATION_SOURCE.DEFAULT_VENDOR);
     expect(result.classification.vendor).toBe('Shell');
   });
 
-  it('should classify Home Depot as MATERIALS_SUPPLIES', () => {
+  it('should classify Home Depot as Materials and Supplies', () => {
     const transaction = { description: 'HOME DEPOT 1234 MIAMI FL', amount: -150.00 };
     const result = classifyLocal(transaction);
     
-    expect(result.classification.category).toBe('MATERIALS_SUPPLIES');
+    expect(result.classification.category).toBe('Materials and Supplies');
     expect(result.classification.vendor).toBe('Home Depot');
   });
 
@@ -105,22 +105,22 @@ describe('classifyLocal - Default Vendors', () => {
     const transaction = { description: 'ADOBE CREATIVE CLOUD', amount: -54.99 };
     const result = classifyLocal(transaction);
     
-    expect(result.classification.category).toBe('SOFTWARE_SUBSCRIPTIONS');
+    expect(result.classification.category).toBe('Software Subscriptions');
     expect(result.classification.vendor).toBe('Adobe');
   });
 
-  it('should classify Microsoft as SOFTWARE_SUBSCRIPTIONS', () => {
+  it('should classify Microsoft as Software Subscriptions', () => {
     const transaction = { description: 'MICROSOFT 365', amount: -9.99 };
     const result = classifyLocal(transaction);
     
-    expect(result.classification.category).toBe('SOFTWARE_SUBSCRIPTIONS');
+    expect(result.classification.category).toBe('Software Subscriptions');
   });
 
   it('should classify office supplies stores', () => {
     const transaction = { description: 'STAPLES #1234', amount: -35.00 };
     const result = classifyLocal(transaction);
     
-    expect(result.classification.category).toBe('OFFICE_EXPENSES');
+    expect(result.classification.category).toBe('Office Expenses');
     expect(result.classification.vendor).toBe('Staples');
   });
 
@@ -128,7 +128,7 @@ describe('classifyLocal - Default Vendors', () => {
     const transaction = { description: 'UPS STORE 1234', amount: -25.00 };
     const result = classifyLocal(transaction);
     
-    expect(result.classification.category).toBe('OTHER_COSTS');
+    expect(result.classification.category).toBe('Other Costs (shipping, packaging)');
     expect(result.classification.vendor).toBe('UPS');
   });
 
@@ -136,14 +136,14 @@ describe('classifyLocal - Default Vendors', () => {
     const transaction = { description: 'FPL ELECTRIC BILL', amount: -180.00 };
     const result = classifyLocal(transaction);
     
-    expect(result.classification.category).toBe('UTILITIES');
+    expect(result.classification.category).toBe('Utilities');
   });
 
   it('should classify meals/restaurants', () => {
     const transaction = { description: 'STARBUCKS STORE 12345', amount: -6.50 };
     const result = classifyLocal(transaction);
     
-    expect(result.classification.category).toBe('MEALS');
+    expect(result.classification.category).toBe('Meals');
     expect(result.classification.vendor).toBe('Starbucks');
   });
 
@@ -151,15 +151,15 @@ describe('classifyLocal - Default Vendors', () => {
     const transaction = { description: 'UBER TRIP', amount: -22.50 };
     const result = classifyLocal(transaction);
     
-    expect(result.classification.category).toBe('TRAVEL');
+    expect(result.classification.category).toBe('Travel');
     expect(result.classification.vendor).toBe('Uber');
   });
 
-  it('should classify ATM withdrawals as OWNER_DRAWS', () => {
+  it('should classify ATM withdrawals as Owner Draws', () => {
     const transaction = { description: 'ATM WITHDRAWAL', amount: -100.00 };
     const result = classifyLocal(transaction);
     
-    expect(result.classification.category).toBe('OWNER_DRAWS');
+    expect(result.classification.category).toBe('Owner Draws/Distributions');
   });
 
   it('should return unclassified for unknown/personal transactions', () => {
@@ -191,7 +191,7 @@ describe('classifyLocal - Default Vendors Direction Filtering', () => {
     };
     const result = classifyLocal(transaction);
     
-    expect(result.classification.category).toBe('MEALS');
+    expect(result.classification.category).toBe('Meals');
     expect(result.classification.source).toBe(CLASSIFICATION_SOURCE.DEFAULT_VENDOR);
   });
 
@@ -214,7 +214,7 @@ describe('classifyLocal - Default Vendors Direction Filtering', () => {
     };
     const result = classifyLocal(transaction);
     
-    expect(result.classification.category).toBe('CAR_TRUCK_EXPENSES');
+    expect(result.classification.category).toBe('Car and Truck Expenses');
     expect(result.classification.source).toBe(CLASSIFICATION_SOURCE.DEFAULT_VENDOR);
   });
 
@@ -236,7 +236,7 @@ describe('classifyLocal - Default Vendors Direction Filtering', () => {
     };
     const result = classifyLocal(transaction);
     
-    expect(result.classification.category).toBe('SOFTWARE_SUBSCRIPTIONS');
+    expect(result.classification.category).toBe('Software Subscriptions');
     expect(result.classification.source).toBe(CLASSIFICATION_SOURCE.DEFAULT_VENDOR);
   });
 
@@ -269,7 +269,7 @@ describe('classifyLocal - Default Vendors Direction Filtering', () => {
     };
     const result = classifyLocal(transaction);
     
-    expect(result.classification.category).toBe('MATERIALS_SUPPLIES');
+    expect(result.classification.category).toBe('Materials and Supplies');
     expect(result.classification.source).toBe(CLASSIFICATION_SOURCE.DEFAULT_VENDOR);
   });
 });
@@ -448,14 +448,14 @@ describe('Edge Cases', () => {
     const result = classifyLocal(transaction);
     
     // Should fall back to payee field
-    expect(result.classification.category).toBe('CAR_TRUCK_EXPENSES');
+    expect(result.classification.category).toBe('Car and Truck Expenses');
   });
 
   it('should handle transaction with only payee', () => {
     const transaction = { payee: 'HOME DEPOT', amount: -150.00 };
     const result = classifyLocal(transaction);
     
-    expect(result.classification.category).toBe('MATERIALS_SUPPLIES');
+    expect(result.classification.category).toBe('Materials and Supplies');
   });
 
   it('should handle very long descriptions', () => {
@@ -463,21 +463,21 @@ describe('Edge Cases', () => {
     const transaction = { description: longDesc, amount: -45.00 };
     const result = classifyLocal(transaction);
     
-    expect(result.classification.category).toBe('CAR_TRUCK_EXPENSES');
+    expect(result.classification.category).toBe('Car and Truck Expenses');
   });
 
   it('should handle special characters', () => {
     const transaction = { description: "MCDONALD'S #12345", amount: -8.50 };
     const result = classifyLocal(transaction);
     
-    expect(result.classification.category).toBe('MEALS');
+    expect(result.classification.category).toBe('Meals');
   });
 
   it('should handle mixed case', () => {
     const transaction = { description: 'ShElL gAs StAtIoN', amount: -45.00 };
     const result = classifyLocal(transaction);
     
-    expect(result.classification.category).toBe('CAR_TRUCK_EXPENSES');
+    expect(result.classification.category).toBe('Car and Truck Expenses');
   });
 });
 
@@ -629,48 +629,49 @@ describe('classifyLocal - Amount Direction Filtering', () => {
 
 describe('Specific Vendor Coverage', () => {
   // Only test vendors that actually exist in DEFAULT_VENDORS
+  // Now using proper IRS_CATEGORIES values (not keys)
   const vendorTests = [
     // Gas Stations
-    { desc: 'CHEVRON', category: 'CAR_TRUCK_EXPENSES' },
-    { desc: 'EXXON', category: 'CAR_TRUCK_EXPENSES' },
-    { desc: 'BP GAS', category: 'CAR_TRUCK_EXPENSES' },
+    { desc: 'CHEVRON', category: 'Car and Truck Expenses' },
+    { desc: 'EXXON', category: 'Car and Truck Expenses' },
+    { desc: 'BP GAS', category: 'Car and Truck Expenses' },
     // Note: SPEEDWAY not in DEFAULT_VENDORS
     
     // Hardware/Building
-    { desc: 'LOWES', category: 'MATERIALS_SUPPLIES' },
-    { desc: 'MENARDS', category: 'MATERIALS_SUPPLIES' },
-    { desc: 'ACE HARDWARE', category: 'MATERIALS_SUPPLIES' },
+    { desc: 'LOWES', category: 'Materials and Supplies' },
+    { desc: 'MENARDS', category: 'Materials and Supplies' },
+    { desc: 'ACE HARDWARE', category: 'Materials and Supplies' },
     
     // Software (Note: Use 'GOOGLE' not 'GOOGLE CLOUD' - matches via alias)
-    { desc: 'DROPBOX', category: 'SOFTWARE_SUBSCRIPTIONS' },
-    { desc: 'ZOOM VIDEO', category: 'SOFTWARE_SUBSCRIPTIONS' },
-    { desc: 'SLACK TECHNOLOGIES', category: 'SOFTWARE_SUBSCRIPTIONS' },
+    { desc: 'DROPBOX', category: 'Software Subscriptions' },
+    { desc: 'ZOOM VIDEO', category: 'Software Subscriptions' },
+    { desc: 'SLACK TECHNOLOGIES', category: 'Software Subscriptions' },
     
     // Web Hosting
-    { desc: 'GODADDY.COM', category: 'WEB_HOSTING' },
-    { desc: 'AWS SERVICES', category: 'WEB_HOSTING' },
-    { desc: 'CLOUDFLARE', category: 'WEB_HOSTING' },
+    { desc: 'GODADDY.COM', category: 'Web Hosting & Domains' },
+    { desc: 'AWS SERVICES', category: 'Web Hosting & Domains' },
+    { desc: 'CLOUDFLARE', category: 'Web Hosting & Domains' },
     
     // Shipping
-    { desc: 'FEDEX SHIPPING', category: 'OTHER_COSTS' },
-    { desc: 'USPS PO', category: 'OTHER_COSTS' },
+    { desc: 'FEDEX SHIPPING', category: 'Other Costs (shipping, packaging)' },
+    { desc: 'USPS PO', category: 'Other Costs (shipping, packaging)' },
     
     // Banking
-    { desc: 'CHASE BANK FEE', category: 'BANK_FEES' },
-    { desc: 'INTEREST CHARGE', category: 'INTEREST_OTHER' },
+    { desc: 'CHASE BANK FEE', category: 'Bank Fees' },
+    { desc: 'INTEREST CHARGE', category: 'Interest (Other)' },
     
     // Advertising
-    { desc: 'FACEBOOK ADS', category: 'ADVERTISING' },
-    { desc: 'GOOGLE ADS', category: 'ADVERTISING' },
+    { desc: 'FACEBOOK ADS', category: 'Advertising' },
+    { desc: 'GOOGLE ADS', category: 'Advertising' },
     
     // Travel
-    { desc: 'DELTA AIRLINES', category: 'TRAVEL' },
-    { desc: 'MARRIOTT HOTEL', category: 'TRAVEL' },
-    { desc: 'AIRBNB', category: 'TRAVEL' },
+    { desc: 'DELTA AIRLINES', category: 'Travel' },
+    { desc: 'MARRIOTT HOTEL', category: 'Travel' },
+    { desc: 'AIRBNB', category: 'Travel' },
     
     // Insurance
-    { desc: 'GEICO INSURANCE', category: 'INSURANCE_OTHER' },
-    { desc: 'STATE FARM', category: 'INSURANCE_OTHER' },
+    { desc: 'GEICO INSURANCE', category: 'Insurance (Other than Health)' },
+    { desc: 'STATE FARM', category: 'Insurance (Other than Health)' },
   ];
 
   vendorTests.forEach(({ desc, category }) => {

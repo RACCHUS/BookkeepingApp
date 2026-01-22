@@ -158,7 +158,7 @@ class TransactionClassifier {
     if (bestMatch.confidence < 0.4) {
       if (amount < 10 && (payeeLower.includes('coffee') || payeeLower.includes('starbucks'))) {
         bestMatch = {
-          category: IRS_CATEGORIES.MEALS_ENTERTAINMENT,
+          category: IRS_CATEGORIES.MEALS,
           confidence: 0.4,
           method: 'amount_heuristic'
         };
@@ -275,7 +275,7 @@ class TransactionClassifier {
     // Return common categories as suggestions when no classification is found
     return [
       { category: IRS_CATEGORIES.OFFICE_EXPENSES, confidence: 0.1, method: 'common_suggestion' },
-      { category: IRS_CATEGORIES.MEALS_ENTERTAINMENT, confidence: 0.1, method: 'common_suggestion' },
+      { category: IRS_CATEGORIES.MEALS, confidence: 0.1, method: 'common_suggestion' },
       { category: IRS_CATEGORIES.TRAVEL, confidence: 0.1, method: 'common_suggestion' }
     ];
   }
