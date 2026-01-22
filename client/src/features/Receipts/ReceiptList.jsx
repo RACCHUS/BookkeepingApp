@@ -16,7 +16,8 @@ import {
   XMarkIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
-  DocumentPlusIcon
+  DocumentPlusIcon,
+  QueueListIcon
 } from '@heroicons/react/24/outline';
 import receiptService from '../../services/receiptService';
 import ReceiptCard from './ReceiptCard';
@@ -24,6 +25,7 @@ import ReceiptForm from './ReceiptForm';
 import ReceiptDetailModal from './ReceiptDetailModal';
 import BatchUpdateModal from './BatchUpdateModal';
 import BulkAddReceiptsModal from './BulkAddReceiptsModal';
+import BulkReceiptEntry from './BulkReceiptEntry';
 import QuickReceiptEntry from './QuickReceiptEntry';
 
 /**
@@ -36,6 +38,7 @@ const ReceiptList = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
   const [showBulkAdd, setShowBulkAdd] = useState(false);
+  const [showBulkEntry, setShowBulkEntry] = useState(false);
   const [showQuickEntry, setShowQuickEntry] = useState(false);
   const [editingReceipt, setEditingReceipt] = useState(null);
   const [viewingReceipt, setViewingReceipt] = useState(null);
@@ -319,12 +322,12 @@ const ReceiptList = () => {
         </div>
         <div className="flex gap-2">
           <button
-            onClick={() => setShowQuickEntry(true)}
+            onClick={() => setShowBulkEntry(true)}
             className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors"
-            title="Quickly add multiple cash receipts (creates transactions too)"
+            title="Bulk add receipts with default vendor/date/category"
           >
-            <DocumentPlusIcon className="w-5 h-5" />
-            Quick Entry
+            <QueueListIcon className="w-5 h-5" />
+            Bulk Add
           </button>
           <button
             onClick={() => setShowBulkAdd(true)}
@@ -711,7 +714,23 @@ const ReceiptList = () => {
         isLoading={bulkAddMutation.isPending}
       />
 
-      {/* Quick Receipt Entry Modal (primary use case - creates receipts + transactions) */}
+      {/* Bulk Receipt Entry Modal (with default values) */}
+      <BulkReceiptEntry
+        isOpen={showBulkEntry}
+        onClose={() => setShowBulkEntry(false)}
+        onSubmit={async (receipts) => {
+          const result = await receiptService.bulkCreate(receipts);
+          queryClient.invalidateQueries(['receipts']);
+          queryClient.invalidateQueries(['transactions']);
+          queryClient.invalidateQueries(['recent-transactions']);
+          queryClient.invalidateQueries(['transaction-summary']);
+          queryClient.invalidateQueries([ALL_TRANSACTIONS_KEY]);
+          return result;
+        }}
+        isLoading={false}
+      />
+
+      {/* Quick Receipt Entry Modal (legacy - keeping for backwards compat) */}
       <QuickReceiptEntry
         isOpen={showQuickEntry}
         onClose={() => setShowQuickEntry(false)}

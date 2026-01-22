@@ -291,7 +291,8 @@ const receiptService = {
   },
 
   /**
-   * Bulk create receipts
+   * Bulk create receipts with automatic transaction creation
+   * Each receipt creates a corresponding expense transaction
    */
   bulkCreate: async (receipts) => {
     const userId = await getUserId();
@@ -299,8 +300,108 @@ const receiptService = {
     
     for (const receipt of receipts) {
       try {
-        const result = await receiptService.createReceipt(receipt);
-        results.push({ success: true, data: result.data });
+        // First create the transaction if requested
+        let transactionId = null;
+        if (receipt.createTransaction !== false) {
+          const { data: txData, error: txError } = await supabase
+            .from('transactions')
+            .insert({
+              user_id: userId,
+              date: receipt.date,
+              amount: -Math.abs(parseFloat(receipt.amount)), // Expenses are negative
+              description: receipt.vendor || 'Receipt',
+              payee: receipt.vendor,
+              category: receipt.category,
+              type: 'expense',
+              source: 'receipt_entry'
+            })
+            .select()
+            .single();
+          
+          if (txError) throw txError;
+          transactionId = txData.id;
+        }
+        
+        // Then create the receipt linked to the transaction
+        const { data: receiptData, error: receiptError } = await supabase
+          .from('receipts')
+          .insert({
+            user_id: userId,
+            date: receipt.date,
+            amount: Math.abs(parseFloat(receipt.amount)),
+            vendor: receipt.vendor,
+            category: receipt.category,
+            transaction_id: transactionId,
+            company_id: receipt.companyId || null,
+            is_reconciled: false,
+          })
+          .select()
+          .single();
+        
+        if (receiptError) throw receiptError;
+        
+        results.push({ 
+          success: true, 
+          data: transformReceipt(receiptData),
+          transactionId 
+        });
+      } catch (error) {
+        results.push({ success: false, error: error.message });
+      }
+    }
+    
+    const successCount = results.filter(r => r.success).length;
+    return {
+      success: true,
+      results,
+      successCount,
+      failCount: results.filter(r => !r.success).length,
+      allSucceeded: successCount === receipts.length,
+      someSucceeded: successCount > 0 && successCount < receipts.length
+    };
+  },
+
+  /**
+   * Batch delete receipts
+   */
+  batchDeleteReceipts: async (receiptIds) => {
+    const userId = await getUserId();
+    
+    const { error } = await supabase
+      .from('receipts')
+      .delete()
+      .in('id', receiptIds)
+      .eq('user_id', userId);
+    
+    if (error) throw error;
+    return { success: true, successCount: receiptIds.length };
+  },
+
+  /**
+   * Bulk create from existing transactions (link receipts to transactions)
+   */
+  bulkCreateFromTransactions: async (transactions) => {
+    const userId = await getUserId();
+    const results = [];
+    
+    for (const tx of transactions) {
+      try {
+        const { data, error } = await supabase
+          .from('receipts')
+          .insert({
+            user_id: userId,
+            date: tx.date,
+            amount: Math.abs(parseFloat(tx.amount)),
+            vendor: tx.payee || tx.description,
+            category: tx.category,
+            transaction_id: tx.id,
+            is_reconciled: false,
+          })
+          .select()
+          .single();
+        
+        if (error) throw error;
+        results.push({ success: true, data: transformReceipt(data) });
       } catch (error) {
         results.push({ success: false, error: error.message });
       }
@@ -308,9 +409,11 @@ const receiptService = {
     
     return {
       success: true,
-      results,
-      successCount: results.filter(r => r.success).length,
-      failCount: results.filter(r => !r.success).length,
+      data: {
+        results,
+        successCount: results.filter(r => r.success).length,
+        failCount: results.filter(r => !r.success).length,
+      }
     };
   },
 };
