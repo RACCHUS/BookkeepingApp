@@ -15,7 +15,7 @@ import { IRS_CATEGORIES } from '@shared/constants/categories';
  * QuickTransactionEntry - Rapid entry of multiple transactions
  * Optimized for entering multiple transactions quickly
  */
-const QuickTransactionEntry = ({ isOpen, onClose, onSubmit, isLoading = false, companies = [], payees = [] }) => {
+const QuickTransactionEntry = ({ isOpen, onClose, onSubmit, isLoading = false }) => {
   // Multiple transaction entries
   const [entries, setEntries] = useState([createEmptyEntry()]);
   const [submitStatus, setSubmitStatus] = useState(null); // null | 'success' | 'partial' | 'error'
@@ -33,9 +33,6 @@ const QuickTransactionEntry = ({ isOpen, onClose, onSubmit, isLoading = false, c
       date: new Date().toISOString().split('T')[0],
       type: 'expense',
       category: '',
-      companyId: '',
-      payee: '',
-      payeeId: '',
       notes: '',
       isValid: false,
       error: null
@@ -132,8 +129,6 @@ const QuickTransactionEntry = ({ isOpen, onClose, onSubmit, isLoading = false, c
           date: entry.date,
           type: entry.type || 'expense',
           category: entry.category || '',
-          companyId: entry.companyId || null,
-          payee: entry.payee?.trim() || '',
           notes: entry.notes || ''
         };
       });
@@ -258,15 +253,12 @@ const QuickTransactionEntry = ({ isOpen, onClose, onSubmit, isLoading = false, c
           {/* Entry Form */}
           {!submitStatus && (
             <>
-              <div className="grid grid-cols-12 gap-2 p-3 bg-gray-50 dark:bg-gray-700 border-b text-sm font-medium text-gray-600 dark:text-gray-300">
-                <div className="col-span-2">Description *</div>
-                <div className="col-span-1">Amount *</div>
-                <div className="col-span-1">Date *</div>
+              <div className="grid grid-cols-10 gap-2 p-3 bg-gray-50 dark:bg-gray-700 border-b text-sm font-medium text-gray-600 dark:text-gray-300">
+                <div className="col-span-3">Description *</div>
+                <div className="col-span-2">Amount *</div>
+                <div className="col-span-2">Date *</div>
                 <div className="col-span-1">Type</div>
-                <div className="col-span-2" title="Who you pay (employee, contractor, etc.)">Payee</div>
                 <div className="col-span-2">Category</div>
-                <div className="col-span-2">Company</div>
-                <div className="col-span-1"></div>
               </div>
 
               {/* Entry Rows */}
@@ -274,12 +266,12 @@ const QuickTransactionEntry = ({ isOpen, onClose, onSubmit, isLoading = false, c
                 {entries.map((entry, index) => (
                   <div 
                     key={entry.id} 
-                    className={`grid grid-cols-12 gap-2 p-2 border-b border-gray-100 dark:border-gray-700 items-center ${
+                    className={`grid grid-cols-10 gap-2 p-2 border-b border-gray-100 dark:border-gray-700 items-center ${
                       entry.error ? 'bg-red-50 dark:bg-red-900/20' : ''
                     }`}
                   >
                     {/* Description */}
-                    <div className="col-span-2">
+                    <div className="col-span-3">
                       <input
                         ref={index === entries.length - 1 ? lastDescriptionRef : null}
                         type="text"
@@ -292,7 +284,7 @@ const QuickTransactionEntry = ({ isOpen, onClose, onSubmit, isLoading = false, c
                     </div>
 
                     {/* Amount */}
-                    <div className="col-span-1">
+                    <div className="col-span-2">
                       <input
                         type="number"
                         step="0.01"
@@ -305,7 +297,7 @@ const QuickTransactionEntry = ({ isOpen, onClose, onSubmit, isLoading = false, c
                     </div>
 
                     {/* Date */}
-                    <div className="col-span-1">
+                    <div className="col-span-2">
                       <input
                         type="date"
                         value={entry.date}
@@ -332,26 +324,6 @@ const QuickTransactionEntry = ({ isOpen, onClose, onSubmit, isLoading = false, c
                       </select>
                     </div>
 
-                    {/* Payee */}
-                    <div className="col-span-2">
-                      <select
-                        value={entry.payeeId}
-                        onChange={(e) => {
-                          const selectedPayee = payees.find(p => p.id === e.target.value);
-                          updateEntry(index, 'payeeId', e.target.value);
-                          updateEntry(index, 'payee', selectedPayee?.name || '');
-                        }}
-                        className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
-                      >
-                        <option value="">Select payee</option>
-                        {payees.filter(p => p.isActive !== false).map(p => (
-                          <option key={p.id} value={p.id}>
-                            {p.name} {p.type ? `(${p.type})` : ''}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
                     {/* Category */}
                     <div className="col-span-2">
                       <select
@@ -368,37 +340,9 @@ const QuickTransactionEntry = ({ isOpen, onClose, onSubmit, isLoading = false, c
                       </select>
                     </div>
 
-                    {/* Company */}
-                    <div className="col-span-2">
-                      <select
-                        value={entry.companyId}
-                        onChange={(e) => updateEntry(index, 'companyId', e.target.value)}
-                        className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
-                      >
-                        <option value="">Select company</option>
-                        {companies.map(company => (
-                          <option key={company.id} value={company.id}>
-                            {company.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    {/* Remove Row */}
-                    <div className="col-span-1 flex justify-center">
-                      <button
-                        type="button"
-                        onClick={() => removeRow(index)}
-                        className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded transition-colors"
-                        title="Remove row"
-                      >
-                        <TrashIcon className="h-4 w-4" />
-                      </button>
-                    </div>
-
                     {/* Error message */}
                     {entry.error && (
-                      <div className="col-span-12 text-xs text-red-600 dark:text-red-400 pl-2">
+                      <div className="col-span-10 text-xs text-red-600 dark:text-red-400 pl-2">
                         {entry.error}
                       </div>
                     )}
@@ -470,17 +414,7 @@ QuickTransactionEntry.propTypes = {
   isOpen: PropTypes.bool.isRequired,
   onClose: PropTypes.func.isRequired,
   onSubmit: PropTypes.func.isRequired,
-  isLoading: PropTypes.bool,
-  companies: PropTypes.arrayOf(PropTypes.shape({
-    id: PropTypes.string.isRequired,
-    name: PropTypes.string.isRequired
-  })),
-  payees: PropTypes.arrayOf(PropTypes.shape({
-    id: PropTypes.string.isRequired,
-    name: PropTypes.string.isRequired,
-    type: PropTypes.string,
-    isActive: PropTypes.bool
-  }))
+  isLoading: PropTypes.bool
 };
 
 export default QuickTransactionEntry;

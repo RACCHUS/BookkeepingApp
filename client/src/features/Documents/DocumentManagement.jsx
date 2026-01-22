@@ -12,7 +12,8 @@ import {
   Cog6ToothIcon,
   PlusIcon,
   ArrowPathIcon,
-  TableCellsIcon
+  TableCellsIcon,
+  QueueListIcon
 } from '@heroicons/react/24/outline';
 import PDFUpload from '../PDFUpload/PDFUpload';
 import CSVUpload from '../CSVUpload/CSVUpload';
@@ -20,6 +21,7 @@ import ManageDocuments from './ManageDocuments';
 import ManageReceipts from './ManageReceipts';
 import ManageChecks from './ManageChecks';
 import ManageCSVImports from './ManageCSVImports';
+import { BulkReceiptEntry } from '../Receipts';
 import receiptService from '../../services/receiptService';
 import checkService from '../../services/checkService';
 import api from '../../services/api';
@@ -49,6 +51,9 @@ const DocumentManagement = () => {
     notes: '',
     createTransaction: true
   });
+  
+  // Bulk receipt modal state
+  const [showBulkReceiptEntry, setShowBulkReceiptEntry] = useState(false);
   
   // Check form state
   const [checkForm, setCheckForm] = useState({
@@ -192,12 +197,24 @@ const DocumentManagement = () => {
           <div className="space-y-6">
             {/* Quick Entry Form */}
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                Add New Receipt
-              </h2>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                Enter receipt details. A transaction will be created automatically if enabled.
-              </p>
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                    Add New Receipt
+                  </h2>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    Enter receipt details. A transaction will be created automatically if enabled.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowBulkReceiptEntry(true)}
+                  className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors"
+                  title="Bulk add multiple receipts at once"
+                >
+                  <QueueListIcon className="w-5 h-5" />
+                  Bulk Add
+                </button>
+              </div>
               
               <form onSubmit={handleReceiptSubmit} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -527,6 +544,22 @@ const DocumentManagement = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {renderTabContent()}
       </div>
+
+      {/* Bulk Receipt Entry Modal */}
+      <BulkReceiptEntry
+        isOpen={showBulkReceiptEntry}
+        onClose={() => setShowBulkReceiptEntry(false)}
+        onSubmit={async (receipts) => {
+          const result = await receiptService.bulkCreate(receipts);
+          queryClient.invalidateQueries(['receipts']);
+          queryClient.invalidateQueries(['transactions']);
+          queryClient.invalidateQueries(['recent-transactions']);
+          queryClient.invalidateQueries(['transaction-summary']);
+          queryClient.invalidateQueries([ALL_TRANSACTIONS_KEY]);
+          return result;
+        }}
+        isLoading={false}
+      />
     </div>
   );
 };
