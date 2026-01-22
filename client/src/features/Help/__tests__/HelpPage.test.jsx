@@ -53,11 +53,15 @@ describe('HelpPage', () => {
     const transactionTypesHeader = screen.getByRole('button', { name: /Transaction Types/i });
     fireEvent.click(transactionTypesHeader);
     
-    // Should see information about transfers
+    // Should see information about transfers (neutral)
     expect(screen.getByText(/Transfers don't affect your profit\/loss calculations/)).toBeInTheDocument();
-    expect(screen.getByText('Owner Contribution', { selector: 'strong' })).toBeInTheDocument();
+    expect(screen.getByText('Owner Contribution/Capital', { selector: 'strong' })).toBeInTheDocument();
     expect(screen.getByText('Loan Received', { selector: 'strong' })).toBeInTheDocument();
     expect(screen.getByText('Transfer Between Accounts', { selector: 'strong' })).toBeInTheDocument();
+    
+    // Should see information about owner draws being tracked as expense (NOT neutral)
+    expect(screen.getByText('Owner Draws/Distributions', { selector: 'strong' })).toBeInTheDocument();
+    expect(screen.getByText(/Owner withdrawals must be tracked as expenses/)).toBeInTheDocument();
   });
 
   it('displays warning boxes with important information', () => {

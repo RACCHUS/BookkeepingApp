@@ -66,11 +66,16 @@ const IRS_CATEGORIES = [
   "Gross Receipts or Sales",
   "Returns and Allowances",
   "Other Income",
-  // Non-deductible / Neutral
+  // Non-deductible (tracked as expense)
   "Personal Expense",
-  "Personal Transfer",
-  "Owner Draws/Distributions",
+  "Owner Draw/Distribution",  // Tracked as EXPENSE for tax purposes
+  // Neutral categories (type='transfer', excluded from P&L)
   "Owner Contribution/Capital",
+  "Transfer Between Accounts",
+  "Loan Received",
+  "Loan Payment (Principal)",
+  "Refund Received",
+  "Refund Issued",
 ];
 
 interface Transaction {
@@ -109,23 +114,27 @@ EXPENSE CATEGORIES (ONLY for DEBIT/negative amounts):
 - Schedule C Lines 8-27: Advertising, Car and Truck Expenses, Commissions and Fees, Contract Labor, Depletion, Depreciation and Section 179, Employee Benefit Programs, Insurance (Other than Health), Interest (Mortgage), Interest (Other), Legal and Professional Services, Office Expenses, Pension and Profit-Sharing Plans, Rent or Lease (Vehicles, Machinery, Equipment), Rent or Lease (Other Business Property), Repairs and Maintenance, Supplies (Not Inventory), Taxes and Licenses, Travel, Meals, Utilities, Wages (Less Employment Credits), Other Expenses
 - Cost of Goods Sold: Cost of Goods Sold, Materials and Supplies, Cost of Labor (not wages), Other Costs (shipping, packaging)
 - Other Line 27: Software Subscriptions, Web Hosting & Domains, Bank Fees, Bad Debts, Dues & Memberships, Training & Education, Trade Publications, Security Services, Business Gifts, Uniforms & Safety Gear, Tools (Under $2,500)
-- Special: Business Use of Home, Personal Expense, Owner Draws/Distributions
+- Special: Business Use of Home, Personal Expense
+- Owner Draws: Owner Draw/Distribution (EXPENSE - tracked for tax purposes, money owner takes out)
 
 INCOME CATEGORIES (for CREDIT/positive amounts that are BUSINESS REVENUE): Gross Receipts or Sales, Returns and Allowances, Other Income
 
-NEUTRAL CATEGORIES (CREDIT or DEBIT - NOT income, NOT deductible expense):
-- Owner Contribution/Capital (owner depositing personal funds INTO business - CREDIT)
-- Personal Transfer (transfer between owner's accounts - can be CREDIT or DEBIT)
+NEUTRAL CATEGORIES (type='transfer' - NOT counted as income or expense):
+- Owner Contribution/Capital (owner depositing personal funds INTO business - CREDIT only)
+- Transfer Between Accounts (moving money between business accounts)
+- Loan Received (borrowed money is NOT income)
+- Refund Received (return of money previously spent)
 
 STRICT CLASSIFICATION RULES:
-1. FIRST check the transaction type/amount: DEBIT or amount<0 = EXPENSE or NEUTRAL. CREDIT or amount>0 = INCOME or NEUTRAL.
-2. DEBIT transactions can ONLY use EXPENSE or NEUTRAL categories.
+1. FIRST check the transaction type/amount: DEBIT or amount<0 = EXPENSE. CREDIT or amount>0 = INCOME or NEUTRAL.
+2. DEBIT transactions should ONLY use EXPENSE categories (including Owner Draw/Distribution).
 3. CREDIT transactions can be INCOME or NEUTRAL - determine based on source.
-4. ATM CASH DEPOSIT = Owner Contribution/Capital (owner putting personal cash in, NOT income)
-5. TRANSFER FROM another account (Zelle from self, bank transfer) = Owner Contribution/Capital or Personal Transfer (NOT income)
+4. ATM CASH DEPOSIT = Owner Contribution/Capital (owner putting personal cash in, NOT income) - NEUTRAL
+5. TRANSFER FROM another account (Zelle from self, bank transfer) = Owner Contribution/Capital or Transfer Between Accounts (NOT income) - NEUTRAL
 6. ACH/wire from COMPANIES (property managers, clients, businesses) = Gross Receipts or Sales (real business income)
 7. CHECK DEPOSIT, REMOTE DEPOSIT with check = Gross Receipts or Sales (customer payment)
-8. Generic DEPOSIT without company name = likely Owner Contribution/Capital (NOT income)
+8. Generic DEPOSIT without company name = likely Owner Contribution/Capital (NOT income) - NEUTRAL
+9. ATM WITHDRAWAL = Owner Draw/Distribution (EXPENSE - owner paying themselves, tracked for taxes)
 9. GAS STATIONS - look for these patterns: store numbers (#1234), known brands (Wawa, Speedway, Sunoco, Shell, Chevron, Exxon, Mobil, BP), or unfamiliar names with store # in small towns. If amount <$15 = Meals (snacks/drinks), >=$15 = Car and Truck Expenses (fuel)
 10. Restaurants, fast food, TST* (Toast POS) = Meals
 11. ATM WITHDRAWAL = Owner Draws/Distributions

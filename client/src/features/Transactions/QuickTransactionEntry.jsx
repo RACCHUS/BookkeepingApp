@@ -321,7 +321,7 @@ const QuickTransactionEntry = ({ isOpen, onClose, onSubmit, isLoading = false, c
                         value={entry.type}
                         onChange={(e) => updateEntry(index, 'type', e.target.value)}
                         className={`w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 ${
-                          entry.type === 'income' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
+                          entry.type === 'income' ? 'text-green-600 dark:text-green-400' : entry.type === 'transfer' ? 'text-blue-600 dark:text-blue-400' : 'text-red-600 dark:text-red-400'
                         }`}
                       >
                         {typeOptions.map(opt => (

@@ -206,6 +206,38 @@ describe('Financial Utils', () => {
       expect(result.transfers).toBe(800);
       expect(result.total).toBe(2000);
     });
+
+    it('should exclude transfers from net income calculation', () => {
+      // Neutral transactions (owner deposits, transfers) should NOT affect P&L
+      const transactions = [
+        { amount: 5000, type: 'income' },  // Business income
+        { amount: 2000, type: 'expense' }, // Business expenses
+        { amount: 10000, type: 'transfer' }, // Owner contribution - NEUTRAL
+      ];
+
+      const result = categorizeAmounts(transactions);
+      
+      // Net income should be income - expenses, NOT affected by transfer
+      const netIncome = result.income - result.expenses;
+      expect(netIncome).toBe(3000); // 5000 - 2000
+      expect(result.transfers).toBe(10000); // Tracked separately
+    });
+
+    it('should track owner draws as expense (not transfer)', () => {
+      // Owner draws/withdrawals need to be tracked as expenses for tax purposes
+      // They should be type='expense', not type='transfer'
+      const transactions = [
+        { amount: 5000, type: 'income' },
+        { amount: 800, type: 'expense', category: 'Owner Draw/Distribution' }, // ATM withdrawal
+        { amount: 2000, type: 'transfer', category: 'Owner Contribution/Capital' }, // ATM deposit - neutral
+      ];
+
+      const result = categorizeAmounts(transactions);
+      
+      expect(result.income).toBe(5000);
+      expect(result.expenses).toBe(800); // Owner draws counted as expense
+      expect(result.transfers).toBe(2000); // Only owner contribution is neutral
+    });
   });
 
   describe('calculateRunningBalance', () => {

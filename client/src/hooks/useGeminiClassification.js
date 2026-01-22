@@ -72,12 +72,29 @@ async function updateTransactionsWithClassifications(results) {
   let failed = 0;
 
   // Neutral categories that should have type='transfer' (not income/expense)
-  // Using display names to match what the AI returns
-  const NEUTRAL_CATEGORIES = [
-    'Owner Contribution/Capital', 'Owner Draws/Distributions',
-    'Personal Expense', 'Personal Transfer',
-    'Loan Received', 'Loan Payment',
+  // Must match EXACTLY with shared/constants/categories.js NEUTRAL_CATEGORIES
+  // NOTE: Owner Draw/Distribution is NOT neutral - it's tracked as expense for tax purposes
+  const NEUTRAL_CATEGORY_VALUES = [
+    'Owner Contribution/Capital',
     'Transfer Between Accounts',
+    'Loan Received',
+    'Loan Payment (Principal)',
+    'Refund Received',
+    'Refund Issued',
+    'Security Deposit',
+    'Security Deposit Return',
+    'Escrow Deposit',
+    'Escrow Release',
+    'Credit Card Payment',
+    'Sales Tax Collected',
+    'Sales Tax Payment',
+    'Payroll Tax Deposit',
+    'Reimbursement Received',
+    'Reimbursement Paid',
+    'Personal Funds Added',
+    'Personal Funds Withdrawn',
+    'Opening Balance',
+    'Balance Adjustment',
   ];
 
   console.log('updateTransactionsWithClassifications called with', results.length, 'results');
@@ -92,7 +109,7 @@ async function updateTransactionsWithClassifications(results) {
     console.log(`Updating transaction ${result.id} with category: ${result.category}`);
     
     // Determine transaction type based on category
-    const isNeutralCategory = NEUTRAL_CATEGORIES.includes(result.category);
+    const isNeutralCategory = NEUTRAL_CATEGORY_VALUES.includes(result.category);
     const updateData = {
       category: result.category,
       subcategory: result.subcategory,

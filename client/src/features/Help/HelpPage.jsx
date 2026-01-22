@@ -127,25 +127,34 @@ const HelpPage = () => {
         <p className="mb-2">
           Business costs - supplies, utilities, rent, advertising, etc. 
           Expenses are shown as negative amounts and are deductible from your taxes.
+          <strong className="text-red-600"> Owner withdrawals (draws) are also tracked as expenses</strong> so they appear in your records for tax purposes.
         </p>
         
-        <h4 className="font-semibold text-gray-700 mt-4 mb-2">🔄 Transfer (Neutral)</h4>
+        <h4 className="font-semibold text-blue-700 mt-4 mb-2">🔄 Transfer (Neutral)</h4>
         <p className="mb-2">
-          Money that moves but isn't income or expense - owner contributions, loans, 
-          transfers between accounts, refunds. <strong>Transfers don't affect your profit/loss calculations.</strong>
+          Money that moves but isn't income or expense - owner contributions (deposits), loans received, 
+          transfers between accounts. <strong className="text-blue-600">Transfers don't affect your profit/loss calculations.</strong>
         </p>
         
-        <div className="mt-4 p-3 bg-gray-100 rounded-lg">
-          <h5 className="font-semibold mb-2">Common Transfer Categories:</h5>
+        <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+          <h5 className="font-semibold mb-2 text-blue-700 dark:text-blue-400">Neutral Transfer Categories (Blue):</h5>
           <ul className="list-disc list-inside text-sm space-y-1">
-            <li><strong>Owner Contribution</strong> - Personal money you put into the business</li>
-            <li><strong>Owner Draw</strong> - Money you take out for personal use</li>
-            <li><strong>Loan Received</strong> - Borrowed money (not income)</li>
-            <li><strong>Loan Payment</strong> - Paying back principal (interest is an expense)</li>
+            <li><strong>Owner Contribution/Capital</strong> - Personal money you put INTO the business (ATM deposits, cash deposits)</li>
+            <li><strong>Loan Received</strong> - Borrowed money (not income - just an obligation)</li>
             <li><strong>Transfer Between Accounts</strong> - Moving money between business accounts</li>
-            <li><strong>Refund Received/Given</strong> - Returns that offset original transactions</li>
-            <li><strong>Equity Investment</strong> - Capital from investors</li>
+            <li><strong>Personal Transfer</strong> - Transfers from personal accounts</li>
           </ul>
+        </div>
+
+        <div className="mt-4 p-3 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
+          <h5 className="font-semibold mb-2 text-red-700 dark:text-red-400">NOT Neutral (Tracked as Expense):</h5>
+          <ul className="list-disc list-inside text-sm space-y-1">
+            <li><strong>Owner Draws/Distributions</strong> - Money you take OUT for personal use (ATM withdrawals) - tracked for tax records</li>
+            <li><strong>Personal Expense</strong> - Non-business purchases made with business funds</li>
+          </ul>
+          <p className="text-xs text-red-600 dark:text-red-400 mt-2">
+            ⚠️ Owner withdrawals must be tracked as expenses so you know how much you paid yourself for tax purposes.
+          </p>
         </div>
         
         <WarningBox>

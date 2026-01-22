@@ -433,7 +433,7 @@ const Reports = () => {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3 md:gap-6">
         <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-4 md:p-6 transition-colors">
           <div className="text-xs md:text-sm font-medium text-gray-500 dark:text-gray-400">Total Income</div>
           <div className="text-lg md:text-2xl font-bold text-green-600 dark:text-green-400">
@@ -451,6 +451,13 @@ const Reports = () => {
           <div className={`text-lg md:text-2xl font-bold ${(summary.netIncome || 0) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
             ${Math.abs(summary.netIncome || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
+        </div>
+        <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-4 md:p-6 transition-colors">
+          <div className="text-xs md:text-sm font-medium text-gray-500 dark:text-gray-400">Transfers (Neutral)</div>
+          <div className="text-lg md:text-2xl font-bold text-blue-600 dark:text-blue-400">
+            ${Math.abs(summary.totalTransfers || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          </div>
+          <div className="text-xs text-gray-400 dark:text-gray-500 mt-1">Owner contributions, etc.</div>
         </div>
         <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-4 md:p-6 transition-colors">
           <div className="text-xs md:text-sm font-medium text-gray-500 dark:text-gray-400">Transactions</div>

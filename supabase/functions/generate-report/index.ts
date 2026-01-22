@@ -25,29 +25,38 @@ interface Transaction {
   date: string;
   description: string;
   amount: number;
-  type: "income" | "expense";
+  type: "income" | "expense" | "transfer";
   category: string;
   company_id?: string;
 }
 
 /**
  * Generate Profit & Loss report
+ * NOTE: Transfer/neutral transactions are excluded from income/expense totals
+ * but tracked separately for transparency
  */
 function generateProfitLossReport(transactions: Transaction[], startDate: string, endDate: string) {
   const incomeByCategory: Record<string, number> = {};
   const expenseByCategory: Record<string, number> = {};
+  const transferByCategory: Record<string, number> = {};
   let totalIncome = 0;
   let totalExpenses = 0;
+  let totalTransfers = 0;
 
   for (const tx of transactions) {
     const category = tx.category || "Uncategorized";
     
-    if (tx.type === "income") {
+    if (tx.type === "transfer") {
+      // Neutral transactions - track separately, don't include in P&L
+      transferByCategory[category] = (transferByCategory[category] || 0) + Math.abs(tx.amount);
+      totalTransfers += Math.abs(tx.amount);
+    } else if (tx.type === "income") {
       incomeByCategory[category] = (incomeByCategory[category] || 0) + tx.amount;
       totalIncome += tx.amount;
     } else {
-      expenseByCategory[category] = (expenseByCategory[category] || 0) + tx.amount;
-      totalExpenses += tx.amount;
+      // Expense - includes Owner Draws which are tracked for tax purposes
+      expenseByCategory[category] = (expenseByCategory[category] || 0) + Math.abs(tx.amount);
+      totalExpenses += Math.abs(tx.amount);
     }
   }
 
@@ -62,6 +71,12 @@ function generateProfitLossReport(transactions: Transaction[], startDate: string
       byCategory: expenseByCategory,
       total: totalExpenses,
     },
+    // Transfers are tracked separately (owner contributions, loans, etc.)
+    transfers: {
+      byCategory: transferByCategory,
+      total: totalTransfers,
+      note: "Neutral transactions (owner contributions, transfers) - not included in P&L calculations",
+    },
     netIncome: totalIncome - totalExpenses,
     transactionCount: transactions.length,
     generatedAt: new Date().toISOString(),
@@ -70,6 +85,8 @@ function generateProfitLossReport(transactions: Transaction[], startDate: string
 
 /**
  * Generate Tax Summary report (IRS categories)
+ * NOTE: Transfer/neutral transactions are excluded from tax calculations
+ * Owner Draws are tracked separately (not deductible but reportable)
  */
 function generateTaxSummaryReport(transactions: Transaction[], year: number) {
   const deductibleCategories = [
@@ -97,15 +114,26 @@ function generateTaxSummaryReport(transactions: Transaction[], year: number) {
   const categoryTotals: Record<string, number> = {};
   let totalDeductible = 0;
   let totalIncome = 0;
+  let totalOwnerDraws = 0;
+  let totalTransfers = 0;
 
   for (const tx of transactions) {
     const category = tx.category || "Uncategorized";
     
+    // Skip neutral/transfer transactions from tax calculations
+    if (tx.type === "transfer") {
+      totalTransfers += Math.abs(tx.amount);
+      continue;
+    }
+    
     if (tx.type === "income") {
       totalIncome += tx.amount;
+    } else if (category === "Owner Draws/Distributions" || category === "Owner Draw/Distribution") {
+      // Owner draws are tracked separately - not deductible but important for tax records
+      totalOwnerDraws += Math.abs(tx.amount);
     } else if (deductibleCategories.includes(category)) {
-      categoryTotals[category] = (categoryTotals[category] || 0) + tx.amount;
-      totalDeductible += tx.amount;
+      categoryTotals[category] = (categoryTotals[category] || 0) + Math.abs(tx.amount);
+      totalDeductible += Math.abs(tx.amount);
     }
   }
 
@@ -116,6 +144,14 @@ function generateTaxSummaryReport(transactions: Transaction[], year: number) {
     deductions: {
       byCategory: categoryTotals,
       total: totalDeductible,
+    },
+    ownerDraws: {
+      total: totalOwnerDraws,
+      note: "Owner draws/distributions - not deductible but tracked for tax records",
+    },
+    transfers: {
+      total: totalTransfers,
+      note: "Neutral transactions (owner contributions, transfers) - excluded from tax calculations",
     },
     netTaxableIncome: totalIncome - totalDeductible,
     categories: deductibleCategories.map(cat => ({
@@ -128,8 +164,10 @@ function generateTaxSummaryReport(transactions: Transaction[], year: number) {
 
 /**
  * Generate Expense report by category
+ * NOTE: Transfer/neutral transactions are excluded from expense totals
  */
 function generateExpenseReport(transactions: Transaction[], startDate: string, endDate: string) {
+  // Filter out transfer/neutral transactions - they're not expenses
   const expenses = transactions.filter(tx => tx.type === "expense");
   const byCategory: Record<string, { total: number; count: number; transactions: any[] }> = {};
   const byMonth: Record<string, number> = {};
@@ -175,8 +213,10 @@ function generateExpenseReport(transactions: Transaction[], startDate: string, e
 
 /**
  * Generate Income report
+ * NOTE: Transfer/neutral transactions are excluded - they're not income
  */
 function generateIncomeReport(transactions: Transaction[], startDate: string, endDate: string) {
+  // Filter out transfer/neutral transactions - they're not income
   const income = transactions.filter(tx => tx.type === "income");
   const bySource: Record<string, { total: number; count: number }> = {};
   const byMonth: Record<string, number> = {};
