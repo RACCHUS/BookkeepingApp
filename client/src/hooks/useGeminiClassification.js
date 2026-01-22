@@ -11,7 +11,7 @@ import { useAuth } from '../context/AuthContext';
 import { supabase } from '../services/supabase';
 import { CLASSIFICATION_SOURCE } from '../services/classificationService';
 import { toast } from 'react-hot-toast';
-import { NEUTRAL_CATEGORIES } from '@shared/constants/categories';
+import { NEUTRAL_CATEGORIES, IRS_CATEGORIES } from '@shared/constants/categories';
 
 // Batch size for Gemini requests (matches Edge Function)
 const BATCH_SIZE = 200;
@@ -21,6 +21,12 @@ const BATCH_DELAY = 4500;
 
 // Get all neutral category values for type detection
 const NEUTRAL_CATEGORY_VALUES = Object.values(NEUTRAL_CATEGORIES);
+
+// Get all valid categories for validation
+const VALID_CATEGORIES = new Set([
+  ...Object.values(IRS_CATEGORIES),
+  ...Object.values(NEUTRAL_CATEGORIES)
+]);
 
 /**
  * Call the Gemini classification Edge Function
@@ -74,8 +80,9 @@ async function callGeminiEdgeFunction(transactions, userId) {
 async function updateTransactionsWithClassifications(results) {
   let updated = 0;
   let failed = 0;
+  let skippedInvalid = 0;
 
-  // NEUTRAL_CATEGORY_VALUES is imported from shared/constants/categories.js
+  // NEUTRAL_CATEGORY_VALUES and VALID_CATEGORIES are imported from shared/constants/categories.js
   // NOTE: Owner Draw/Distribution is NOT neutral - it's tracked as expense for tax purposes
 
   console.log('updateTransactionsWithClassifications called with', results.length, 'results');
@@ -85,6 +92,13 @@ async function updateTransactionsWithClassifications(results) {
     if (!result.category) {
       console.log(`Skipping transaction ${result.id} - no category`);
       continue; // Skip unclassified
+    }
+
+    // Validate category - only allow known categories
+    if (!VALID_CATEGORIES.has(result.category)) {
+      console.warn(`Skipping transaction ${result.id} - invalid category: "${result.category}"`);
+      skippedInvalid++;
+      continue;
     }
 
     console.log(`Updating transaction ${result.id} with category: ${result.category}`);
@@ -118,7 +132,11 @@ async function updateTransactionsWithClassifications(results) {
     }
   }
 
-  return { updated, failed };
+  if (skippedInvalid > 0) {
+    console.warn(`Skipped ${skippedInvalid} transactions with invalid categories`);
+  }
+
+  return { updated, failed, skippedInvalid };
 }
 
 /**
@@ -171,6 +189,12 @@ async function saveGeminiRules(results, userId) {
   console.log('Unique vendors to save as rules:', vendorMap.size);
 
   for (const result of vendorMap.values()) {
+    // Validate category before creating rule - only allow known categories
+    if (!VALID_CATEGORIES.has(result.category)) {
+      console.warn(`Skipping rule for ${result.vendor} - invalid category: "${result.category}"`);
+      continue;
+    }
+
     // Check if rule already exists
     const { data: existing, error: checkError } = await supabase
       .from('classification_rules')
