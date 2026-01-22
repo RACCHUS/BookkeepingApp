@@ -163,9 +163,9 @@ const QuickTransactionEntry = ({ isOpen, onClose, onSubmit, isLoading = false, c
     .filter(e => e.isValid)
     .reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
 
-  // Category options
-  const categoryOptions = Object.entries(IRS_CATEGORIES).map(([key, value]) => ({
-    value: key,
+  // Category options - use VALUE not KEY (KEY is like CAR_TRUCK_EXPENSES, VALUE is "Car and Truck Expenses")
+  const categoryOptions = Object.values(IRS_CATEGORIES).sort().map(value => ({
+    value: value,
     label: value
   }));
 
