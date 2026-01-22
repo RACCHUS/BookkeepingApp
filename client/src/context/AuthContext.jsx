@@ -4,6 +4,7 @@ import {
   onAuthStateChanged,
   signInWithPopup
 } from 'firebase/auth';
+import { useQueryClient } from '@tanstack/react-query';
 import { auth, googleProvider } from '../services/firebase';
 import toast from 'react-hot-toast';
 
@@ -20,13 +21,19 @@ export const useAuth = () => {
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setUser(user);
+    const unsubscribe = onAuthStateChanged(auth, (newUser) => {
+      // If user changed (logout or different user login), clear the cache
+      if (user && (!newUser || newUser.uid !== user.uid)) {
+        console.log('🔄 User changed, clearing query cache');
+        queryClient.clear();
+      }
+      setUser(newUser);
       setLoading(false);
     });    return unsubscribe;
-  }, []);
+  }, [user, queryClient]);
 
   const signInWithGoogle = async () => {
     try {
@@ -44,6 +51,8 @@ export const AuthProvider = ({ children }) => {
 
   const logout = async () => {
     try {
+      // Clear all cached data before signing out
+      queryClient.clear();
       await signOut(auth);
       toast.success('Signed out successfully!');
     } catch (error) {
