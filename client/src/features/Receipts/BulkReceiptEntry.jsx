@@ -8,10 +8,213 @@ import {
   ReceiptPercentIcon,
   CheckIcon,
   ExclamationCircleIcon,
-  DocumentDuplicateIcon
+  DocumentDuplicateIcon,
+  ClipboardDocumentListIcon
 } from '@heroicons/react/24/outline';
 import api from '../../services/api';
 import { IRS_CATEGORIES } from '../../../../shared/constants/categories';
+
+/**
+ * Parse pasted text data into receipt entries
+ * Handles various formats: "amount date", "date amount", tab/space separated
+ * 
+ * @param {string} text - Raw pasted text
+ * @param {string} defaultCategory - Category to apply to all entries
+ * @param {string} defaultVendor - Vendor to apply to all entries
+ * @returns {{ entries: Array, errors: Array, stats: Object }}
+ */
+export function parsePastedData(text, defaultCategory = '', defaultVendor = '') {
+  const entries = [];
+  const errors = [];
+  const lines = text.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+  
+  if (lines.length === 0) {
+    return { entries: [], errors: ['No data found in pasted text'], stats: { total: 0, parsed: 0, failed: 0 } };
+  }
+
+  // Regex patterns for parsing
+  // Amount pattern: optional negative, optional $, digits with optional comma separators, optional decimal
+  const amountPattern = /^-?\$?[\d,]+(?:\.\d{1,2})?$|^-?[\d,]+(?:\.\d{1,2})?\$?$/;
+  
+  // Date patterns: M/D/YY, M/D/YYYY, MM/DD/YY, MM/DD/YYYY, YYYY-MM-DD
+  const datePatterns = [
+    /^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/,  // M/D/YY or M/D/YYYY
+    /^(\d{4})-(\d{2})-(\d{2})$/            // YYYY-MM-DD (ISO)
+  ];
+
+  /**
+   * Parse amount string to number
+   */
+  function parseAmount(str) {
+    if (!str) return null;
+    // Remove $ and commas, keep negative sign
+    const cleaned = str.replace(/[$,]/g, '').trim();
+    const num = parseFloat(cleaned);
+    return isNaN(num) ? null : num;
+  }
+
+  /**
+   * Parse date string to YYYY-MM-DD format
+   */
+  function parseDate(str) {
+    if (!str) return null;
+    
+    // Try M/D/YY or M/D/YYYY format
+    const slashMatch = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+    if (slashMatch) {
+      let [, month, day, year] = slashMatch;
+      // Convert 2-digit year to 4-digit (assume 2000s for years < 50, 1900s otherwise)
+      if (year.length === 2) {
+        const yearNum = parseInt(year, 10);
+        year = yearNum < 50 ? `20${year}` : `19${year}`;
+      }
+      // Pad month and day
+      month = month.padStart(2, '0');
+      day = day.padStart(2, '0');
+      
+      // Validate date
+      const dateObj = new Date(`${year}-${month}-${day}`);
+      if (isNaN(dateObj.getTime())) return null;
+      
+      return `${year}-${month}-${day}`;
+    }
+    
+    // Try ISO format YYYY-MM-DD
+    const isoMatch = str.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (isoMatch) {
+      const dateObj = new Date(str);
+      if (isNaN(dateObj.getTime())) return null;
+      return str;
+    }
+    
+    return null;
+  }
+
+  /**
+   * Check if a string looks like an amount
+   */
+  function looksLikeAmount(str) {
+    return /^-?\$?[\d,]+(?:\.\d{1,2})?$/.test(str.trim()) || 
+           /^-?[\d,]+(?:\.\d{1,2})?\$?$/.test(str.trim());
+  }
+
+  /**
+   * Check if a string looks like a date
+   */
+  function looksLikeDate(str) {
+    return /^\d{1,2}\/\d{1,2}\/\d{2,4}$/.test(str.trim()) ||
+           /^\d{4}-\d{2}-\d{2}$/.test(str.trim());
+  }
+
+  // Process each line
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const lineNum = i + 1;
+    
+    try {
+      // Split by whitespace or tab
+      const parts = line.split(/[\t\s]+/).filter(p => p.length > 0);
+      
+      if (parts.length < 2) {
+        errors.push({ line: lineNum, text: line, error: 'Need at least amount and date' });
+        continue;
+      }
+
+      let amount = null;
+      let date = null;
+      let vendor = defaultVendor;
+
+      // Try to identify amount and date from first two parts
+      // Could be "amount date" or "date amount"
+      const first = parts[0];
+      const second = parts[1];
+
+      if (looksLikeAmount(first) && looksLikeDate(second)) {
+        // Format: amount date [vendor...]
+        amount = parseAmount(first);
+        date = parseDate(second);
+        // Rest could be vendor
+        if (parts.length > 2) {
+          vendor = parts.slice(2).join(' ') || defaultVendor;
+        }
+      } else if (looksLikeDate(first) && looksLikeAmount(second)) {
+        // Format: date amount [vendor...]
+        date = parseDate(first);
+        amount = parseAmount(second);
+        if (parts.length > 2) {
+          vendor = parts.slice(2).join(' ') || defaultVendor;
+        }
+      } else {
+        // Try harder - maybe there's extra text
+        // Look for any amount-like and date-like values
+        let foundAmount = null;
+        let foundDate = null;
+        let amountIdx = -1;
+        let dateIdx = -1;
+
+        for (let j = 0; j < parts.length; j++) {
+          if (!foundAmount && looksLikeAmount(parts[j])) {
+            foundAmount = parseAmount(parts[j]);
+            amountIdx = j;
+          } else if (!foundDate && looksLikeDate(parts[j])) {
+            foundDate = parseDate(parts[j]);
+            dateIdx = j;
+          }
+        }
+
+        if (foundAmount !== null && foundDate !== null) {
+          amount = foundAmount;
+          date = foundDate;
+          // Collect remaining parts as vendor
+          const vendorParts = parts.filter((_, idx) => idx !== amountIdx && idx !== dateIdx);
+          if (vendorParts.length > 0) {
+            vendor = vendorParts.join(' ');
+          }
+        } else {
+          errors.push({ 
+            line: lineNum, 
+            text: line, 
+            error: `Could not find ${!foundAmount ? 'amount' : ''}${!foundAmount && !foundDate ? ' and ' : ''}${!foundDate ? 'date' : ''}` 
+          });
+          continue;
+        }
+      }
+
+      // Validate parsed values
+      if (amount === null) {
+        errors.push({ line: lineNum, text: line, error: 'Invalid amount format' });
+        continue;
+      }
+
+      if (date === null) {
+        errors.push({ line: lineNum, text: line, error: 'Invalid date format (use M/D/YY or YYYY-MM-DD)' });
+        continue;
+      }
+
+      // Create entry
+      entries.push({
+        id: Date.now() + Math.random() + i,
+        amount: amount.toString(),
+        date: date,
+        category: defaultCategory,
+        vendor: vendor
+      });
+
+    } catch (err) {
+      errors.push({ line: lineNum, text: line, error: `Parse error: ${err.message}` });
+    }
+  }
+
+  return {
+    entries,
+    errors,
+    stats: {
+      total: lines.length,
+      parsed: entries.length,
+      failed: errors.length
+    }
+  };
+}
 
 /**
  * BulkReceiptEntry - Fast bulk entry for multiple receipts
@@ -35,8 +238,14 @@ const BulkReceiptEntry = ({ isOpen, onClose, onSubmit, isLoading }) => {
   const [submitStatus, setSubmitStatus] = useState(null);
   const [results, setResults] = useState([]);
   
+  // Paste mode state
+  const [showPasteMode, setShowPasteMode] = useState(false);
+  const [pasteText, setPasteText] = useState('');
+  const [parseResult, setParseResult] = useState(null);
+  
   // Refs for focus management
   const amountRefs = useRef([]);
+  const pasteTextareaRef = useRef(null);
   
   // Fetch vendors for autocomplete
   const { data: vendorsData } = useQuery({
@@ -69,6 +278,9 @@ const BulkReceiptEntry = ({ isOpen, onClose, onSubmit, isLoading }) => {
       setEntries([createEmptyEntry(false)]);
       setSubmitStatus(null);
       setResults([]);
+      setShowPasteMode(false);
+      setPasteText('');
+      setParseResult(null);
     }
   }, [isOpen]);
 
@@ -131,11 +343,49 @@ const BulkReceiptEntry = ({ isOpen, onClose, onSubmit, isLoading }) => {
     }
   }, [entries.length, addRow]);
 
-  // Validate entries
+  // Handle paste mode - parse the text and show preview
+  const handleParsePaste = useCallback(() => {
+    if (!pasteText.trim()) {
+      setParseResult({ entries: [], errors: [{ error: 'Please paste some data first' }], stats: { total: 0, parsed: 0, failed: 0 } });
+      return;
+    }
+    
+    const result = parsePastedData(pasteText, defaults.category, defaults.vendor);
+    setParseResult(result);
+  }, [pasteText, defaults.category, defaults.vendor]);
+
+  // Apply parsed entries to the main entries list
+  const handleApplyParsedEntries = useCallback(() => {
+    if (!parseResult || parseResult.entries.length === 0) return;
+    
+    // Replace empty entries or add to existing
+    setEntries(prev => {
+      // If only one empty entry exists, replace it
+      if (prev.length === 1 && !prev[0].amount) {
+        return parseResult.entries;
+      }
+      // Otherwise append
+      return [...prev, ...parseResult.entries];
+    });
+    
+    // Exit paste mode
+    setShowPasteMode(false);
+    setPasteText('');
+    setParseResult(null);
+  }, [parseResult]);
+
+  // Cancel paste mode
+  const handleCancelPaste = useCallback(() => {
+    setShowPasteMode(false);
+    setPasteText('');
+    setParseResult(null);
+  }, []);
+
+  // Validate entries - allow negative amounts for refunds
   const getValidEntries = useCallback(() => {
     return entries.filter(e => {
       const amount = parseFloat(e.amount);
-      return !isNaN(amount) && amount > 0;
+      return !isNaN(amount) && amount !== 0;
     });
   }, [entries]);
 
@@ -317,7 +567,140 @@ const BulkReceiptEntry = ({ isOpen, onClose, onSubmit, isLoading }) => {
                     </select>
                   </div>
                 </div>
+                
+                {/* Paste Data Button */}
+                <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+                  <button
+                    onClick={() => {
+                      setShowPasteMode(true);
+                      setTimeout(() => pasteTextareaRef.current?.focus(), 50);
+                    }}
+                    className="flex items-center gap-2 px-3 py-2 text-sm text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg transition-colors"
+                  >
+                    <ClipboardDocumentListIcon className="h-4 w-4" />
+                    Paste Data (amount + date per line)
+                  </button>
+                </div>
               </div>
+
+              {/* Paste Mode UI */}
+              {showPasteMode && (
+                <div className="p-4 bg-purple-50 dark:bg-purple-900/20 border-b border-purple-200 dark:border-purple-800">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <ClipboardDocumentListIcon className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                      <span className="font-medium text-purple-800 dark:text-purple-200">Paste Data</span>
+                    </div>
+                    <button
+                      onClick={handleCancelPaste}
+                      className="text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                  
+                  <p className="text-sm text-purple-700 dark:text-purple-300 mb-2">
+                    Paste lines with <strong>amount</strong> and <strong>date</strong> (any order). 
+                    Supports: negative amounts, M/D/YY dates, optional vendor names.
+                  </p>
+                  
+                  <textarea
+                    ref={pasteTextareaRef}
+                    value={pasteText}
+                    onChange={(e) => {
+                      setPasteText(e.target.value);
+                      setParseResult(null); // Clear previous results
+                    }}
+                    placeholder="Example:
+3122.53 1/31/25
+112.41 1/5/25
+-95.35 9/6/25 Home Depot
+1/15/25 $500.00 Amazon"
+                    rows={6}
+                    className="w-full px-3 py-2 text-sm font-mono border border-purple-300 dark:border-purple-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 placeholder:text-gray-400"
+                  />
+                  
+                  <div className="flex items-center gap-3 mt-3">
+                    <button
+                      onClick={handleParsePaste}
+                      className="px-4 py-2 text-sm bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                    >
+                      Preview Parse
+                    </button>
+                    
+                    {parseResult && (
+                      <div className="flex items-center gap-4 text-sm">
+                        <span className="text-green-600 dark:text-green-400">
+                          ✓ {parseResult.stats.parsed} parsed
+                        </span>
+                        {parseResult.stats.failed > 0 && (
+                          <span className="text-red-600 dark:text-red-400">
+                            ✗ {parseResult.stats.failed} failed
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Parse Results Preview */}
+                  {parseResult && parseResult.entries.length > 0 && (
+                    <div className="mt-4">
+                      <div className="text-sm font-medium text-purple-800 dark:text-purple-200 mb-2">
+                        Preview ({parseResult.entries.length} entries):
+                      </div>
+                      <div className="max-h-40 overflow-y-auto bg-white dark:bg-gray-800 rounded-lg border border-purple-200 dark:border-purple-700">
+                        <table className="w-full text-sm">
+                          <thead className="bg-gray-50 dark:bg-gray-700">
+                            <tr>
+                              <th className="px-2 py-1 text-left text-gray-600 dark:text-gray-300">Date</th>
+                              <th className="px-2 py-1 text-right text-gray-600 dark:text-gray-300">Amount</th>
+                              <th className="px-2 py-1 text-left text-gray-600 dark:text-gray-300">Category</th>
+                              <th className="px-2 py-1 text-left text-gray-600 dark:text-gray-300">Vendor</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {parseResult.entries.map((entry, idx) => (
+                              <tr key={idx} className="border-t border-gray-100 dark:border-gray-700">
+                                <td className="px-2 py-1 text-gray-900 dark:text-white">{entry.date}</td>
+                                <td className={`px-2 py-1 text-right ${parseFloat(entry.amount) < 0 ? 'text-green-600' : 'text-gray-900 dark:text-white'}`}>
+                                  {parseFloat(entry.amount) < 0 ? '' : '$'}{entry.amount}
+                                </td>
+                                <td className="px-2 py-1 text-gray-600 dark:text-gray-400">{entry.category || '—'}</td>
+                                <td className="px-2 py-1 text-gray-600 dark:text-gray-400">{entry.vendor || '—'}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                      
+                      <button
+                        onClick={handleApplyParsedEntries}
+                        className="mt-3 px-4 py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                      >
+                        <CheckIcon className="h-4 w-4 inline mr-1" />
+                        Add {parseResult.entries.length} Entries
+                      </button>
+                    </div>
+                  )}
+                  
+                  {/* Parse Errors */}
+                  {parseResult && parseResult.errors.length > 0 && (
+                    <div className="mt-4">
+                      <div className="text-sm font-medium text-red-600 dark:text-red-400 mb-2">
+                        Failed to parse ({parseResult.errors.length}):
+                      </div>
+                      <div className="max-h-32 overflow-y-auto bg-red-50 dark:bg-red-900/20 rounded-lg p-2 text-sm">
+                        {parseResult.errors.map((err, idx) => (
+                          <div key={idx} className="text-red-700 dark:text-red-300 mb-1">
+                            {err.line ? `Line ${err.line}: ` : ''}<code className="bg-red-100 dark:bg-red-900 px-1 rounded">{err.text || err.error}</code>
+                            {err.text && <span className="text-red-500"> — {err.error}</span>}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Table Header */}
               <div className="grid grid-cols-12 gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-700 text-sm font-medium text-gray-600 dark:text-gray-300">
