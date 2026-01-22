@@ -7,35 +7,14 @@
  * - Include: Owner deposits, transfers between accounts, loans received
  * - NOT include: Owner draws (tracked as expense for taxes)
  * 
- * IMPORTANT: Category names must EXACTLY match shared/constants/categories.js NEUTRAL_CATEGORIES
+ * Uses shared/constants/categories.js NEUTRAL_CATEGORIES as single source of truth
  */
 
 import { describe, it, expect } from 'vitest';
+import { NEUTRAL_CATEGORIES as NEUTRAL_CATEGORIES_CONST } from '@shared/constants/categories';
 
-// Categories that should be neutral (type='transfer')
-// These MUST match EXACTLY with shared/constants/categories.js NEUTRAL_CATEGORIES values
-const NEUTRAL_CATEGORIES = [
-  'Owner Contribution/Capital',
-  'Transfer Between Accounts',
-  'Loan Received',
-  'Loan Payment (Principal)',
-  'Refund Received',
-  'Refund Issued',
-  'Security Deposit',
-  'Security Deposit Return',
-  'Escrow Deposit',
-  'Escrow Release',
-  'Credit Card Payment',
-  'Sales Tax Collected',
-  'Sales Tax Payment',
-  'Payroll Tax Deposit',
-  'Reimbursement Received',
-  'Reimbursement Paid',
-  'Personal Funds Added',
-  'Personal Funds Withdrawn',
-  'Opening Balance',
-  'Balance Adjustment',
-];
+// Get neutral category values from the shared constant
+const NEUTRAL_CATEGORIES = Object.values(NEUTRAL_CATEGORIES_CONST);
 
 // Categories that should NOT be neutral - tracked for tax purposes
 const NON_NEUTRAL_CATEGORIES = [

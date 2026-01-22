@@ -48,7 +48,7 @@ export const CLASSIFICATION_KEYWORDS = {
     'errors and omissions', 'workers comp', 'disability insurance'
   ],
   
-  [IRS_CATEGORIES.MEALS_ENTERTAINMENT]: [
+  [IRS_CATEGORIES.MEALS]: [
     'restaurant', 'coffee', 'lunch', 'dinner', 'catering', 'food',
     'business meal', 'client dinner', 'conference meal', 'starbucks',
     'mcdonalds', 'subway', 'pizza', 'entertainment', 'tickets',
@@ -68,13 +68,6 @@ export const CLASSIFICATION_KEYWORDS = {
     'tools', 'equipment supplies', 'cleaning supplies', 'safety supplies'
   ],
   
-  [IRS_CATEGORIES.TAXES_LICENSES]: [
-    'tax', 'taxes', 'irs', 'state tax', 'local tax', 'sales tax',
-    'license', 'permit', 'registration', 'business license',
-    'professional license', 'city license', 'county tax',
-    'property tax', 'franchise tax'
-  ],
-  
   [IRS_CATEGORIES.INTEREST_OTHER]: [
     'interest', 'loan interest', 'credit card interest', 'line of credit',
     'business loan', 'equipment loan', 'financing charges',
@@ -88,16 +81,20 @@ export const CLASSIFICATION_KEYWORDS = {
     'equipment repair', 'building maintenance'
   ],
   
-  [IRS_CATEGORIES.EMPLOYEE_WAGES]: [
+  [IRS_CATEGORIES.WAGES]: [
     'payroll', 'salary', 'wages', 'employee', 'staff', 'worker',
     'compensation', 'bonus', 'overtime', 'commission', 'tip',
     'adp', 'paychex', 'quickbooks payroll', 'gusto'
   ],
   
-  [IRS_CATEGORIES.PAYROLL_TAXES]: [
+  [IRS_CATEGORIES.TAXES_LICENSES]: [
     'payroll tax', 'fica', 'social security', 'medicare', 'unemployment tax',
     'futa', 'suta', 'state unemployment', 'federal unemployment',
-    'withholding', 'employer tax'
+    'withholding', 'employer tax',
+    'tax', 'taxes', 'irs', 'state tax', 'local tax', 'sales tax',
+    'license', 'permit', 'registration', 'business license',
+    'professional license', 'city license', 'county tax',
+    'property tax', 'franchise tax'
   ],
   
   [IRS_CATEGORIES.GROSS_RECEIPTS]: [

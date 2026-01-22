@@ -11,12 +11,16 @@ import { useAuth } from '../context/AuthContext';
 import { supabase } from '../services/supabase';
 import { CLASSIFICATION_SOURCE } from '../services/classificationService';
 import { toast } from 'react-hot-toast';
+import { NEUTRAL_CATEGORIES } from '@shared/constants/categories';
 
 // Batch size for Gemini requests (matches Edge Function)
 const BATCH_SIZE = 200;
 
 // Rate limit delay between batches (ms)
 const BATCH_DELAY = 4500;
+
+// Get all neutral category values for type detection
+const NEUTRAL_CATEGORY_VALUES = Object.values(NEUTRAL_CATEGORIES);
 
 /**
  * Call the Gemini classification Edge Function
@@ -71,31 +75,8 @@ async function updateTransactionsWithClassifications(results) {
   let updated = 0;
   let failed = 0;
 
-  // Neutral categories that should have type='transfer' (not income/expense)
-  // Must match EXACTLY with shared/constants/categories.js NEUTRAL_CATEGORIES
+  // NEUTRAL_CATEGORY_VALUES is imported from shared/constants/categories.js
   // NOTE: Owner Draw/Distribution is NOT neutral - it's tracked as expense for tax purposes
-  const NEUTRAL_CATEGORY_VALUES = [
-    'Owner Contribution/Capital',
-    'Transfer Between Accounts',
-    'Loan Received',
-    'Loan Payment (Principal)',
-    'Refund Received',
-    'Refund Issued',
-    'Security Deposit',
-    'Security Deposit Return',
-    'Escrow Deposit',
-    'Escrow Release',
-    'Credit Card Payment',
-    'Sales Tax Collected',
-    'Sales Tax Payment',
-    'Payroll Tax Deposit',
-    'Reimbursement Received',
-    'Reimbursement Paid',
-    'Personal Funds Added',
-    'Personal Funds Withdrawn',
-    'Opening Balance',
-    'Balance Adjustment',
-  ];
 
   console.log('updateTransactionsWithClassifications called with', results.length, 'results');
   console.log('Sample result:', JSON.stringify(results[0]));

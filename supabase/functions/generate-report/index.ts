@@ -89,26 +89,53 @@ function generateProfitLossReport(transactions: Transaction[], startDate: string
  * Owner Draws are tracked separately (not deductible but reportable)
  */
 function generateTaxSummaryReport(transactions: Transaction[], year: number) {
+  // IRS Schedule C deductible categories - MUST match shared/constants/categories.js
   const deductibleCategories = [
+    // Schedule C Lines 8-27
     "Advertising",
     "Car and Truck Expenses",
     "Commissions and Fees",
     "Contract Labor",
-    "Depreciation",
-    "Employee Benefits",
-    "Insurance",
-    "Interest",
+    "Depletion",
+    "Depreciation and Section 179",
+    "Employee Benefit Programs",
+    "Insurance (Other than Health)",
+    "Interest (Mortgage)",
+    "Interest (Other)",
     "Legal and Professional Services",
-    "Office Expense",
-    "Rent or Lease",
+    "Office Expenses",
+    "Pension and Profit-Sharing Plans",
+    "Rent or Lease (Vehicles, Machinery, Equipment)",
+    "Rent or Lease (Other Business Property)",
     "Repairs and Maintenance",
-    "Supplies",
+    "Supplies (Not Inventory)",
     "Taxes and Licenses",
     "Travel",
     "Meals",
     "Utilities",
-    "Wages",
+    "Wages (Less Employment Credits)",
     "Other Expenses",
+    // Cost of Goods Sold
+    "Cost of Goods Sold",
+    "Beginning Inventory",
+    "Inventory Purchases",
+    "Cost of Labor (not wages)",
+    "Materials and Supplies",
+    "Other Costs (shipping, packaging)",
+    "Ending Inventory",
+    // Other Line 27 Expenses
+    "Software Subscriptions",
+    "Web Hosting & Domains",
+    "Bank Fees",
+    "Bad Debts",
+    "Dues & Memberships",
+    "Training & Education",
+    "Trade Publications",
+    "Security Services",
+    "Business Gifts",
+    "Uniforms & Safety Gear",
+    "Tools (Under $2,500)",
+    "Business Use of Home",
   ];
 
   const categoryTotals: Record<string, number> = {};

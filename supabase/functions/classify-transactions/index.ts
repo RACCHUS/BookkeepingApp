@@ -18,9 +18,23 @@ const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/
 const MAX_BATCH_SIZE = 100; // With optimized prompt, can handle more transactions
 const RATE_LIMIT_DELAY = 4000; // 4 seconds between batches (15 RPM = 4s)
 
-// IRS Schedule C Categories for classification (display names)
+// IRS Schedule C Categories - MUST match shared/constants/categories.js EXACTLY
 const IRS_CATEGORIES = [
-  // Schedule C Lines 8-27 Expenses
+  // === BUSINESS INCOME ===
+  "Gross Receipts or Sales",
+  "Returns and Allowances",
+  "Other Income",
+  
+  // === COST OF GOODS SOLD ===
+  "Cost of Goods Sold",
+  "Beginning Inventory",
+  "Inventory Purchases",
+  "Cost of Labor (not wages)",
+  "Materials and Supplies",
+  "Other Costs (shipping, packaging)",
+  "Ending Inventory",
+  
+  // === SCHEDULE C EXPENSES (Lines 8-27) ===
   "Advertising",
   "Car and Truck Expenses",
   "Commissions and Fees",
@@ -44,12 +58,8 @@ const IRS_CATEGORIES = [
   "Utilities",
   "Wages (Less Employment Credits)",
   "Other Expenses",
-  // Cost of Goods Sold
-  "Cost of Goods Sold",
-  "Materials and Supplies",
-  "Cost of Labor (not wages)",
-  "Other Costs (shipping, packaging)",
-  // Other Line 27 expenses
+  
+  // === OTHER LINE 27 EXPENSES ===
   "Software Subscriptions",
   "Web Hosting & Domains",
   "Bank Fees",
@@ -62,20 +72,39 @@ const IRS_CATEGORIES = [
   "Uniforms & Safety Gear",
   "Tools (Under $2,500)",
   "Business Use of Home",
-  // Income
-  "Gross Receipts or Sales",
-  "Returns and Allowances",
-  "Other Income",
-  // Non-deductible (tracked as expense)
+  "Depreciation Detail",
+  "Vehicle Detail",
+  
+  // === PERSONAL (Non-Deductible but tracked) ===
   "Personal Expense",
-  "Owner Draw/Distribution",  // Tracked as EXPENSE for tax purposes
-  // Neutral categories (type='transfer', excluded from P&L)
+  "Personal Transfer",
+  "Owner Draws/Distributions",
   "Owner Contribution/Capital",
+  "Uncategorized",
+  "Split Transaction",
+  
+  // === NEUTRAL CATEGORIES (type='transfer') ===
+  "Owner Contribution/Capital",
+  "Owner Draw/Distribution",
   "Transfer Between Accounts",
   "Loan Received",
   "Loan Payment (Principal)",
   "Refund Received",
   "Refund Issued",
+  "Security Deposit",
+  "Security Deposit Return",
+  "Escrow Deposit",
+  "Escrow Release",
+  "Credit Card Payment",
+  "Sales Tax Collected",
+  "Sales Tax Payment",
+  "Payroll Tax Deposit",
+  "Reimbursement Received",
+  "Reimbursement Paid",
+  "Personal Funds Added",
+  "Personal Funds Withdrawn",
+  "Opening Balance",
+  "Balance Adjustment",
 ];
 
 interface Transaction {
@@ -110,36 +139,43 @@ function buildClassificationPrompt(transactions: Transaction[]): string {
 
   return `Classify bank transactions into IRS Schedule C categories for a small business (HVAC/AC service company).
 
-EXPENSE CATEGORIES (ONLY for DEBIT/negative amounts):
+EXPENSE CATEGORIES (ONLY for DEBIT/negative amounts) - use EXACT names:
 - Schedule C Lines 8-27: Advertising, Car and Truck Expenses, Commissions and Fees, Contract Labor, Depletion, Depreciation and Section 179, Employee Benefit Programs, Insurance (Other than Health), Interest (Mortgage), Interest (Other), Legal and Professional Services, Office Expenses, Pension and Profit-Sharing Plans, Rent or Lease (Vehicles, Machinery, Equipment), Rent or Lease (Other Business Property), Repairs and Maintenance, Supplies (Not Inventory), Taxes and Licenses, Travel, Meals, Utilities, Wages (Less Employment Credits), Other Expenses
-- Cost of Goods Sold: Cost of Goods Sold, Materials and Supplies, Cost of Labor (not wages), Other Costs (shipping, packaging)
+- Cost of Goods Sold: Cost of Goods Sold, Beginning Inventory, Inventory Purchases, Materials and Supplies, Cost of Labor (not wages), Other Costs (shipping, packaging), Ending Inventory
 - Other Line 27: Software Subscriptions, Web Hosting & Domains, Bank Fees, Bad Debts, Dues & Memberships, Training & Education, Trade Publications, Security Services, Business Gifts, Uniforms & Safety Gear, Tools (Under $2,500)
-- Special: Business Use of Home, Personal Expense
-- Owner Draws: Owner Draw/Distribution (EXPENSE - tracked for tax purposes, money owner takes out)
+- Special: Business Use of Home, Personal Expense, Personal Transfer, Depreciation Detail, Vehicle Detail
+- Owner Draws: Owner Draws/Distributions (EXPENSE - tracked for tax purposes, money owner takes out)
 
-INCOME CATEGORIES (for CREDIT/positive amounts that are BUSINESS REVENUE): Gross Receipts or Sales, Returns and Allowances, Other Income
+INCOME CATEGORIES (for CREDIT/positive business revenue) - use EXACT names:
+Gross Receipts or Sales, Returns and Allowances, Other Income
 
-NEUTRAL CATEGORIES (type='transfer' - NOT counted as income or expense):
-- Owner Contribution/Capital (owner depositing personal funds INTO business - CREDIT only)
+NEUTRAL CATEGORIES (type='transfer' - NOT income or expense) - use EXACT names:
+- Owner Contribution/Capital (owner depositing personal funds INTO business)
 - Transfer Between Accounts (moving money between business accounts)
 - Loan Received (borrowed money is NOT income)
+- Loan Payment (Principal) (paying back loan principal)
 - Refund Received (return of money previously spent)
+- Refund Issued (returning money to customer)
+- Credit Card Payment (paying credit card bill)
+- Sales Tax Collected, Sales Tax Payment
+- Reimbursement Received, Reimbursement Paid
+- Personal Funds Added, Personal Funds Withdrawn
+- Opening Balance, Balance Adjustment
 
 STRICT CLASSIFICATION RULES:
 1. FIRST check the transaction type/amount: DEBIT or amount<0 = EXPENSE. CREDIT or amount>0 = INCOME or NEUTRAL.
-2. DEBIT transactions should ONLY use EXPENSE categories (including Owner Draw/Distribution).
+2. DEBIT transactions should ONLY use EXPENSE categories (including Owner Draws/Distributions).
 3. CREDIT transactions can be INCOME or NEUTRAL - determine based on source.
-4. ATM CASH DEPOSIT = Owner Contribution/Capital (owner putting personal cash in, NOT income) - NEUTRAL
-5. TRANSFER FROM another account (Zelle from self, bank transfer) = Owner Contribution/Capital or Transfer Between Accounts (NOT income) - NEUTRAL
-6. ACH/wire from COMPANIES (property managers, clients, businesses) = Gross Receipts or Sales (real business income)
-7. CHECK DEPOSIT, REMOTE DEPOSIT with check = Gross Receipts or Sales (customer payment)
-8. Generic DEPOSIT without company name = likely Owner Contribution/Capital (NOT income) - NEUTRAL
-9. ATM WITHDRAWAL = Owner Draw/Distribution (EXPENSE - owner paying themselves, tracked for taxes)
-9. GAS STATIONS - look for these patterns: store numbers (#1234), known brands (Wawa, Speedway, Sunoco, Shell, Chevron, Exxon, Mobil, BP), or unfamiliar names with store # in small towns. If amount <$15 = Meals (snacks/drinks), >=$15 = Car and Truck Expenses (fuel)
-10. Restaurants, fast food, TST* (Toast POS) = Meals
-11. ATM WITHDRAWAL = Owner Draws/Distributions
+4. ATM CASH DEPOSIT = Owner Contribution/Capital (NOT income) - NEUTRAL
+5. TRANSFER FROM another account = Owner Contribution/Capital or Transfer Between Accounts - NEUTRAL
+6. ACH/wire from COMPANIES (property managers, clients, businesses) = Gross Receipts or Sales
+7. CHECK DEPOSIT, REMOTE DEPOSIT = Gross Receipts or Sales (customer payment)
+8. Generic DEPOSIT without company name = Owner Contribution/Capital - NEUTRAL
+9. ATM WITHDRAWAL = Owner Draws/Distributions (EXPENSE)
+10. GAS STATIONS (Wawa, Speedway, Sunoco, Shell, etc.): <$15 = Meals, >=$15 = Car and Truck Expenses
+11. Restaurants, fast food, TST* (Toast POS) = Meals
 12. Hardware stores (Home Depot, AC Supply, Gemaire) = Materials and Supplies
-13. Travel is ONLY for hotels, flights, lodging - NOT gas stations even when traveling
+13. Travel is ONLY for hotels, flights, lodging - NOT gas stations
 
 TRANSACTIONS (id|description|amount|type):
 ${transactionLines}

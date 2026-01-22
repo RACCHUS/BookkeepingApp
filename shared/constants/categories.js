@@ -940,6 +940,38 @@ export const CATEGORY_METADATA = {
   }
 };
 
+// Transaction types
+export const TRANSACTION_TYPES = {
+  INCOME: 'income',
+  EXPENSE: 'expense',
+  TRANSFER: 'transfer'
+};
+
+// Neutral/Non-Taxable Transaction Categories (not counted as income or expense)
+export const NEUTRAL_CATEGORIES = {
+  OWNER_CONTRIBUTION: 'Owner Contribution/Capital',
+  OWNER_DRAW: 'Owner Draw/Distribution',
+  LOAN_RECEIVED: 'Loan Received',
+  LOAN_PAYMENT: 'Loan Payment (Principal)',
+  TRANSFER_BETWEEN_ACCOUNTS: 'Transfer Between Accounts',
+  REFUND_RECEIVED: 'Refund Received',
+  REFUND_ISSUED: 'Refund Issued',
+  SECURITY_DEPOSIT: 'Security Deposit',
+  SECURITY_DEPOSIT_RETURN: 'Security Deposit Return',
+  ESCROW_DEPOSIT: 'Escrow Deposit',
+  ESCROW_RELEASE: 'Escrow Release',
+  CREDIT_CARD_PAYMENT: 'Credit Card Payment',
+  SALES_TAX_COLLECTED: 'Sales Tax Collected',
+  SALES_TAX_PAYMENT: 'Sales Tax Payment',
+  PAYROLL_TAX_DEPOSIT: 'Payroll Tax Deposit',
+  REIMBURSEMENT_RECEIVED: 'Reimbursement Received',
+  REIMBURSEMENT_PAID: 'Reimbursement Paid',
+  PERSONAL_FUNDS_IN: 'Personal Funds Added',
+  PERSONAL_FUNDS_OUT: 'Personal Funds Withdrawn',
+  OPENING_BALANCE: 'Opening Balance',
+  ADJUSTMENT: 'Balance Adjustment',
+};
+
 // Category groups for easier organization and UI dropdowns (Schedule C Organized)
 export const CATEGORY_GROUPS = {
   INCOME: [
@@ -996,7 +1028,9 @@ export const CATEGORY_GROUPS = {
   ],
   DEPRECIATION: [
     IRS_CATEGORIES.DEPRECIATION,
-    IRS_CATEGORIES.DEPLETION
+    IRS_CATEGORIES.DEPLETION,
+    IRS_CATEGORIES.DEPRECIATION_DETAIL,
+    IRS_CATEGORIES.VEHICLE_DETAIL
   ],
   OTHER_EXPENSES_27A: [
     IRS_CATEGORIES.OTHER_EXPENSES,
@@ -1014,10 +1048,35 @@ export const CATEGORY_GROUPS = {
   PERSONAL: [
     IRS_CATEGORIES.PERSONAL_EXPENSE,
     IRS_CATEGORIES.PERSONAL_TRANSFER,
-    IRS_CATEGORIES.OWNER_DRAWS
+    IRS_CATEGORIES.OWNER_DRAWS,
+    IRS_CATEGORIES.OWNER_CONTRIBUTION
   ],
   SPECIAL: [
-    IRS_CATEGORIES.SPLIT_TRANSACTION
+    IRS_CATEGORIES.SPLIT_TRANSACTION,
+    IRS_CATEGORIES.UNCATEGORIZED
+  ],
+  NEUTRAL: [
+    NEUTRAL_CATEGORIES.OWNER_CONTRIBUTION,
+    NEUTRAL_CATEGORIES.OWNER_DRAW,
+    NEUTRAL_CATEGORIES.TRANSFER_BETWEEN_ACCOUNTS,
+    NEUTRAL_CATEGORIES.LOAN_RECEIVED,
+    NEUTRAL_CATEGORIES.LOAN_PAYMENT,
+    NEUTRAL_CATEGORIES.REFUND_RECEIVED,
+    NEUTRAL_CATEGORIES.REFUND_ISSUED,
+    NEUTRAL_CATEGORIES.SECURITY_DEPOSIT,
+    NEUTRAL_CATEGORIES.SECURITY_DEPOSIT_RETURN,
+    NEUTRAL_CATEGORIES.ESCROW_DEPOSIT,
+    NEUTRAL_CATEGORIES.ESCROW_RELEASE,
+    NEUTRAL_CATEGORIES.CREDIT_CARD_PAYMENT,
+    NEUTRAL_CATEGORIES.SALES_TAX_COLLECTED,
+    NEUTRAL_CATEGORIES.SALES_TAX_PAYMENT,
+    NEUTRAL_CATEGORIES.PAYROLL_TAX_DEPOSIT,
+    NEUTRAL_CATEGORIES.REIMBURSEMENT_RECEIVED,
+    NEUTRAL_CATEGORIES.REIMBURSEMENT_PAID,
+    NEUTRAL_CATEGORIES.PERSONAL_FUNDS_IN,
+    NEUTRAL_CATEGORIES.PERSONAL_FUNDS_OUT,
+    NEUTRAL_CATEGORIES.OPENING_BALANCE,
+    NEUTRAL_CATEGORIES.ADJUSTMENT
   ]
 };
 
@@ -1092,38 +1151,6 @@ export const getCategoriesForDropdown = () => {
   });
   
   return dropdownData;
-};
-
-// Transaction types
-export const TRANSACTION_TYPES = {
-  INCOME: 'income',
-  EXPENSE: 'expense',
-  TRANSFER: 'transfer'
-};
-
-// Neutral/Non-Taxable Transaction Categories (not counted as income or expense)
-export const NEUTRAL_CATEGORIES = {
-  OWNER_CONTRIBUTION: 'Owner Contribution/Capital',
-  OWNER_DRAW: 'Owner Draw/Distribution',
-  LOAN_RECEIVED: 'Loan Received',
-  LOAN_PAYMENT: 'Loan Payment (Principal)',
-  TRANSFER_BETWEEN_ACCOUNTS: 'Transfer Between Accounts',
-  REFUND_RECEIVED: 'Refund Received',
-  REFUND_ISSUED: 'Refund Issued',
-  SECURITY_DEPOSIT: 'Security Deposit',
-  SECURITY_DEPOSIT_RETURN: 'Security Deposit Return',
-  ESCROW_DEPOSIT: 'Escrow Deposit',
-  ESCROW_RELEASE: 'Escrow Release',
-  CREDIT_CARD_PAYMENT: 'Credit Card Payment',
-  SALES_TAX_COLLECTED: 'Sales Tax Collected',
-  SALES_TAX_PAYMENT: 'Sales Tax Payment',
-  PAYROLL_TAX_DEPOSIT: 'Payroll Tax Deposit',
-  REIMBURSEMENT_RECEIVED: 'Reimbursement Received',
-  REIMBURSEMENT_PAID: 'Reimbursement Paid',
-  PERSONAL_FUNDS_IN: 'Personal Funds Added',
-  PERSONAL_FUNDS_OUT: 'Personal Funds Withdrawn',
-  OPENING_BALANCE: 'Opening Balance',
-  ADJUSTMENT: 'Balance Adjustment',
 };
 
 // Payment methods
