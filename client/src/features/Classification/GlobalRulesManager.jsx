@@ -145,7 +145,7 @@ export default function GlobalRulesManager() {
 
   if (error) {
     return (
-      <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">
+      <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg p-4 text-red-700 dark:text-red-400">
         Failed to load global rules: {error.message}
       </div>
     );
@@ -154,13 +154,13 @@ export default function GlobalRulesManager() {
   return (
     <div className="space-y-6">
       {/* Header with master toggle */}
-      <div className="bg-white shadow rounded-lg p-6">
+      <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <GlobeAltIcon className="h-8 w-8 text-blue-500" />
             <div>
-              <h2 className="text-xl font-semibold text-gray-900">Global Classification Rules</h2>
-              <p className="text-sm text-gray-500">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Global Classification Rules</h2>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
                 Shared rules from all users for common vendors
               </p>
             </div>
@@ -168,14 +168,14 @@ export default function GlobalRulesManager() {
           
           {/* Master Toggle */}
           <div className="flex items-center space-x-3">
-            <span className="text-sm text-gray-600">
+            <span className="text-sm text-gray-600 dark:text-gray-400">
               {data?.useGlobal ? 'Enabled' : 'Disabled'}
             </span>
             <button
               onClick={() => toggleMasterMutation.mutate(!data?.useGlobal)}
               disabled={toggleMasterMutation.isPending}
               className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                data?.useGlobal ? 'bg-blue-600' : 'bg-gray-200'
+                data?.useGlobal ? 'bg-blue-600' : 'bg-gray-200 dark:bg-gray-600'
               }`}
             >
               <span
@@ -189,24 +189,24 @@ export default function GlobalRulesManager() {
 
         {/* Stats */}
         <div className="mt-4 grid grid-cols-3 gap-4">
-          <div className="bg-gray-50 rounded-lg p-3 text-center">
-            <div className="text-2xl font-bold text-gray-900">{stats.total}</div>
-            <div className="text-xs text-gray-500">Total Rules</div>
+          <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-3 text-center">
+            <div className="text-2xl font-bold text-gray-900 dark:text-white">{stats.total}</div>
+            <div className="text-xs text-gray-500 dark:text-gray-400">Total Rules</div>
           </div>
-          <div className="bg-green-50 rounded-lg p-3 text-center">
-            <div className="text-2xl font-bold text-green-600">{stats.enabled}</div>
-            <div className="text-xs text-gray-500">Enabled</div>
+          <div className="bg-green-50 dark:bg-green-900/30 rounded-lg p-3 text-center">
+            <div className="text-2xl font-bold text-green-600 dark:text-green-400">{stats.enabled}</div>
+            <div className="text-xs text-gray-500 dark:text-gray-400">Enabled</div>
           </div>
-          <div className="bg-red-50 rounded-lg p-3 text-center">
-            <div className="text-2xl font-bold text-red-600">{stats.disabled}</div>
-            <div className="text-xs text-gray-500">Disabled</div>
+          <div className="bg-red-50 dark:bg-red-900/30 rounded-lg p-3 text-center">
+            <div className="text-2xl font-bold text-red-600 dark:text-red-400">{stats.disabled}</div>
+            <div className="text-xs text-gray-500 dark:text-gray-400">Disabled</div>
           </div>
         </div>
       </div>
 
       {/* Filters */}
       {data?.useGlobal && (
-        <div className="bg-white shadow rounded-lg p-4">
+        <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-4">
           <div className="flex flex-wrap gap-4">
             {/* Search */}
             <div className="flex-1 min-w-[200px]">
@@ -217,7 +217,7 @@ export default function GlobalRulesManager() {
                   placeholder="Search rules..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
             </div>
@@ -227,7 +227,7 @@ export default function GlobalRulesManager() {
               <select
                 value={filterCategory}
                 onChange={(e) => setFilterCategory(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               >
                 <option value="all">All Categories</option>
                 {categories.map(cat => (
@@ -241,7 +241,7 @@ export default function GlobalRulesManager() {
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               >
                 <option value={SORT_OPTIONS.VOTES}>Sort by Votes</option>
                 <option value={SORT_OPTIONS.NAME}>Sort by Name</option>
@@ -254,37 +254,40 @@ export default function GlobalRulesManager() {
 
       {/* Rules List */}
       {data?.useGlobal ? (
-        <div className="bg-white shadow rounded-lg overflow-hidden">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+        <div className="bg-white dark:bg-gray-800 shadow rounded-lg overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+            <thead className="bg-gray-50 dark:bg-gray-900">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">
                   Enabled
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">
                   Vendor
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">
                   Pattern
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">
                   Category
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">
+                  Direction
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">
                   <div className="flex items-center space-x-1">
                     <UsersIcon className="h-4 w-4" />
                     <span>Votes</span>
                   </div>
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">
                   Source
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
               {filteredRules.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
+                  <td colSpan={7} className="px-4 py-12 text-center text-gray-500 dark:text-gray-400">
                     {searchTerm || filterCategory !== 'all' 
                       ? 'No rules match your filters'
                       : 'No global rules available'
@@ -295,9 +298,9 @@ export default function GlobalRulesManager() {
                 filteredRules.map(rule => (
                   <tr 
                     key={rule.id} 
-                    className={`hover:bg-gray-50 ${!rule.isEnabled ? 'opacity-50' : ''}`}
+                    className={`hover:bg-gray-50 dark:hover:bg-gray-700 ${!rule.isEnabled ? 'opacity-50' : ''}`}
                   >
-                    <td className="px-6 py-4">
+                    <td className="px-4 py-3 whitespace-nowrap">
                       <button
                         onClick={() => toggleRuleMutation.mutate({ 
                           ruleId: rule.id, 
@@ -307,8 +310,8 @@ export default function GlobalRulesManager() {
                         disabled={toggleRuleMutation.isPending}
                         className={`p-1 rounded ${
                           rule.isEnabled 
-                            ? 'text-green-600 hover:bg-green-100' 
-                            : 'text-gray-400 hover:bg-gray-100'
+                            ? 'text-green-600 hover:bg-green-100 dark:hover:bg-green-900/30' 
+                            : 'text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
                         }`}
                       >
                         {rule.isEnabled ? (
@@ -318,40 +321,52 @@ export default function GlobalRulesManager() {
                         )}
                       </button>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="font-medium text-gray-900">
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <span className="font-medium text-gray-900 dark:text-white">
                         {rule.name || rule.vendor_name || rule.pattern}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <code className="text-sm bg-gray-100 px-2 py-1 rounded">
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <code className="text-sm bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded text-gray-800 dark:text-gray-200">
                         {rule.pattern}
                       </code>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-300">
                         {rule.category}
                       </span>
                       {rule.subcategory && (
-                        <span className="ml-1 text-xs text-gray-500">
+                        <span className="ml-1 text-xs text-gray-500 dark:text-gray-400">
                           / {rule.subcategory}
                         </span>
                       )}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center space-x-1 text-gray-600">
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                        rule.amount_direction === 'positive' 
+                          ? 'bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300' 
+                          : rule.amount_direction === 'negative'
+                          ? 'bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300'
+                          : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
+                      }`}>
+                        {rule.amount_direction === 'positive' ? '+ Income' : 
+                         rule.amount_direction === 'negative' ? '− Expense' : 'Any'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <div className="flex items-center space-x-1 text-gray-600 dark:text-gray-400">
                         <UsersIcon className="h-4 w-4" />
                         <span>{rule.global_vote_count || 0}</span>
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-4 py-3 whitespace-nowrap">
                       {rule.source === 'system' ? (
-                        <span className="inline-flex items-center text-xs text-purple-600">
+                        <span className="inline-flex items-center text-xs text-purple-600 dark:text-purple-400">
                           <SparklesIcon className="h-4 w-4 mr-1" />
                           System
                         </span>
                       ) : (
-                        <span className="inline-flex items-center text-xs text-green-600">
+                        <span className="inline-flex items-center text-xs text-green-600 dark:text-green-400">
                           <UsersIcon className="h-4 w-4 mr-1" />
                           Community
                         </span>
@@ -364,10 +379,10 @@ export default function GlobalRulesManager() {
           </table>
         </div>
       ) : (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center">
+        <div className="bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-800 rounded-lg p-6 text-center">
           <GlobeAltIcon className="h-12 w-12 text-yellow-500 mx-auto mb-3" />
-          <h3 className="text-lg font-medium text-yellow-800">Global Rules Disabled</h3>
-          <p className="text-sm text-yellow-600 mt-1">
+          <h3 className="text-lg font-medium text-yellow-800 dark:text-yellow-300">Global Rules Disabled</h3>
+          <p className="text-sm text-yellow-600 dark:text-yellow-400 mt-1">
             Enable global rules to use shared vendor classifications from other users.
           </p>
           <button

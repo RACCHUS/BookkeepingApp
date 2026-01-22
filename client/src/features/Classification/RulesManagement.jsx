@@ -521,6 +521,9 @@ function RulesTable({ rules, onEdit, onDelete, onToggleActive, isUpdating, isDel
               Category
             </th>
             <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+              Direction
+            </th>
+            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
               Matches
             </th>
             <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
@@ -550,6 +553,18 @@ function RulesTable({ rules, onEdit, onDelete, onToggleActive, isUpdating, isDel
               <td className="px-4 py-3">
                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
                   {IRS_CATEGORIES[rule.category] || rule.category}
+                </span>
+              </td>
+              <td className="px-4 py-3">
+                <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                  rule.amount_direction === 'positive' 
+                    ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' 
+                    : rule.amount_direction === 'negative'
+                    ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                    : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
+                }`}>
+                  {rule.amount_direction === 'positive' ? '+ Income' : 
+                   rule.amount_direction === 'negative' ? '− Expense' : 'Any'}
                 </span>
               </td>
               <td className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">
@@ -615,66 +630,84 @@ function DefaultVendorsTable({ vendors, onToggle, isToggling }) {
     );
   }
 
+  // Categories that represent income (positive direction)
+  const INCOME_CATEGORIES = ['INCOME', 'GROSS_RECEIPTS', 'RENTAL_INCOME', 'INTEREST_INCOME', 'DIVIDEND_INCOME', 'CAPITAL_GAINS', 'OTHER_INCOME', 'OWNER_CONTRIBUTION'];
+
   return (
     <div className="overflow-x-auto">
       <table className="w-full">
         <thead className="bg-gray-50 dark:bg-gray-900/50">
           <tr>
-            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">
               Pattern
             </th>
-            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">
               Vendor
             </th>
-            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">
               Category
             </th>
-            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">
               Subcategory
             </th>
-            <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">
+              Direction
+            </th>
+            <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">
               Enabled
             </th>
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-          {vendors.map((vendor) => (
-            <tr key={vendor.pattern} className="hover:bg-gray-50 dark:hover:bg-gray-900/30">
-              <td className="px-4 py-3">
-                <code className="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded text-sm font-mono text-gray-800 dark:text-gray-200">
-                  {vendor.pattern}
-                </code>
-              </td>
-              <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-300">
-                {vendor.vendor || '-'}
-              </td>
-              <td className="px-4 py-3">
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">
-                  {IRS_CATEGORIES[vendor.category] || vendor.category}
-                </span>
-              </td>
-              <td className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">
-                {vendor.subcategory || '-'}
-              </td>
-              <td className="px-4 py-3 text-center">
-                <button
-                  onClick={() => onToggle(vendor.pattern, !vendor.isEnabled)}
-                  disabled={isToggling}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                    vendor.isEnabled
-                      ? 'bg-green-500'
-                      : 'bg-gray-300 dark:bg-gray-600'
-                  }`}
-                >
-                  <span
-                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                      vendor.isEnabled ? 'translate-x-6' : 'translate-x-1'
+          {vendors.map((vendor) => {
+            const isIncome = INCOME_CATEGORIES.includes(vendor.category);
+            return (
+              <tr key={vendor.pattern} className="hover:bg-gray-50 dark:hover:bg-gray-900/30">
+                <td className="px-4 py-3 whitespace-nowrap">
+                  <code className="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded text-sm font-mono text-gray-800 dark:text-gray-200">
+                    {vendor.pattern}
+                  </code>
+                </td>
+                <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-300 whitespace-nowrap">
+                  {vendor.vendor || '-'}
+                </td>
+                <td className="px-4 py-3 whitespace-nowrap">
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">
+                    {IRS_CATEGORIES[vendor.category] || vendor.category}
+                  </span>
+                </td>
+                <td className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                  {vendor.subcategory || '-'}
+                </td>
+                <td className="px-4 py-3 whitespace-nowrap">
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                    isIncome
+                      ? 'bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300'
+                      : 'bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300'
+                  }`}>
+                    {isIncome ? '+ Income' : '− Expense'}
+                  </span>
+                </td>
+                <td className="px-4 py-3 text-center whitespace-nowrap">
+                  <button
+                    onClick={() => onToggle(vendor.pattern, !vendor.isEnabled)}
+                    disabled={isToggling}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                      vendor.isEnabled
+                        ? 'bg-green-500'
+                        : 'bg-gray-300 dark:bg-gray-600'
                     }`}
-                  />
-                </button>
-              </td>
-            </tr>
-          ))}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                        vendor.isEnabled ? 'translate-x-6' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>
@@ -691,6 +724,7 @@ function EditRuleModal({ rule, onSave, onClose, isLoading }) {
     vendor_name: rule.vendor_name || '',
     category: rule.category || '',
     subcategory: rule.subcategory || '',
+    amount_direction: rule.amount_direction || 'any',
   });
 
   const handleSubmit = (e) => {
@@ -722,19 +756,37 @@ function EditRuleModal({ rule, onSave, onClose, isLoading }) {
               />
             </div>
             
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Pattern Type
-              </label>
-              <select
-                value={formData.pattern_type}
-                onChange={(e) => setFormData({ ...formData, pattern_type: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-              >
-                <option value="contains">Contains</option>
-                <option value="exact">Exact Match</option>
-                <option value="starts_with">Starts With</option>
-              </select>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Pattern Type
+                </label>
+                <select
+                  value={formData.pattern_type}
+                  onChange={(e) => setFormData({ ...formData, pattern_type: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                >
+                  <option value="contains">Contains</option>
+                  <option value="exact">Exact Match</option>
+                  <option value="starts_with">Starts With</option>
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Amount Direction
+                </label>
+                <select
+                  value={formData.amount_direction}
+                  onChange={(e) => setFormData({ ...formData, amount_direction: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  title="Match only when transaction amount is positive (income/credit), negative (expense/debit), or any direction"
+                >
+                  <option value="any">Any</option>
+                  <option value="positive">Positive (Income)</option>
+                  <option value="negative">Negative (Expense)</option>
+                </select>
+              </div>
             </div>
             
             <div>
@@ -811,6 +863,7 @@ function AddRuleModal({ onSave, onClose, isLoading }) {
     vendor_name: '',
     category: '',
     subcategory: '',
+    amount_direction: 'any',
   });
 
   const handleSubmit = (e) => {
@@ -846,19 +899,37 @@ function AddRuleModal({ onSave, onClose, isLoading }) {
               </p>
             </div>
             
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Pattern Type
-              </label>
-              <select
-                value={formData.pattern_type}
-                onChange={(e) => setFormData({ ...formData, pattern_type: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-              >
-                <option value="contains">Contains (matches anywhere)</option>
-                <option value="exact">Exact Match</option>
-                <option value="starts_with">Starts With</option>
-              </select>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Pattern Type
+                </label>
+                <select
+                  value={formData.pattern_type}
+                  onChange={(e) => setFormData({ ...formData, pattern_type: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                >
+                  <option value="contains">Contains</option>
+                  <option value="exact">Exact Match</option>
+                  <option value="starts_with">Starts With</option>
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Amount Direction
+                </label>
+                <select
+                  value={formData.amount_direction}
+                  onChange={(e) => setFormData({ ...formData, amount_direction: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  title="Match only when transaction amount is positive (income/credit), negative (expense/debit), or any direction"
+                >
+                  <option value="any">Any</option>
+                  <option value="positive">Positive (Income)</option>
+                  <option value="negative">Negative (Expense)</option>
+                </select>
+              </div>
             </div>
             
             <div>

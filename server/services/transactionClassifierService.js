@@ -69,20 +69,31 @@ class TransactionClassifierService {
     if (!description) description = '';
     if (!payee) payee = '';
     const searchText = `${description} ${payee}`;
+    
+    // Get transaction amount for direction-based matching
+    const amount = parseFloat(transaction.amount) || 0;
+    const txDirection = amount >= 0 ? 'positive' : 'negative';
 
     try {
       // Use cached rules to avoid repeated database calls during batch processing
       const userRules = await this.getCachedRules(userId);
-      // console.log(`[Classifier] classifyTransaction: searchText="${searchText.slice(0,100)}" | rules=${userRules.length}`);
+      // console.log(`[Classifier] classifyTransaction: searchText="${searchText.slice(0,100)}" | rules=${userRules.length} | amount=${amount} | direction=${txDirection}`);
 
       for (const rule of userRules) {
+        // Check if rule applies to this amount direction
+        // Rule matches if: direction is 'any'/null OR direction matches transaction's direction
+        const ruleDirection = rule.amount_direction || 'any';
+        if (ruleDirection !== 'any' && ruleDirection !== txDirection) {
+          continue; // Skip this rule - direction doesn't match
+        }
+        
         if (rule.keywords && Array.isArray(rule.keywords)) {
           for (const keyword of rule.keywords) {
             if (
               typeof keyword === 'string' &&
               searchText.toLowerCase().includes(keyword.toLowerCase())
             ) {
-              // console.log(`[Classifier] Matched keyword "${keyword}" for category "${rule.category}"`);
+              // console.log(`[Classifier] Matched keyword "${keyword}" for category "${rule.category}" (direction: ${ruleDirection})`);
               return { category: rule.category };
             }
           }

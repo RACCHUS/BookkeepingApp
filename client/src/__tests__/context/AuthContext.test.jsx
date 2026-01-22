@@ -2,6 +2,7 @@ import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider, useAuth } from '../../context/AuthContext';
 
 // Mock firebase modules
@@ -30,6 +31,25 @@ vi.mock('react-hot-toast', () => ({
     error: (...args) => mockToastError(...args)
   }
 }));
+
+// Create a fresh QueryClient for each test
+const createTestQueryClient = () => new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: false,
+    },
+  },
+});
+
+// Wrapper component with QueryClientProvider
+const TestWrapper = ({ children }) => {
+  const queryClient = createTestQueryClient();
+  return (
+    <QueryClientProvider client={queryClient}>
+      {children}
+    </QueryClientProvider>
+  );
+};
 
 // Test component that uses useAuth hook
 const TestConsumer = ({ onMount }) => {
@@ -97,9 +117,9 @@ describe('AuthContext', () => {
 
     it('should provide auth context when used inside AuthProvider', () => {
       render(
-        <AuthProvider>
+        <TestWrapper><AuthProvider>
           <TestConsumer />
-        </AuthProvider>
+        </AuthProvider></TestWrapper>
       );
 
       expect(screen.getByTestId('login')).toBeInTheDocument();
@@ -118,9 +138,9 @@ describe('AuthContext', () => {
       });
 
       render(
-        <AuthProvider>
+        <TestWrapper><AuthProvider>
           <TestConsumer onMount={(auth) => loadingStates.push(auth.loading)} />
-        </AuthProvider>
+        </AuthProvider></TestWrapper>
       );
 
       await waitFor(() => {
@@ -130,9 +150,9 @@ describe('AuthContext', () => {
 
     it('should set user to null when no user is authenticated', async () => {
       render(
-        <AuthProvider>
+        <TestWrapper><AuthProvider>
           <TestConsumer />
-        </AuthProvider>
+        </AuthProvider></TestWrapper>
       );
 
       await waitFor(() => {
@@ -153,9 +173,9 @@ describe('AuthContext', () => {
       });
 
       render(
-        <AuthProvider>
+        <TestWrapper><AuthProvider>
           <TestConsumer />
-        </AuthProvider>
+        </AuthProvider></TestWrapper>
       );
 
       await waitFor(() => {
@@ -171,9 +191,9 @@ describe('AuthContext', () => {
       mockSignInWithPopup.mockResolvedValue({ user: mockUser });
 
       render(
-        <AuthProvider>
+        <TestWrapper><AuthProvider>
           <TestConsumer />
-        </AuthProvider>
+        </AuthProvider></TestWrapper>
       );
 
       await user.click(screen.getByTestId('login'));
@@ -189,9 +209,9 @@ describe('AuthContext', () => {
       mockSignInWithPopup.mockRejectedValue(new Error('Popup blocked'));
 
       render(
-        <AuthProvider>
+        <TestWrapper><AuthProvider>
           <TestConsumer />
-        </AuthProvider>
+        </AuthProvider></TestWrapper>
       );
 
       await user.click(screen.getByTestId('login'));
@@ -206,9 +226,9 @@ describe('AuthContext', () => {
       mockSignInWithPopup.mockRejectedValue(new Error(''));
 
       render(
-        <AuthProvider>
+        <TestWrapper><AuthProvider>
           <TestConsumer />
-        </AuthProvider>
+        </AuthProvider></TestWrapper>
       );
 
       await user.click(screen.getByTestId('login'));
@@ -237,9 +257,9 @@ describe('AuthContext', () => {
       };
 
       render(
-        <AuthProvider>
+        <TestWrapper><AuthProvider>
           <ErrorCatcher />
-        </AuthProvider>
+        </AuthProvider></TestWrapper>
       );
 
       await user.click(screen.getByRole('button'));
@@ -256,9 +276,9 @@ describe('AuthContext', () => {
       mockSignOut.mockResolvedValue();
 
       render(
-        <AuthProvider>
+        <TestWrapper><AuthProvider>
           <TestConsumer />
-        </AuthProvider>
+        </AuthProvider></TestWrapper>
       );
 
       await user.click(screen.getByTestId('logout'));
@@ -274,9 +294,9 @@ describe('AuthContext', () => {
       mockSignOut.mockRejectedValue(new Error('Sign out failed'));
 
       render(
-        <AuthProvider>
+        <TestWrapper><AuthProvider>
           <TestConsumer />
-        </AuthProvider>
+        </AuthProvider></TestWrapper>
       );
 
       await user.click(screen.getByTestId('logout'));
@@ -305,9 +325,9 @@ describe('AuthContext', () => {
       };
 
       render(
-        <AuthProvider>
+        <TestWrapper><AuthProvider>
           <ErrorCatcher />
-        </AuthProvider>
+        </AuthProvider></TestWrapper>
       );
 
       await user.click(screen.getByRole('button'));
@@ -321,9 +341,9 @@ describe('AuthContext', () => {
   describe('onAuthStateChanged subscription', () => {
     it('should subscribe to auth state changes on mount', () => {
       render(
-        <AuthProvider>
+        <TestWrapper><AuthProvider>
           <TestConsumer />
-        </AuthProvider>
+        </AuthProvider></TestWrapper>
       );
 
       expect(mockOnAuthStateChanged).toHaveBeenCalled();
@@ -337,9 +357,9 @@ describe('AuthContext', () => {
       });
 
       const { unmount } = render(
-        <AuthProvider>
+        <TestWrapper><AuthProvider>
           <TestConsumer />
-        </AuthProvider>
+        </AuthProvider></TestWrapper>
       );
 
       unmount();
@@ -356,9 +376,9 @@ describe('AuthContext', () => {
       });
 
       render(
-        <AuthProvider>
+        <TestWrapper><AuthProvider>
           <TestConsumer />
-        </AuthProvider>
+        </AuthProvider></TestWrapper>
       );
 
       expect(screen.getByTestId('user').textContent).toBe('null');
@@ -382,9 +402,9 @@ describe('AuthContext', () => {
       };
 
       render(
-        <AuthProvider>
+        <TestWrapper><AuthProvider>
           <ContextInspector />
-        </AuthProvider>
+        </AuthProvider></TestWrapper>
       );
 
       expect(contextValue).toHaveProperty('user');

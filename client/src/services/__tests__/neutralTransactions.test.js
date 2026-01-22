@@ -59,9 +59,9 @@ describe('Neutral Transaction Categories', () => {
       expect(NEUTRAL_CATEGORIES).toContain('Transfer Between Accounts');
     });
 
-    it('should include Personal Transfer as neutral', () => {
+    it('should include Personal Funds Added as neutral', () => {
       // Transfers from owner's personal accounts to business
-      expect(NEUTRAL_CATEGORIES).toContain('Personal Transfer');
+      expect(NEUTRAL_CATEGORIES).toContain('Personal Funds Added');
     });
   });
 
@@ -205,6 +205,7 @@ describe('Tax Report Handling', () => {
       'Materials and Supplies',
       'Car and Truck Expenses',
       'Advertising',
+      'Office Expenses',
     ];
 
     for (const tx of transactions) {

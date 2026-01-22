@@ -28,6 +28,21 @@ const VALID_CATEGORIES = new Set([
   ...Object.values(NEUTRAL_CATEGORIES)
 ]);
 
+// Valid amount direction values
+const VALID_DIRECTIONS = new Set(['any', 'positive', 'negative']);
+
+/**
+ * Validate and normalize amount direction value
+ * @param {string} direction - Direction to validate
+ * @returns {string} - Valid direction ('any', 'positive', or 'negative')
+ */
+function validateAmountDirection(direction) {
+  if (!direction || !VALID_DIRECTIONS.has(direction)) {
+    return 'any'; // Default to 'any' for invalid/missing values
+  }
+  return direction;
+}
+
 /**
  * Call the Gemini classification Edge Function
  * @param {Array} transactions - Transactions to classify
@@ -170,10 +185,13 @@ async function saveGeminiRules(results, userId) {
 
   console.log('High confidence results (>=0.75 with vendor):', highConfidenceResults.length);
 
-  // Group by vendor to avoid duplicate rules
+  // Group by vendor+direction to avoid duplicate rules
+  // Same vendor can have different rules for positive vs negative amounts
   const vendorMap = new Map();
   for (const result of highConfidenceResults) {
     const vendorKey = result.vendor.toUpperCase();
+    const direction = result.amount >= 0 ? 'positive' : 'negative';
+    const mapKey = `${vendorKey}|${direction}`; // Include direction in key
     
     // Skip excluded vendors
     if (EXCLUDED_VENDORS.some(excluded => vendorKey.includes(excluded))) {
@@ -181,8 +199,8 @@ async function saveGeminiRules(results, userId) {
       continue;
     }
     
-    if (!vendorMap.has(vendorKey) || vendorMap.get(vendorKey).confidence < result.confidence) {
-      vendorMap.set(vendorKey, result);
+    if (!vendorMap.has(mapKey) || vendorMap.get(mapKey).confidence < result.confidence) {
+      vendorMap.set(mapKey, result);
     }
   }
 
@@ -195,12 +213,30 @@ async function saveGeminiRules(results, userId) {
       continue;
     }
 
-    // Check if rule already exists
+    // Determine amount direction: positive (income/credit), negative (expense/debit), or 'any'
+    // For income categories, we expect positive amounts; for expense categories, negative
+    const isIncomeCategory = NEUTRAL_CATEGORY_VALUES.includes(result.category) || 
+      result.category === 'Gross Receipts or Sales' ||
+      result.category === 'Gross Rents' ||
+      result.category === 'Gross Royalties' ||
+      result.category === 'Interest Income' ||
+      result.category === 'Dividend Income' ||
+      result.category === 'Other Income';
+    
+    // Get the amount direction from the original transaction and validate it
+    const rawDirection = result.amount >= 0 ? 'positive' : 'negative';
+    const amountDirection = validateAmountDirection(rawDirection);
+    
+    console.log(`Rule for ${result.vendor}: amount=${result.amount}, direction=${amountDirection}, isIncome=${isIncomeCategory}`);
+
+    // Check if rule already exists WITH SAME DIRECTION
+    // This allows same vendor to have different rules for positive vs negative amounts
     const { data: existing, error: checkError } = await supabase
       .from('classification_rules')
       .select('id')
       .eq('user_id', userId)
       .eq('pattern', result.vendor.toUpperCase())
+      .eq('amount_direction', amountDirection)
       .single();
 
     if (checkError && checkError.code !== 'PGRST116') {
@@ -208,11 +244,11 @@ async function saveGeminiRules(results, userId) {
     }
 
     if (existing) {
-      console.log('Rule already exists for:', result.vendor);
+      console.log('Rule already exists for:', result.vendor, 'with direction:', amountDirection);
       continue;
     }
 
-    console.log('Creating rule for vendor:', result.vendor, 'category:', result.category);
+    console.log('Creating rule for vendor:', result.vendor, 'category:', result.category, 'direction:', amountDirection);
 
     const { error } = await supabase
       .from('classification_rules')
@@ -228,6 +264,7 @@ async function saveGeminiRules(results, userId) {
         source: 'gemini',
         is_active: true,
         match_count: 0,
+        amount_direction: amountDirection, // NEW: Store the amount direction for this rule
       });
 
     if (error) {

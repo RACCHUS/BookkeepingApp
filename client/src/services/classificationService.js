@@ -45,10 +45,12 @@ export function cleanDescription(description) {
 
   let cleaned = description.toUpperCase().trim();
 
-  // Remove common prefixes
-  for (const prefix of TRANSACTION_PREFIXES) {
+  // Remove common prefixes - sort by length (longest first) for greedy matching
+  const sortedPrefixes = [...TRANSACTION_PREFIXES].sort((a, b) => b.length - a.length);
+  for (const prefix of sortedPrefixes) {
     if (cleaned.startsWith(prefix)) {
       cleaned = cleaned.substring(prefix.length).trim();
+      break; // Only remove one prefix
     }
   }
 
@@ -251,19 +253,38 @@ export async function fetchAllRulesForUser(userId) {
  * Match transaction against user rules
  * @param {string} description - Transaction description
  * @param {Array} rules - User's classification rules
+ * @param {number} amount - Transaction amount (for direction-based matching)
  * @returns {Object|null} - Match result or null
  */
-function matchUserRules(description, rules) {
-  if (!rules || rules.length === 0) {
+function matchUserRules(description, rules, amount = 0) {
+  if (!rules || !Array.isArray(rules) || rules.length === 0) {
     return null;
   }
 
   const cleaned = cleanDescription(description);
   const extracted = extractVendor(description);
+  
+  // Safely parse amount - handle strings, null, undefined
+  const numericAmount = parseFloat(amount) || 0;
+  
+  // Determine the transaction direction based on amount
+  const txDirection = numericAmount >= 0 ? 'positive' : 'negative';
 
   // First try exact match on pattern
   for (const rule of rules) {
-    const pattern = rule.pattern.toUpperCase();
+    // Skip invalid rules
+    if (!rule || !rule.pattern || !rule.category) {
+      continue;
+    }
+    
+    // Check if rule applies to this amount direction
+    // Rule matches if: direction is 'any'/null/undefined OR direction matches transaction's direction
+    const ruleDirection = rule.amount_direction || 'any';
+    if (ruleDirection !== 'any' && ruleDirection !== txDirection) {
+      continue; // Skip this rule - direction doesn't match
+    }
+    
+    const pattern = (rule.pattern || '').toUpperCase();
     
     if (rule.pattern_type === 'exact' && cleaned === pattern) {
       return {
@@ -299,8 +320,13 @@ function matchUserRules(description, rules) {
     }
   }
 
-  // Then try fuzzy match
-  const fuseIndex = createRulesIndex(rules);
+  // Then try fuzzy match - filter rules by direction first
+  const directionFilteredRules = rules.filter(rule => {
+    const ruleDirection = rule.amount_direction || 'any';
+    return ruleDirection === 'any' || ruleDirection === txDirection;
+  });
+  
+  const fuseIndex = createRulesIndex(directionFilteredRules);
   const results = fuseIndex.search(extracted);
 
   if (results.length > 0 && results[0].score < 0.3) {
@@ -318,12 +344,40 @@ function matchUserRules(description, rules) {
   return null;
 }
 
+// Income categories that should match positive amounts
+const INCOME_CATEGORIES = [
+  'INCOME', 'GROSS_RECEIPTS', 'RENTAL_INCOME', 'INTEREST_INCOME', 
+  'DIVIDEND_INCOME', 'CAPITAL_GAINS', 'OTHER_INCOME', 'OWNER_CONTRIBUTION'
+];
+
+/**
+ * Get the expected direction for a vendor based on its category
+ * @param {string} category - The category key
+ * @returns {string} - 'positive' for income, 'negative' for expenses
+ */
+function getVendorDirection(category) {
+  return INCOME_CATEGORIES.includes(category) ? 'positive' : 'negative';
+}
+
+/**
+ * Check if a vendor's direction matches the transaction amount
+ * @param {string} category - Vendor category
+ * @param {number} amount - Transaction amount
+ * @returns {boolean} - True if direction matches
+ */
+function directionMatchesAmount(category, amount) {
+  const vendorDirection = getVendorDirection(category);
+  const amountDirection = parseFloat(amount) >= 0 ? 'positive' : 'negative';
+  return vendorDirection === amountDirection;
+}
+
 /**
  * Match transaction against default vendor mappings
  * @param {string} description - Transaction description
+ * @param {number} amount - Transaction amount (for direction matching)
  * @returns {Object|null} - Match result or null
  */
-function matchDefaultVendors(description) {
+function matchDefaultVendors(description, amount = 0) {
   const cleaned = cleanDescription(description);
   const extracted = extractVendor(description);
 
@@ -334,12 +388,17 @@ function matchDefaultVendors(description) {
   // First try exact match (longer patterns checked first)
   for (const [pattern, data] of sortedPatterns) {
     if (cleaned.includes(pattern) || extracted.includes(pattern)) {
+      // Check if the amount direction matches what we'd expect for this category
+      if (!directionMatchesAmount(data.category, amount)) {
+        continue; // Skip this match - direction doesn't match
+      }
       return {
         category: data.category,
         subcategory: data.subcategory,
         vendor: data.vendor,
         confidence: CONFIDENCE.DEFAULT_VENDOR_EXACT,
         source: CLASSIFICATION_SOURCE.DEFAULT_VENDOR,
+        amount_direction: getVendorDirection(data.category),
       };
     }
   }
@@ -350,12 +409,17 @@ function matchDefaultVendors(description) {
 
   if (results.length > 0 && results[0].score < 0.3) {
     const match = results[0].item;
+    // Check direction for fuzzy match too
+    if (!directionMatchesAmount(match.category, amount)) {
+      return null; // Direction doesn't match
+    }
     return {
       category: match.category,
       subcategory: match.subcategory,
       vendor: match.vendor,
       confidence: CONFIDENCE.DEFAULT_VENDOR_FUZZY * (1 - results[0].score),
       source: CLASSIFICATION_SOURCE.DEFAULT_VENDOR,
+      amount_direction: getVendorDirection(match.category),
     };
   }
 
@@ -370,6 +434,7 @@ function matchDefaultVendors(description) {
  */
 export function classifyLocal(transaction, userRules = []) {
   const description = transaction.description || transaction.payee || '';
+  const amount = transaction.amount || 0; // Get amount for direction-based matching
 
   if (!description) {
     return {
@@ -385,8 +450,8 @@ export function classifyLocal(transaction, userRules = []) {
     };
   }
 
-  // Layer 1: User Rules
-  const userMatch = matchUserRules(description, userRules);
+  // Layer 1: User Rules (pass amount for direction-based matching)
+  const userMatch = matchUserRules(description, userRules, amount);
   if (userMatch) {
     return {
       ...transaction,
@@ -397,8 +462,8 @@ export function classifyLocal(transaction, userRules = []) {
     };
   }
 
-  // Layer 2: Default Vendors
-  const defaultMatch = matchDefaultVendors(description);
+  // Layer 2: Default Vendors (pass amount for direction-based matching)
+  const defaultMatch = matchDefaultVendors(description, amount);
   if (defaultMatch) {
     return {
       ...transaction,

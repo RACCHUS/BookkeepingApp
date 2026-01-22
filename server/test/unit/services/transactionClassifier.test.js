@@ -229,8 +229,8 @@ describe('TransactionClassifier - Advanced Classification', () => {
 
       const result = await transactionClassifier.classifyTransaction(transaction, 'user123');
       
-      // Small amount + coffee/starbucks = meals
-      expect(result.category).toBe(IRS_CATEGORIES.MEALS_ENTERTAINMENT);
+      // Small amount + coffee/starbucks = meals (IRS_CATEGORIES.MEALS = 'Meals')
+      expect(result.category).toBe(IRS_CATEGORIES.MEALS);
     });
 
     it('should classify large equipment purchases', async () => {
