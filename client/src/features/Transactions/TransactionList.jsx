@@ -132,7 +132,7 @@ const TransactionList = () => {
   
   // Query/pagination filters (separate from display filters)
   const [queryFilters, setQueryFilters] = useState({
-    limit: 1000,
+    limit: 2000,
     offset: 0
   });
   

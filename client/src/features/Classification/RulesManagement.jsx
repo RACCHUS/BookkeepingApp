@@ -506,6 +506,17 @@ function RulesTable({ rules, onEdit, onDelete, onToggleActive, isUpdating, isDel
     );
   }
 
+  // Helper to format amount range
+  const formatAmountRange = (rule) => {
+    const min = rule.amount_min;
+    const max = rule.amount_max;
+    if (min == null && max == null) return '—';
+    if (min != null && max != null) return `$${min} - $${max}`;
+    if (min != null) return `≥ $${min}`;
+    if (max != null) return `≤ $${max}`;
+    return '—';
+  };
+
   return (
     <div className="overflow-x-auto">
       <table className="w-full">
@@ -522,6 +533,9 @@ function RulesTable({ rules, onEdit, onDelete, onToggleActive, isUpdating, isDel
             </th>
             <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
               Direction
+            </th>
+            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+              Amount
             </th>
             <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
               Matches
@@ -566,6 +580,9 @@ function RulesTable({ rules, onEdit, onDelete, onToggleActive, isUpdating, isDel
                   {rule.amount_direction === 'positive' ? '+ Income' : 
                    rule.amount_direction === 'negative' ? '− Expense' : 'Any'}
                 </span>
+              </td>
+              <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-300">
+                {formatAmountRange(rule)}
               </td>
               <td className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">
                 {rule.match_count || 0}
@@ -725,11 +742,19 @@ function EditRuleModal({ rule, onSave, onClose, isLoading }) {
     category: rule.category || '',
     subcategory: rule.subcategory || '',
     amount_direction: rule.amount_direction || 'any',
+    amount_min: rule.amount_min ?? '',
+    amount_max: rule.amount_max ?? '',
   });
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSave(formData);
+    // Convert empty strings to null for amount fields
+    const submitData = {
+      ...formData,
+      amount_min: formData.amount_min === '' ? null : parseFloat(formData.amount_min),
+      amount_max: formData.amount_max === '' ? null : parseFloat(formData.amount_max),
+    };
+    onSave(submitData);
   };
 
   return (
@@ -787,6 +812,41 @@ function EditRuleModal({ rule, onSave, onClose, isLoading }) {
                   <option value="negative">Negative (Expense)</option>
                 </select>
               </div>
+            </div>
+
+            {/* Amount Range */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Amount Range (optional)
+              </label>
+              <div className="flex items-center gap-2">
+                <div className="flex-1">
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={formData.amount_min}
+                    onChange={(e) => setFormData({ ...formData, amount_min: e.target.value })}
+                    placeholder="Min $"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400"
+                  />
+                </div>
+                <span className="text-gray-500">to</span>
+                <div className="flex-1">
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={formData.amount_max}
+                    onChange={(e) => setFormData({ ...formData, amount_max: e.target.value })}
+                    placeholder="Max $"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400"
+                  />
+                </div>
+              </div>
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                Leave empty for no limit. Uses absolute value (e.g., $15 matches both -$15 and +$15)
+              </p>
             </div>
             
             <div>
@@ -864,11 +924,19 @@ function AddRuleModal({ onSave, onClose, isLoading }) {
     category: '',
     subcategory: '',
     amount_direction: 'any',
+    amount_min: '',
+    amount_max: '',
   });
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSave(formData);
+    // Convert empty strings to null for amount fields
+    const submitData = {
+      ...formData,
+      amount_min: formData.amount_min === '' ? null : parseFloat(formData.amount_min),
+      amount_max: formData.amount_max === '' ? null : parseFloat(formData.amount_max),
+    };
+    onSave(submitData);
   };
 
   return (
@@ -930,6 +998,41 @@ function AddRuleModal({ onSave, onClose, isLoading }) {
                   <option value="negative">Negative (Expense)</option>
                 </select>
               </div>
+            </div>
+
+            {/* Amount Range */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Amount Range (optional)
+              </label>
+              <div className="flex items-center gap-2">
+                <div className="flex-1">
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={formData.amount_min}
+                    onChange={(e) => setFormData({ ...formData, amount_min: e.target.value })}
+                    placeholder="Min $"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400"
+                  />
+                </div>
+                <span className="text-gray-500">to</span>
+                <div className="flex-1">
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={formData.amount_max}
+                    onChange={(e) => setFormData({ ...formData, amount_max: e.target.value })}
+                    placeholder="Max $"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400"
+                  />
+                </div>
+              </div>
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                E.g., gas station under $15 → Meals, $15-$150 → Car Expenses
+              </p>
             </div>
             
             <div>

@@ -269,10 +269,36 @@ export async function fetchAllRulesForUser(userId) {
 }
 
 /**
+ * Check if a rule's amount range matches the transaction amount
+ * @param {Object} rule - Classification rule with optional amount_min/amount_max
+ * @param {number} amount - Transaction amount
+ * @returns {boolean} - True if amount is within rule's range (or no range specified)
+ */
+function amountMatchesRule(rule, amount) {
+  const absAmount = Math.abs(amount);
+  
+  // Check minimum amount (if specified)
+  if (rule.amount_min !== null && rule.amount_min !== undefined) {
+    if (absAmount < parseFloat(rule.amount_min)) {
+      return false;
+    }
+  }
+  
+  // Check maximum amount (if specified)
+  if (rule.amount_max !== null && rule.amount_max !== undefined) {
+    if (absAmount > parseFloat(rule.amount_max)) {
+      return false;
+    }
+  }
+  
+  return true;
+}
+
+/**
  * Match transaction against user rules
  * @param {string} description - Transaction description
  * @param {Array} rules - User's classification rules
- * @param {number} amount - Transaction amount (for direction-based matching)
+ * @param {number} amount - Transaction amount (for direction and range-based matching)
  * @returns {Object|null} - Match result or null
  */
 function matchUserRules(description, rules, amount = 0) {
@@ -301,6 +327,11 @@ function matchUserRules(description, rules, amount = 0) {
     const ruleDirection = rule.amount_direction || 'any';
     if (ruleDirection !== 'any' && ruleDirection !== txDirection) {
       continue; // Skip this rule - direction doesn't match
+    }
+    
+    // Check if rule applies to this amount range
+    if (!amountMatchesRule(rule, numericAmount)) {
+      continue; // Skip this rule - amount outside range
     }
     
     const pattern = (rule.pattern || '').toUpperCase();
@@ -339,13 +370,15 @@ function matchUserRules(description, rules, amount = 0) {
     }
   }
 
-  // Then try fuzzy match - filter rules by direction first
-  const directionFilteredRules = rules.filter(rule => {
+  // Then try fuzzy match - filter rules by direction and amount range first
+  const filteredRules = rules.filter(rule => {
     const ruleDirection = rule.amount_direction || 'any';
-    return ruleDirection === 'any' || ruleDirection === txDirection;
+    const directionMatches = ruleDirection === 'any' || ruleDirection === txDirection;
+    const amountMatches = amountMatchesRule(rule, numericAmount);
+    return directionMatches && amountMatches;
   });
   
-  const fuseIndex = createRulesIndex(directionFilteredRules);
+  const fuseIndex = createRulesIndex(filteredRules);
   const results = fuseIndex.search(extracted);
 
   if (results.length > 0 && results[0].score < 0.3) {
