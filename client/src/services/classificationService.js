@@ -368,6 +368,43 @@ function matchUserRules(description, rules, amount = 0) {
         ruleId: rule.id,
       };
     }
+
+    // Multi-contains: pattern is comma-separated list of terms that ALL must be present
+    // e.g., "SUNSHINE,FL" matches "SUNSHINE SOMETHING FL 12345"
+    if (rule.pattern_type === 'multi_contains') {
+      const terms = pattern.split(',').map(t => t.trim()).filter(Boolean);
+      const allMatch = terms.every(term => cleaned.includes(term));
+      if (allMatch) {
+        return {
+          category: getCategoryValue(rule.category),
+          subcategory: rule.subcategory,
+          vendor: rule.vendor_name,
+          confidence: CONFIDENCE.USER_RULE_EXACT,
+          source: CLASSIFICATION_SOURCE.USER_RULE,
+          ruleId: rule.id,
+        };
+      }
+    }
+
+    // Regex pattern type - use the pattern as a regular expression
+    if (rule.pattern_type === 'regex') {
+      try {
+        const regex = new RegExp(pattern, 'i');
+        if (regex.test(cleaned)) {
+          return {
+            category: getCategoryValue(rule.category),
+            subcategory: rule.subcategory,
+            vendor: rule.vendor_name,
+            confidence: CONFIDENCE.USER_RULE_EXACT,
+            source: CLASSIFICATION_SOURCE.USER_RULE,
+            ruleId: rule.id,
+          };
+        }
+      } catch (e) {
+        // Invalid regex, skip this rule
+        console.warn('Invalid regex pattern:', pattern, e.message);
+      }
+    }
   }
 
   // Then try fuzzy match - filter rules by direction and amount range first

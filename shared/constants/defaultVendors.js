@@ -348,9 +348,8 @@ export const DEFAULT_VENDORS = {
   'STRIPE PAYMENTS': { category: 'COMMISSIONS_FEES', subcategory: null, vendor: 'Stripe' },
   'SUBWAY': { category: 'MEALS', subcategory: null, vendor: 'Subway' },
   'SUNOCO': { category: 'CAR_TRUCK_EXPENSES', subcategory: 'Fuel/Gas', vendor: 'Sunoco' },
-  'SUNSHINE': { category: 'CAR_TRUCK_EXPENSES', subcategory: 'Fuel/Gas', vendor: 'Sunshine' },
+  // SUNSHINE removed - too vague, use multi_contains rule with FL + numbers
   'SWAP SHOP': { category: 'MATERIALS_SUPPLIES', subcategory: 'Manufacturing Materials', vendor: 'Swap Shop' },
-  'SUNSHINE': { category: 'CAR_TRUCK_EXPENSES', subcategory: 'Fuel/Gas', vendor: 'Sunshine Gasoline' },
   'SUNPASS': { category: 'CAR_TRUCK_EXPENSES', subcategory: 'Parking & Tolls', vendor: 'SunPass' },
   'SUNTRUST': { category: 'BANK_FEES', subcategory: null, vendor: 'SunTrust' },
   
