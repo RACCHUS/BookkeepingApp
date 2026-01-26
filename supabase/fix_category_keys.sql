@@ -1,0 +1,41 @@
+-- Fix classification_rules with category keys instead of values
+UPDATE classification_rules SET category = 'Gross Receipts or Sales' WHERE category = 'GROSS_RECEIPTS';
+UPDATE classification_rules SET category = 'Credit Card Payment' WHERE category = 'CREDIT_CARD_PAYMENT';
+UPDATE classification_rules SET category = 'Car and Truck Expenses' WHERE category = 'CAR_TRUCK_EXPENSES';
+UPDATE classification_rules SET category = 'Meals' WHERE category = 'MEALS';
+UPDATE classification_rules SET category = 'Office Expenses' WHERE category = 'OFFICE_EXPENSES';
+UPDATE classification_rules SET category = 'Supplies' WHERE category = 'SUPPLIES';
+UPDATE classification_rules SET category = 'Utilities' WHERE category = 'UTILITIES';
+UPDATE classification_rules SET category = 'Other Expenses' WHERE category = 'OTHER_EXPENSES';
+UPDATE classification_rules SET category = 'Transfer' WHERE category = 'TRANSFER';
+UPDATE classification_rules SET category = 'Owner Draw/Distribution' WHERE category = 'OWNER_DRAW';
+UPDATE classification_rules SET category = 'Advertising' WHERE category = 'ADVERTISING';
+UPDATE classification_rules SET category = 'Insurance (Other)' WHERE category = 'INSURANCE_OTHER';
+UPDATE classification_rules SET category = 'Legal and Professional Services' WHERE category = 'LEGAL_PROFESSIONAL';
+UPDATE classification_rules SET category = 'Repairs and Maintenance' WHERE category = 'REPAIRS_MAINTENANCE';
+UPDATE classification_rules SET category = 'Taxes and Licenses' WHERE category = 'TAXES_LICENSES';
+UPDATE classification_rules SET category = 'Travel' WHERE category = 'TRAVEL';
+UPDATE classification_rules SET category = 'Contract Labor' WHERE category = 'CONTRACT_LABOR';
+UPDATE classification_rules SET category = 'Wages' WHERE category = 'WAGES';
+UPDATE classification_rules SET category = 'Rent or Lease (Other)' WHERE category = 'RENT_LEASE_OTHER';
+
+-- Also fix any transactions that have wrong format
+UPDATE transactions SET category = 'Gross Receipts or Sales' WHERE category = 'GROSS_RECEIPTS';
+UPDATE transactions SET category = 'Credit Card Payment' WHERE category = 'CREDIT_CARD_PAYMENT';
+UPDATE transactions SET category = 'Car and Truck Expenses' WHERE category = 'CAR_TRUCK_EXPENSES';
+UPDATE transactions SET category = 'Meals' WHERE category = 'MEALS';
+UPDATE transactions SET category = 'Office Expenses' WHERE category = 'OFFICE_EXPENSES';
+UPDATE transactions SET category = 'Supplies' WHERE category = 'SUPPLIES';
+UPDATE transactions SET category = 'Utilities' WHERE category = 'UTILITIES';
+UPDATE transactions SET category = 'Other Expenses' WHERE category = 'OTHER_EXPENSES';
+UPDATE transactions SET category = 'Transfer' WHERE category = 'TRANSFER';
+UPDATE transactions SET category = 'Owner Draw/Distribution' WHERE category = 'OWNER_DRAW';
+UPDATE transactions SET category = 'Advertising' WHERE category = 'ADVERTISING';
+UPDATE transactions SET category = 'Insurance (Other)' WHERE category = 'INSURANCE_OTHER';
+UPDATE transactions SET category = 'Legal and Professional Services' WHERE category = 'LEGAL_PROFESSIONAL';
+UPDATE transactions SET category = 'Repairs and Maintenance' WHERE category = 'REPAIRS_MAINTENANCE';
+UPDATE transactions SET category = 'Taxes and Licenses' WHERE category = 'TAXES_LICENSES';
+UPDATE transactions SET category = 'Travel' WHERE category = 'TRAVEL';
+UPDATE transactions SET category = 'Contract Labor' WHERE category = 'CONTRACT_LABOR';
+UPDATE transactions SET category = 'Wages' WHERE category = 'WAGES';
+UPDATE transactions SET category = 'Rent or Lease (Other)' WHERE category = 'RENT_LEASE_OTHER';

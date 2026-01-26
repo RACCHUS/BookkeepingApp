@@ -338,7 +338,7 @@ function matchUserRules(description, rules, amount = 0) {
     
     if (rule.pattern_type === 'exact' && cleaned === pattern) {
       return {
-        category: rule.category,
+        category: getCategoryValue(rule.category),
         subcategory: rule.subcategory,
         vendor: rule.vendor_name,
         confidence: CONFIDENCE.USER_RULE_EXACT,
@@ -349,7 +349,7 @@ function matchUserRules(description, rules, amount = 0) {
 
     if (rule.pattern_type === 'contains' && cleaned.includes(pattern)) {
       return {
-        category: rule.category,
+        category: getCategoryValue(rule.category),
         subcategory: rule.subcategory,
         vendor: rule.vendor_name,
         confidence: CONFIDENCE.USER_RULE_EXACT,
@@ -360,7 +360,7 @@ function matchUserRules(description, rules, amount = 0) {
 
     if (rule.pattern_type === 'starts_with' && cleaned.startsWith(pattern)) {
       return {
-        category: rule.category,
+        category: getCategoryValue(rule.category),
         subcategory: rule.subcategory,
         vendor: rule.vendor_name,
         confidence: CONFIDENCE.USER_RULE_EXACT,
@@ -727,7 +727,7 @@ export async function saveClassificationRule(rule, userId) {
         pattern: rule.pattern.toUpperCase(),
         pattern_type: rule.patternType || 'contains',
         vendor_name: rule.vendor,
-        category: rule.category,
+        category: getCategoryValue(rule.category),
         subcategory: rule.subcategory,
         confidence: 1.0,
         source: 'manual',
