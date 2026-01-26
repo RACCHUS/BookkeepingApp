@@ -22,11 +22,37 @@ const BATCH_DELAY = 4500;
 // Get all neutral category values for type detection
 const NEUTRAL_CATEGORY_VALUES = Object.values(NEUTRAL_CATEGORIES);
 
-// Get all valid categories for validation
+// Get all valid categories for validation (values only)
 const VALID_CATEGORIES = new Set([
   ...Object.values(IRS_CATEGORIES),
   ...Object.values(NEUTRAL_CATEGORIES)
 ]);
+
+/**
+ * Convert category key to its proper value
+ * e.g., 'GROSS_RECEIPTS' -> 'Gross Receipts or Sales'
+ */
+function getCategoryValue(categoryKey) {
+  if (!categoryKey) return null;
+  
+  // If already a valid value, return as-is
+  if (VALID_CATEGORIES.has(categoryKey)) {
+    return categoryKey;
+  }
+  
+  // Try to look up from IRS_CATEGORIES keys
+  if (IRS_CATEGORIES[categoryKey]) {
+    return IRS_CATEGORIES[categoryKey];
+  }
+  
+  // Try NEUTRAL_CATEGORIES keys
+  if (NEUTRAL_CATEGORIES[categoryKey]) {
+    return NEUTRAL_CATEGORIES[categoryKey];
+  }
+  
+  // Return as-is if not found (will be rejected by validation)
+  return categoryKey;
+}
 
 // Valid amount direction values
 const VALID_DIRECTIONS = new Set(['any', 'positive', 'negative']);
@@ -109,19 +135,22 @@ async function updateTransactionsWithClassifications(results) {
       continue; // Skip unclassified
     }
 
+    // Normalize category key to value (e.g., 'GROSS_RECEIPTS' -> 'Gross Receipts or Sales')
+    const normalizedCategory = getCategoryValue(result.category);
+
     // Validate category - only allow known categories
-    if (!VALID_CATEGORIES.has(result.category)) {
-      console.warn(`Skipping transaction ${result.id} - invalid category: "${result.category}"`);
+    if (!VALID_CATEGORIES.has(normalizedCategory)) {
+      console.warn(`Skipping transaction ${result.id} - invalid category: "${result.category}" -> "${normalizedCategory}"`);
       skippedInvalid++;
       continue;
     }
 
-    console.log(`Updating transaction ${result.id} with category: ${result.category}`);
+    console.log(`Updating transaction ${result.id} with category: ${normalizedCategory}`);
     
     // Determine transaction type based on category
-    const isNeutralCategory = NEUTRAL_CATEGORY_VALUES.includes(result.category);
+    const isNeutralCategory = NEUTRAL_CATEGORY_VALUES.includes(normalizedCategory);
     const updateData = {
-      category: result.category,
+      category: normalizedCategory,
       subcategory: result.subcategory,
       vendor_name: result.vendor,
       classification_source: CLASSIFICATION_SOURCE.GEMINI_API,
@@ -248,7 +277,10 @@ async function saveGeminiRules(results, userId) {
       continue;
     }
 
-    console.log('Creating rule for vendor:', result.vendor, 'category:', result.category, 'direction:', amountDirection);
+    // Normalize category key to value
+    const normalizedCategory = getCategoryValue(result.category);
+    
+    console.log('Creating rule for vendor:', result.vendor, 'category:', normalizedCategory, 'direction:', amountDirection);
 
     const { error } = await supabase
       .from('classification_rules')
@@ -258,7 +290,7 @@ async function saveGeminiRules(results, userId) {
         pattern: result.vendor.toUpperCase(),
         pattern_type: 'contains',
         vendor_name: result.vendor,
-        category: result.category,
+        category: normalizedCategory,
         subcategory: result.subcategory,
         confidence: result.confidence,
         source: 'gemini',

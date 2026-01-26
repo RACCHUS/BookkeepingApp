@@ -629,10 +629,12 @@ export async function classifyWithGemini(transactions, userId) {
     return transactions.map(t => {
       const geminiResult = resultMap.get(t.id);
       if (geminiResult && geminiResult.category) {
+        // Normalize category key to value (e.g., 'GROSS_RECEIPTS' -> 'Gross Receipts or Sales')
+        const normalizedCategory = getCategoryValue(geminiResult.category);
         return {
           ...t,
           classification: {
-            category: geminiResult.category,
+            category: normalizedCategory,
             subcategory: geminiResult.subcategory,
             vendor: geminiResult.vendor || t.classification?.vendor,
             confidence: geminiResult.confidence || CONFIDENCE.GEMINI_LOW,
@@ -923,5 +925,6 @@ export default {
   cleanDescription,
   extractVendor,
   getClassificationStats,
+  getCategoryValue,
   CLASSIFICATION_SOURCE,
 };
