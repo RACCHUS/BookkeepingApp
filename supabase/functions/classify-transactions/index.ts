@@ -311,15 +311,30 @@ async function callGeminiAPI(transactions: Transaction[], apiKey: string): Promi
   try {
     const results: ClassificationResult[] = JSON.parse(jsonStr);
     
+    // Log what Gemini returned for debugging
+    console.log("Gemini returned", results.length, "results");
+    
     // Validate and sanitize results
-    return results.map(r => ({
-      id: r.id,
-      category: IRS_CATEGORIES.includes(r.category) ? r.category : null,
-      subcategory: r.subcategory || null,
-      vendor: r.vendor || null,
-      confidence: Math.min(Math.max(r.confidence || 0.5, 0), 1),
-      reasoning: r.reasoning,
-    }));
+    return results.map(r => {
+      const isValidCategory = IRS_CATEGORIES.includes(r.category);
+      
+      // Log rejected categories for debugging
+      if (r.category && !isValidCategory) {
+        console.warn(`REJECTED category for ${r.id}: "${r.category}" - not in IRS_CATEGORIES`);
+      }
+      if (!r.category) {
+        console.warn(`NULL category returned for ${r.id}, vendor: ${r.vendor}`);
+      }
+      
+      return {
+        id: r.id,
+        category: isValidCategory ? r.category : null,
+        subcategory: r.subcategory || null,
+        vendor: r.vendor || null,
+        confidence: Math.min(Math.max(r.confidence || 0.5, 0), 1),
+        reasoning: r.reasoning,
+      };
+    });
   } catch (parseError) {
     console.error("Failed to parse Gemini response:", jsonStr, parseError);
     throw new Error("Failed to parse Gemini classification response");

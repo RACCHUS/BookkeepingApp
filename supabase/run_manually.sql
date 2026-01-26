@@ -52,3 +52,19 @@ DROP POLICY IF EXISTS "Users can view their own CSV imports" ON csv_imports;
 DROP POLICY IF EXISTS "Users can create their own CSV imports" ON csv_imports;
 DROP POLICY IF EXISTS "Users can update their own CSV imports" ON csv_imports;
 DROP POLICY IF EXISTS "Users can delete their own CSV imports" ON csv_imports;
+
+-- Fix income vendor rules that have wrong direction
+-- Run this query to find and fix rules for income vendors that have direction='negative'
+-- These should be direction='positive' or 'any' for income categories
+
+-- First, check which rules are wrong:
+-- SELECT id, pattern, category, amount_direction 
+-- FROM classification_rules 
+-- WHERE category IN ('Gross Receipts or Sales', 'Other Income', 'Refund Received', 'Owner Contribution/Capital')
+-- AND amount_direction = 'negative';
+
+-- Then update them to 'any' so they match both directions:
+UPDATE classification_rules 
+SET amount_direction = 'any'
+WHERE category IN ('Gross Receipts or Sales', 'Other Income', 'Refund Received', 'Owner Contribution/Capital', 'Loan Received')
+AND amount_direction = 'negative';

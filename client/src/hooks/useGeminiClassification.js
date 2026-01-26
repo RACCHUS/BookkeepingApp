@@ -128,10 +128,17 @@ async function updateTransactionsWithClassifications(results) {
 
   console.log('updateTransactionsWithClassifications called with', results.length, 'results');
   console.log('Sample result:', JSON.stringify(results[0]));
+  
+  // Log transactions that came back without categories
+  const noCategory = results.filter(r => !r.category);
+  if (noCategory.length > 0) {
+    console.warn(`⚠️ ${noCategory.length} transactions returned WITHOUT category from Gemini:`);
+    noCategory.forEach(r => console.warn(`  - ID: ${r.id}, vendor: ${r.vendor}`));
+  }
 
   for (const result of results) {
     if (!result.category) {
-      console.log(`Skipping transaction ${result.id} - no category`);
+      console.log(`Skipping transaction ${result.id} - no category (vendor: ${result.vendor})`);
       continue; // Skip unclassified
     }
 
@@ -369,16 +376,26 @@ export function useGeminiClassification() {
           const response = await callGeminiEdgeFunction(batch, userId);
 
           if (response.success && response.results) {
-            allResults.push(...response.results);
+            // Merge Gemini results with original transaction data (to get amount)
+            const mergedResults = response.results.map(result => {
+              const originalTx = batch.find(t => t.id === result.id);
+              return {
+                ...result,
+                amount: originalTx?.amount,
+                originalDescription: originalTx?.description,
+              };
+            });
+            
+            allResults.push(...mergedResults);
 
             // Update transactions in database
-            const { updated, failed } = await updateTransactionsWithClassifications(response.results);
+            const { updated, failed } = await updateTransactionsWithClassifications(mergedResults);
             totalClassified += updated;
             totalFailed += failed;
 
-            // Optionally save as rules
+            // Optionally save as rules (now has amount for direction)
             if (saveRules) {
-              const rulesCreated = await saveGeminiRules(response.results, userId);
+              const rulesCreated = await saveGeminiRules(mergedResults, userId);
               totalRulesCreated += rulesCreated;
             }
 
