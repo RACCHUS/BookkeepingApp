@@ -67,8 +67,13 @@ export const DEFAULT_VENDORS = {
   'BURGER KING': { category: 'MEALS', subcategory: null, vendor: 'Burger King' },
   
   // ===== C =====
-  'CHECK': { category: 'OTHER_EXPENSES', subcategory: null, vendor: 'Check Payment' },
-  'CHECK #': { category: 'OTHER_EXPENSES', subcategory: null, vendor: 'Check Payment' },
+  // CHECK patterns - expenses (negative) = payments made, income (positive) = deposits received
+  // Note: Classification service checks amount direction, so expense categories only match negative amounts
+  'CHECK': { category: 'Other Expenses', subcategory: null, vendor: 'Check Payment' },
+  'CHECK #': { category: 'Other Expenses', subcategory: null, vendor: 'Check Payment' },
+  'CHECK DEPOSIT': { category: 'Gross Receipts or Sales', subcategory: null, vendor: 'Check Deposit' },
+  'REMOTE DEPOSIT': { category: 'Gross Receipts or Sales', subcategory: null, vendor: 'Check Deposit' },
+  'MOBILE DEPOSIT': { category: 'Gross Receipts or Sales', subcategory: null, vendor: 'Check Deposit' },
   'CALENDLY': { category: 'SOFTWARE_SUBSCRIPTIONS', subcategory: null, vendor: 'Calendly' },
   'CANVA': { category: 'SOFTWARE_SUBSCRIPTIONS', subcategory: null, vendor: 'Canva' },
   // Capital One - specific products FIRST (more specific match wins)
