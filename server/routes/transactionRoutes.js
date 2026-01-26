@@ -17,6 +17,14 @@ import {
   bulkUnassignPayeeFromTransactions,
   bulkUnassignCompanyFromTransactions
 } from '../controllers/transactionController.js';
+import {
+  splitTransaction,
+  bulkSplitTransactions,
+  unsplitTransaction,
+  getSplitParts,
+  splitTransactionValidation,
+  bulkSplitValidation
+} from '../controllers/splitTransactionController.js';
 import { 
   handleValidationErrors,
   validateObjectId,
@@ -266,5 +274,37 @@ router.patch('/bulk-unassign-company',
   handleValidationErrors,
   bulkUnassignCompanyFromTransactions
 );
+
+// =========================================
+// SPLIT TRANSACTION ROUTES
+// =========================================
+
+/**
+ * @route POST /api/transactions/bulk-split
+ * @desc Bulk split multiple transactions
+ * @access Private
+ */
+router.post('/bulk-split', bulkSplitValidation, handleValidationErrors, bulkSplitTransactions);
+
+/**
+ * @route POST /api/transactions/:id/split
+ * @desc Split a single transaction into multiple parts
+ * @access Private
+ */
+router.post('/:id/split', splitTransactionValidation, handleValidationErrors, splitTransaction);
+
+/**
+ * @route POST /api/transactions/:id/unsplit
+ * @desc Unsplit a transaction (merge split parts back)
+ * @access Private
+ */
+router.post('/:id/unsplit', validateObjectId('id'), unsplitTransaction);
+
+/**
+ * @route GET /api/transactions/:id/split-parts
+ * @desc Get all split parts for a transaction
+ * @access Private
+ */
+router.get('/:id/split-parts', validateObjectId('id'), getSplitParts);
 
 export default router;

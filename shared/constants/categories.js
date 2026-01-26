@@ -1176,8 +1176,36 @@ export const FILE_UPLOAD = {
   ALLOWED_EXTENSIONS: ['.pdf', '.csv', '.xls', '.xlsx']
 };
 
+// Key-to-Label mapping for dropdowns that need to show labels but submit values
+// This is effectively IRS_CATEGORIES (key -> value) for use in dropdowns
+export const IRS_CATEGORY_LABELS = IRS_CATEGORIES;
+
+// Helper: Convert category key (like GROSS_RECEIPTS) to value (like 'Gross Receipts or Sales')
+// Returns the input unchanged if it's already a value or not a valid key
+export const convertCategoryKeyToValue = (category) => {
+  if (!category) return null;
+  // If it's already a valid value, return it
+  if (Object.values(IRS_CATEGORIES).includes(category)) {
+    return category;
+  }
+  // If it's a key, convert to value
+  if (IRS_CATEGORIES[category]) {
+    return IRS_CATEGORIES[category];
+  }
+  // Check NEUTRAL_CATEGORIES too
+  if (Object.values(NEUTRAL_CATEGORIES).includes(category)) {
+    return category;
+  }
+  if (NEUTRAL_CATEGORIES[category]) {
+    return NEUTRAL_CATEGORIES[category];
+  }
+  // Return as-is if not recognized
+  return category;
+};
+
 export default {
   IRS_CATEGORIES,
+  IRS_CATEGORY_LABELS,
   CATEGORY_SUBCATEGORIES,
   CATEGORY_METADATA,
   CATEGORY_GROUPS,
@@ -1194,5 +1222,6 @@ export default {
   getScheduleCLine,
   getCategoriesByType,
   getBusinessDeductibleCategories,
-  getCategoriesForDropdown
+  getCategoriesForDropdown,
+  convertCategoryKeyToValue
 };

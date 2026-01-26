@@ -13,7 +13,8 @@ import {
   UserIcon,
   CalendarIcon,
   BanknotesIcon,
-  DocumentDuplicateIcon
+  DocumentDuplicateIcon,
+  ScissorsIcon
 } from '@heroicons/react/24/outline';
 import { CATEGORY_GROUPS, isTaxDeductible, isBusinessCategory } from '@shared/constants/categories';
 
@@ -35,6 +36,7 @@ const CompactTransactionRow = memo(({
   onCancelCategoryEdit,
   onEdit,
   onDelete,
+  onSplit,
   deletingId,
   // Dynamic columns based on active filters/sorts
   visibleColumns = [],
@@ -393,6 +395,24 @@ const CompactTransactionRow = memo(({
           {/* Receipt indicator (compact) */}
           {transaction.receiptId && !shouldShowColumn('hasReceipt') && (
             <ReceiptPercentIcon className="w-4 h-4 text-green-500" title="Has receipt" />
+          )}
+          
+          {/* Split indicator for already-split transactions */}
+          {transaction.isSplit && (
+            <span className="px-1.5 py-0.5 text-xs bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 rounded" title="Transaction has been split">
+              Split
+            </span>
+          )}
+          
+          {/* Split button - only show for transactions that can be split */}
+          {onSplit && !transaction.isSplit && !transaction.parentTransactionId && Math.abs(transaction.amount) >= 0.02 && (
+            <button
+              onClick={() => onSplit(transaction)}
+              className="p-1.5 text-gray-400 hover:text-purple-500 dark:hover:text-purple-400 transition-colors"
+              title="Split transaction"
+            >
+              <ScissorsIcon className="h-4 w-4" />
+            </button>
           )}
           
           <button

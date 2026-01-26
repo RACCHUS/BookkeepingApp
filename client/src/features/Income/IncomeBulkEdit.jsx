@@ -1,17 +1,12 @@
 import React, { useState, useMemo } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { 
-  ArrowPathIcon,
-  PencilIcon,
-  ChevronDownIcon,
-  ChevronUpIcon
-} from '@heroicons/react/24/outline';
 import api from '../../services/api';
 import { toast } from 'react-hot-toast';
 import { TransactionModal } from '../../components/forms';
 import TransactionBulkPanel from '../Transactions/TransactionBulkPanel';
 import TransactionFilterPanel from '../Transactions/TransactionFilterPanel';
 import TransactionSortPanel from '../Transactions/TransactionSortPanel';
+import TransactionGrid from '../Transactions/TransactionGrid';
 import { createDefaultSorts, multiLevelSort } from '@shared/constants/sorting';
 import { useIncomeTransactions, ALL_TRANSACTIONS_KEY } from '../../hooks/useAllTransactions';
 
@@ -37,7 +32,6 @@ const IncomeBulkEdit = ({
 
   const queryClient = useQueryClient();
   const [selectedTransactions, setSelectedTransactions] = useState(new Set());
-  const [expandedRows, setExpandedRows] = useState(new Set());
   const [isUpdating, setIsUpdating] = useState(false);
   
   // Transaction edit modal state
@@ -65,6 +59,39 @@ const IncomeBulkEdit = ({
 
   // Multi-level sorting
   const [sorts, setSorts] = useState(createDefaultSorts());
+
+  // Columns configuration for income transactions
+  const defaultColumns = [
+    { id: 'category', label: 'Category', visible: true },
+    { id: 'incomeSource', label: 'Income Source', visible: true },
+    { id: 'company', label: 'Company', visible: true },
+    { id: 'payee', label: 'Payee', visible: true },
+    { id: 'vendor', label: 'Vendor', visible: false },
+    { id: 'paymentMethod', label: 'Payment Method', visible: false },
+    { id: 'checkNumber', label: 'Check #', visible: false },
+    { id: 'source', label: 'Import Source', visible: false },
+    { id: 'isReconciled', label: 'Reconciled', visible: false },
+    { id: 'isReviewed', label: 'Reviewed', visible: false },
+    { id: 'notes', label: 'Notes', visible: false },
+  ];
+
+  // Default column widths
+  const defaultColumnWidths = {
+    date: 90,
+    description: 250,
+    category: 140,
+    incomeSource: 140,
+    company: 130,
+    payee: 130,
+    vendor: 130,
+    paymentMethod: 110,
+    checkNumber: 80,
+    source: 100,
+    isReconciled: 90,
+    isReviewed: 90,
+    notes: 150,
+    amount: 100,
+  };
 
   // Income categories from IRS Schedule C
   const incomeCategories = [
@@ -216,48 +243,6 @@ const IncomeBulkEdit = ({
       style: 'currency',
       currency: 'USD'
     }).format(Math.abs(amount || 0));
-  };
-
-  const formatDate = (date) => {
-    if (!date) return 'N/A';
-    try {
-      const d = date.toDate ? date.toDate() : new Date(date);
-      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-    } catch {
-      return 'N/A';
-    }
-  };
-
-  const toggleSelectAll = () => {
-    if (selectedTransactions.size === sortedTransactions.length) {
-      setSelectedTransactions(new Set());
-    } else {
-      setSelectedTransactions(new Set(sortedTransactions.map(tx => tx.id)));
-    }
-  };
-
-  const toggleSelect = (id) => {
-    setSelectedTransactions(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
-  };
-
-  const toggleExpand = (id) => {
-    setExpandedRows(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
   };
 
   // Transaction edit modal handlers
@@ -443,173 +428,21 @@ const IncomeBulkEdit = ({
         isUpdating={isUpdating}
       />
 
-      {/* Transaction Table */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden">
-        {isLoading ? (
-          <div className="flex items-center justify-center py-12">
-            <ArrowPathIcon className="w-8 h-8 animate-spin text-gray-400" />
-          </div>
-        ) : sortedTransactions.length === 0 ? (
-          <div className="text-center py-12 text-gray-500 dark:text-gray-400">
-            <p>No income transactions found</p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 dark:bg-gray-700">
-                <tr>
-                  <th className="px-4 py-3 text-left">
-                    <input
-                      type="checkbox"
-                      checked={selectedTransactions.size === sortedTransactions.length && sortedTransactions.length > 0}
-                      onChange={toggleSelectAll}
-                      className="rounded border-gray-300 text-green-600 focus:ring-green-500"
-                    />
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
-                    Date
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
-                    Description
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
-                    Source
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
-                    Category
-                  </th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
-                    Amount
-                  </th>
-                  <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
-                    Actions
-                  </th>
-                  <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
-                    Details
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                {sortedTransactions.map(tx => (
-                  <React.Fragment key={tx.id}>
-                    <tr className={`hover:bg-gray-50 dark:hover:bg-gray-700/50 ${selectedTransactions.has(tx.id) ? 'bg-green-50 dark:bg-green-900/20' : ''}`}>
-                      <td className="px-4 py-3">
-                        <input
-                          type="checkbox"
-                          checked={selectedTransactions.has(tx.id)}
-                          onChange={() => toggleSelect(tx.id)}
-                          className="rounded border-gray-300 text-green-600 focus:ring-green-500"
-                        />
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-900 dark:text-white whitespace-nowrap">
-                        {formatDate(tx.date)}
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="text-sm text-gray-900 dark:text-white truncate max-w-[250px]">
-                          {tx.description || 'No description'}
-                        </div>
-                        {tx.payeeName && (
-                          <div className="text-xs text-gray-500 dark:text-gray-400">
-                            Payee: {tx.payeeName}
-                          </div>
-                        )}
-                      </td>
-                      <td className="px-4 py-3">
-                        {tx.incomeSourceName ? (
-                          <span className="inline-flex px-2 py-1 text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 rounded-full">
-                            {tx.incomeSourceName}
-                          </span>
-                        ) : (
-                          <span className="inline-flex px-2 py-1 text-xs font-medium bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-300 rounded-full">
-                            Unassigned
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3">
-                        {tx.category ? (
-                          <span className="inline-flex px-2 py-1 text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 rounded-full">
-                            {tx.category}
-                          </span>
-                        ) : (
-                          <span className="inline-flex px-2 py-1 text-xs font-medium bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300 rounded-full">
-                            Uncategorized
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-right text-green-600 dark:text-green-400 font-medium whitespace-nowrap">
-                        +{formatCurrency(tx.amount)}
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <button
-                          onClick={() => handleEditTransaction(tx)}
-                          className="p-1 hover:bg-gray-100 dark:hover:bg-gray-600 rounded transition-colors text-gray-400 hover:text-blue-600 dark:hover:text-blue-400"
-                          title="Edit transaction"
-                        >
-                          <PencilIcon className="w-4 h-4" />
-                        </button>
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <button
-                          onClick={() => toggleExpand(tx.id)}
-                          className="p-1 hover:bg-gray-100 dark:hover:bg-gray-600 rounded transition-colors"
-                        >
-                          {expandedRows.has(tx.id) ? (
-                            <ChevronUpIcon className="w-5 h-5 text-gray-400" />
-                          ) : (
-                            <ChevronDownIcon className="w-5 h-5 text-gray-400" />
-                          )}
-                        </button>
-                      </td>
-                    </tr>
-                    
-                    {/* Expanded Row */}
-                    {expandedRows.has(tx.id) && (
-                      <tr className="bg-gray-50 dark:bg-gray-700/30">
-                        <td colSpan={8} className="px-4 py-4">
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                            <div>
-                              <span className="text-gray-500 dark:text-gray-400">Company:</span>
-                              <span className="ml-2 text-gray-900 dark:text-white">{tx.companyName || 'None'}</span>
-                            </div>
-                            <div>
-                              <span className="text-gray-500 dark:text-gray-400">Vendor:</span>
-                              <span className="ml-2 text-gray-900 dark:text-white">{tx.vendorName || 'None'}</span>
-                            </div>
-                            <div>
-                              <span className="text-gray-500 dark:text-gray-400">Statement:</span>
-                              <span className="ml-2 text-gray-900 dark:text-white">{tx.statementId || 'None'}</span>
-                            </div>
-                            {tx.notes && (
-                              <div className="col-span-2 md:col-span-4">
-                                <span className="text-gray-500 dark:text-gray-400">Notes:</span>
-                                <span className="ml-2 text-gray-900 dark:text-white">{tx.notes}</span>
-                              </div>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    )}
-                  </React.Fragment>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        {/* Footer with count */}
-        <div className="px-4 py-3 bg-gray-50 dark:bg-gray-700/50 border-t border-gray-200 dark:border-gray-700">
-          <div className="flex justify-between items-center text-sm text-gray-600 dark:text-gray-400">
-            <span>
-              Showing {sortedTransactions.length} of {transactions.length} income transactions
-            </span>
-            {selectedTransactions.size > 0 && (
-              <span className="text-green-600 dark:text-green-400">
-                {selectedTransactions.size} selected
-              </span>
-            )}
-          </div>
-        </div>
-      </div>
+      {/* Transaction Grid with draggable columns, sorting, and selection */}
+      <TransactionGrid
+        transactions={sortedTransactions}
+        isLoading={isLoading}
+        selectedTransactions={selectedTransactions}
+        onSelectionChange={setSelectedTransactions}
+        selectionColor="green"
+        sorts={sorts}
+        onSortsChange={setSorts}
+        defaultColumns={defaultColumns}
+        storageKey="incomeGridColumns"
+        defaultColumnWidths={defaultColumnWidths}
+        onEdit={handleEditTransaction}
+        variant="income"
+      />
 
       {/* Transaction Edit Modal */}
       <TransactionModal

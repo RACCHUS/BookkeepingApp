@@ -133,11 +133,14 @@ interface RequestBody {
  */
 function buildClassificationPrompt(transactions: Transaction[]): string {
   // Compact transaction format: id|description|amount|type
+  // Use full description - do not truncate
   const transactionLines = transactions.map(t => 
-    `${t.id}|${t.description}|${t.amount}|${t.type || (t.amount > 0 ? 'CREDIT' : 'DEBIT')}`
+    `${t.id}|${(t.description || '').trim()}|${t.amount}|${t.type || (t.amount > 0 ? 'CREDIT' : 'DEBIT')}`
   ).join("\n");
 
-  return `Classify bank transactions into IRS Schedule C categories for a small business (HVAC/AC service company).
+  return `You are a bookkeeping AI that classifies bank transactions for a small business (HVAC/AC service company).
+
+IMPORTANT: Read the FULL description carefully. Look for specific keywords that indicate the transaction type.
 
 EXPENSE CATEGORIES (ONLY for DEBIT/negative amounts) - use EXACT names:
 - Schedule C Lines 8-27: Advertising, Car and Truck Expenses, Commissions and Fees, Contract Labor, Depletion, Depreciation and Section 179, Employee Benefit Programs, Insurance (Other than Health), Interest (Mortgage), Interest (Other), Legal and Professional Services, Office Expenses, Pension and Profit-Sharing Plans, Rent or Lease (Vehicles, Machinery, Equipment), Rent or Lease (Other Business Property), Repairs and Maintenance, Supplies (Not Inventory), Taxes and Licenses, Travel, Meals, Utilities, Wages (Less Employment Credits), Other Expenses
@@ -156,7 +159,7 @@ NEUTRAL CATEGORIES (type='transfer' - NOT income or expense) - use EXACT names:
 - Loan Payment (Principal) (paying back loan principal)
 - Refund Received (return of money previously spent)
 - Refund Issued (returning money to customer)
-- Credit Card Payment (paying credit card bill)
+- Credit Card Payment (paying credit card bill - NOT the same as Bank Fees)
 - Sales Tax Collected, Sales Tax Payment
 - Reimbursement Received, Reimbursement Paid
 - Personal Funds Added, Personal Funds Withdrawn
@@ -166,18 +169,34 @@ STRICT CLASSIFICATION RULES:
 1. FIRST check the transaction type/amount: DEBIT or amount<0 = EXPENSE. CREDIT or amount>0 = INCOME or NEUTRAL.
 2. DEBIT transactions should ONLY use EXPENSE categories (including Owner Draws/Distributions).
 3. CREDIT transactions can be INCOME or NEUTRAL - determine based on source.
-4. ATM CASH DEPOSIT = Owner Contribution/Capital (NOT income) - NEUTRAL
-5. TRANSFER FROM another account = Owner Contribution/Capital or Transfer Between Accounts - NEUTRAL
-6. ACH/wire from COMPANIES (property managers, clients, businesses) = Gross Receipts or Sales
-7. CHECK DEPOSIT, REMOTE DEPOSIT = Gross Receipts or Sales (customer payment)
-8. Generic DEPOSIT without company name = Owner Contribution/Capital - NEUTRAL
-9. ATM WITHDRAWAL = Owner Draws/Distributions (EXPENSE)
-10. GAS STATIONS (Wawa, Speedway, Sunoco, Shell, etc.): <$15 = Meals, >=$15 = Car and Truck Expenses
-11. Restaurants, fast food, TST* (Toast POS) = Meals
-12. Hardware stores (Home Depot, AC Supply, Gemaire) = Materials and Supplies
-13. Travel is ONLY for hotels, flights, lodging - NOT gas stations
 
-TRANSACTIONS (id|description|amount|type):
+VEHICLE & AUTO LOANS (Important - read full description!):
+4. "AUTO", "AUTO FINANCE", "AUTO LOAN", "CAR PAYMENT", "VEHICLE LOAN" = Car and Truck Expenses (even if bank name like "Capital One Auto")
+5. Auto insurance (GEICO, Progressive, State Farm, Allstate + "auto") = Insurance (Other than Health)
+6. GAS STATIONS (Wawa, Speedway, Sunoco, Shell, BP, Exxon, etc.): <$15 = Meals, >=$15 = Car and Truck Expenses
+7. Auto parts, tires, oil change, car wash = Car and Truck Expenses
+
+BANK TRANSACTIONS (distinguish by context):
+8. "SERVICE FEE", "MONTHLY FEE", "OVERDRAFT", "NSF FEE", "WIRE FEE" = Bank Fees
+9. Credit card PAYMENT (paying your card balance) = Credit Card Payment (NEUTRAL)
+10. Bank to bank transfers = Transfer Between Accounts (NEUTRAL)
+11. Only use Bank Fees for actual fees charged BY the bank, not for payments TO financial institutions
+
+DEPOSITS & INCOME:
+12. ATM CASH DEPOSIT = Owner Contribution/Capital (NOT income) - NEUTRAL
+13. TRANSFER FROM another account = Owner Contribution/Capital or Transfer Between Accounts - NEUTRAL
+14. ACH/wire from COMPANIES (property managers, clients, businesses) = Gross Receipts or Sales
+15. CHECK DEPOSIT, REMOTE DEPOSIT = Gross Receipts or Sales (customer payment)
+16. Generic DEPOSIT without company name = Owner Contribution/Capital - NEUTRAL
+
+OTHER:
+17. ATM WITHDRAWAL = Owner Draws/Distributions (EXPENSE)
+18. Restaurants, fast food, TST* (Toast POS) = Meals
+19. Hardware stores (Home Depot, Lowe's, AC Supply, Gemaire) = Materials and Supplies
+20. Travel is ONLY for hotels, flights, lodging - NOT gas stations
+21. Amazon, Walmart can be Office Expenses, Supplies, or Materials depending on context
+
+TRANSACTIONS TO CLASSIFY (id|description|amount|type):
 ${transactionLines}
 
 RESPOND WITH ONLY A JSON ARRAY. NO MARKDOWN. NO EXPLANATIONS. NO TEXT BEFORE OR AFTER.

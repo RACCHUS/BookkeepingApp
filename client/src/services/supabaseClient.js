@@ -13,6 +13,7 @@ import {
   fetchUserRules, 
   CLASSIFICATION_SOURCE 
 } from './classificationService';
+import { chunkArray, processInChunks, updateInChunks, BATCH_SIZE } from '../utils/arrayUtils';
 
 /**
  * Apply classification rules to transactions using 3-layer system
@@ -20,34 +21,84 @@ import {
  * Layer 2: Default Vendors (from defaultVendors.js)
  * Layer 3: Gemini API (optional, called separately if needed)
  * 
+ * Handles large transaction sets by chunking queries to avoid database limits.
+ * 
  * @param {string} userId - User ID
  * @param {string[]} transactionIds - Array of transaction IDs to classify (optional)
- * @returns {Promise<{classified: number, rules: number, unclassified: number}>}
+ * @returns {Promise<{classified: number, rules: number, unclassified: number, error?: string}>}
  */
 const applyClassificationRules = async (userId, transactionIds = null) => {
   try {
+    console.log(`[Classification] Starting classification for user ${userId}, ${transactionIds?.length || 'all'} transactions`);
+    
     // Fetch user's classification rules
     const userRules = await fetchUserRules(userId);
-
-    // Fetch transactions to classify
-    let query = supabase
-      .from('transactions')
-      .select('id, description, payee, amount, date')
-      .eq('user_id', userId)
-      .or('category.is.null,category.eq.');
-
-    if (transactionIds && transactionIds.length > 0) {
-      query = query.in('id', transactionIds);
+    console.log(`[Classification] Loaded ${userRules.length} user rules`);
+    if (userRules.length > 0) {
+      console.log(`[Classification] First 3 rules:`, userRules.slice(0, 3).map(r => ({ pattern: r.pattern, category: r.category })));
     }
 
-    const { data: transactions, error: txError } = await query;
+    // Fetch transactions to classify - use chunking for large ID arrays
+    let transactions = [];
+    
+    if (transactionIds && transactionIds.length > 0) {
+      // Chunk the IDs to avoid query limits (Supabase/PostgreSQL IN clause limits)
+      const idChunks = chunkArray(transactionIds, BATCH_SIZE);
+      console.log(`[Classification] Fetching transactions in ${idChunks.length} chunks (${transactionIds.length} total IDs)`);
+      
+      for (let i = 0; i < idChunks.length; i++) {
+        const chunk = idChunks[i];
+        const { data, error } = await supabase
+          .from('transactions')
+          .select('id, description, payee, amount, date, category')
+          .eq('user_id', userId)
+          .in('id', chunk);
+        
+        if (error) {
+          console.error(`[Classification] Error fetching chunk ${i + 1}/${idChunks.length}:`, error);
+          throw new Error(`Failed to fetch transactions (chunk ${i + 1}): ${error.message}`);
+        }
+        
+        // Filter to only uncategorized transactions
+        const uncategorized = (data || []).filter(t => !t.category || t.category.trim() === '');
+        transactions.push(...uncategorized);
+      }
+      console.log(`[Classification] Found ${transactions.length} uncategorized transactions out of ${transactionIds.length} total`);
+    } else {
+      // Fetch all uncategorized transactions for user
+      // Fixed: Use proper empty string syntax in OR filter
+      const { data, error } = await supabase
+        .from('transactions')
+        .select('id, description, payee, amount, date, category')
+        .eq('user_id', userId)
+        .or('category.is.null,category.eq.""');
+      
+      if (error) {
+        console.error('[Classification] Error fetching uncategorized transactions:', error);
+        throw new Error(`Failed to fetch transactions: ${error.message}`);
+      }
+      transactions = data || [];
+      console.log(`[Classification] Found ${transactions.length} uncategorized transactions`);
+    }
 
-    if (txError || !transactions || transactions.length === 0) {
+    if (transactions.length === 0) {
+      console.log('[Classification] No uncategorized transactions to classify');
       return { classified: 0, rules: userRules.length, unclassified: 0 };
     }
 
     // Use 3-layer local classification (User Rules + Default Vendors)
     const { classified, unclassified, stats } = batchClassifyLocal(transactions, userRules);
+    console.log(`[Classification] Local classification results: ${classified.length} classified, ${unclassified.length} unclassified`);
+    console.log(`[Classification] Stats:`, stats);
+    
+    if (classified.length > 0) {
+      console.log(`[Classification] Sample classified transactions:`, classified.slice(0, 3).map(tx => ({
+        id: tx.id,
+        description: tx.description?.substring(0, 50),
+        category: tx.classification?.category,
+        source: tx.classification?.source,
+      })));
+    }
 
     // Prepare batch updates
     const updates = classified.map(tx => ({
@@ -84,21 +135,53 @@ const applyClassificationRules = async (userId, transactionIds = null) => {
       updatesByCategory[key].ids.push(update.id);
     }
 
-    // Execute batch updates
+    // Execute batch updates with chunking for large ID sets
+    let updateSuccessCount = 0;
+    let updateFailCount = 0;
+    
     for (const { category, subcategory, vendor_name, classification_source, ids } of Object.values(updatesByCategory)) {
-      await supabase
-        .from('transactions')
-        .update({ 
-          category,
-          subcategory: subcategory || null,
-          vendor_name: vendor_name || null,
-          classification_source,
-          updated_at: new Date().toISOString(),
-          last_modified_by: userId
-        })
-        .in('id', ids)
-        .eq('user_id', userId);
+      // Chunk the IDs for this category update
+      const idChunks = chunkArray(ids, BATCH_SIZE);
+      console.log(`[Classification] Updating ${ids.length} transactions with category "${category}" in ${idChunks.length} chunks`);
+      
+      for (const chunk of idChunks) {
+        console.log(`[Classification] Updating chunk of ${chunk.length} IDs:`, chunk.slice(0, 3), '...');
+        
+        const { data: updatedData, error: updateError } = await supabase
+          .from('transactions')
+          .update({ 
+            category,
+            subcategory: subcategory || null,
+            vendor_name: vendor_name || null,
+            classification_source,
+            updated_at: new Date().toISOString(),
+            last_modified_by: userId
+          })
+          .in('id', chunk)
+          .eq('user_id', userId)
+          .select('id, category');
+        
+        if (updateError) {
+          console.error(`[Classification] Error updating chunk with category ${category}:`, updateError);
+          updateFailCount += chunk.length;
+        } else {
+          const actualUpdated = updatedData?.length || 0;
+          console.log(`[Classification] Chunk update returned ${actualUpdated} rows (expected ${chunk.length})`);
+          if (actualUpdated === 0) {
+            console.warn(`[Classification] WARNING: No rows updated! IDs may not match user_id or don't exist`);
+            updateFailCount += chunk.length;
+          } else {
+            updateSuccessCount += actualUpdated;
+            if (actualUpdated < chunk.length) {
+              updateFailCount += (chunk.length - actualUpdated);
+              console.warn(`[Classification] Partial update: ${actualUpdated}/${chunk.length} rows updated`);
+            }
+          }
+        }
+      }
     }
+    
+    console.log(`[Classification] Updates complete: ${updateSuccessCount} succeeded, ${updateFailCount} failed`);
 
     // Increment match counts for user rules that were used
     const usedRuleIds = classified
@@ -110,31 +193,44 @@ const applyClassificationRules = async (userId, transactionIds = null) => {
       const uniqueRuleIds = [...new Set(usedRuleIds)];
       for (const ruleId of uniqueRuleIds) {
         const count = usedRuleIds.filter(id => id === ruleId).length;
-        // Note: This could be optimized with an RPC function
-        const { data: rule } = await supabase
-          .from('classification_rules')
-          .select('match_count')
-          .eq('id', ruleId)
-          .single();
-        
-        if (rule) {
-          await supabase
+        try {
+          const { data: rule } = await supabase
             .from('classification_rules')
-            .update({ match_count: (rule.match_count || 0) + count })
-            .eq('id', ruleId);
+            .select('match_count')
+            .eq('id', ruleId)
+            .single();
+          
+          if (rule) {
+            await supabase
+              .from('classification_rules')
+              .update({ match_count: (rule.match_count || 0) + count })
+              .eq('id', ruleId);
+          }
+        } catch (ruleError) {
+          // Non-critical: log but don't fail the whole operation
+          console.warn(`[Classification] Failed to update match count for rule ${ruleId}:`, ruleError);
         }
       }
     }
 
-    return { 
-      classified: classified.length, 
+    const result = { 
+      classified: updateSuccessCount, 
       rules: userRules.length, 
-      unclassified: unclassified.length,
+      unclassified: unclassified.length + updateFailCount,
       stats 
     };
+    
+    console.log('[Classification] Final result:', result);
+    return result;
   } catch (error) {
-    console.error('Error applying classification rules:', error);
-    return { classified: 0, rules: 0, unclassified: 0, error: error.message };
+    console.error('[Classification] Error applying classification rules:', error);
+    // Return error info so caller can handle appropriately
+    return { 
+      classified: 0, 
+      rules: 0, 
+      unclassified: transactionIds?.length || 0, 
+      error: error.message 
+    };
   }
 };
 
@@ -443,6 +539,325 @@ export const supabaseClient = {
       if (error) throw error;
 
       return { success: true };
+    },
+
+    /**
+     * Split a transaction into multiple parts
+     * @param {string} id - Transaction ID to split
+     * @param {Array<{amount: number, category: string, subcategory?: string, description?: string, vendorName?: string, notes?: string}>} splitParts
+     * @returns {Promise<{success: boolean, originalTransaction?: Object, splitTransactions?: Array, summary?: Object}>}
+     */
+    split: async (id, splitParts) => {
+      const userId = await getUserId();
+      
+      // Validate inputs
+      if (!id) throw new Error('Transaction ID is required');
+      if (!Array.isArray(splitParts) || splitParts.length === 0) {
+        throw new Error('At least one split part is required');
+      }
+
+      // Get the original transaction first
+      const { data: originalTxn, error: fetchError } = await supabase
+        .from('transactions')
+        .select('*')
+        .eq('id', id)
+        .eq('user_id', userId)
+        .single();
+
+      if (fetchError || !originalTxn) {
+        throw new Error(`Transaction not found: ${fetchError?.message || 'Not found'}`);
+      }
+
+      if (originalTxn.is_split) {
+        throw new Error('Transaction has already been split. Unsplit first to modify.');
+      }
+
+      // Validate amounts
+      const originalAmount = Math.abs(parseFloat(originalTxn.amount));
+      const totalSplitAmount = splitParts.reduce((sum, part) => sum + parseFloat(part.amount), 0);
+      
+      if (totalSplitAmount > originalAmount + 0.01) {
+        throw new Error(`Total split amount ($${totalSplitAmount.toFixed(2)}) exceeds original ($${originalAmount.toFixed(2)})`);
+      }
+
+      const remainder = originalAmount - totalSplitAmount;
+      const isNegative = parseFloat(originalTxn.amount) < 0;
+      const now = new Date().toISOString();
+
+      // Create split transactions
+      const createdSplits = [];
+      
+      for (let i = 0; i < splitParts.length; i++) {
+        const part = splitParts[i];
+        const splitAmount = isNegative ? -Math.abs(part.amount) : Math.abs(part.amount);
+
+        const splitTxn = {
+          user_id: userId,
+          date: originalTxn.date,
+          description: part.description || originalTxn.description,
+          amount: splitAmount,
+          type: originalTxn.type,
+          category: part.category,
+          subcategory: part.subcategory || null,
+          payee: originalTxn.payee,
+          payee_id: originalTxn.payee_id,
+          company_id: originalTxn.company_id,
+          upload_id: originalTxn.upload_id,
+          bank_name: originalTxn.bank_name,
+          account_last_four: originalTxn.account_last_four,
+          check_number: originalTxn.check_number,
+          reference_number: originalTxn.reference_number,
+          tags: originalTxn.tags,
+          notes: part.notes || `Split from: ${originalTxn.description}`,
+          original_description: originalTxn.original_description || originalTxn.description,
+          metadata: {
+            ...originalTxn.metadata,
+            split_source: id,
+            split_date: now
+          },
+          parent_transaction_id: id,
+          is_split: false,
+          split_index: i + 1,
+          original_amount: originalAmount,
+          vendor_name: part.vendorName || originalTxn.vendor_name,
+          vendor_id: originalTxn.vendor_id,
+          created_at: now,
+          updated_at: now,
+          created_by: userId,
+          last_modified_by: userId,
+          classification_source: 'split'
+        };
+
+        const { data: created, error: createError } = await supabase
+          .from('transactions')
+          .insert(splitTxn)
+          .select()
+          .single();
+
+        if (createError) {
+          // Rollback: delete previously created splits
+          if (createdSplits.length > 0) {
+            await supabase
+              .from('transactions')
+              .delete()
+              .in('id', createdSplits.map(s => s.id));
+          }
+          throw new Error(`Failed to create split part ${i + 1}: ${createError.message}`);
+        }
+
+        createdSplits.push(created);
+      }
+
+      // Update original transaction
+      const newAmount = isNegative ? -remainder : remainder;
+      
+      const { data: updatedOriginal, error: updateError } = await supabase
+        .from('transactions')
+        .update({
+          amount: newAmount,
+          is_split: true,
+          original_amount: originalAmount,
+          split_index: 0,
+          updated_at: now,
+          last_modified_by: userId
+        })
+        .eq('id', id)
+        .eq('user_id', userId)
+        .select()
+        .single();
+
+      if (updateError) {
+        // Rollback: delete created splits
+        await supabase
+          .from('transactions')
+          .delete()
+          .in('id', createdSplits.map(s => s.id));
+        throw new Error(`Failed to update original transaction: ${updateError.message}`);
+      }
+
+      return {
+        success: true,
+        data: {
+          originalTransaction: transformTransaction(updatedOriginal),
+          splitTransactions: createdSplits.map(transformTransaction),
+          summary: {
+            originalAmount,
+            remainderAmount: remainder,
+            splitCount: splitParts.length,
+            splitTotal: totalSplitAmount
+          }
+        }
+      };
+    },
+
+    /**
+     * Unsplit a transaction (merge split parts back)
+     * @param {string} id - Parent transaction ID
+     * @returns {Promise<{success: boolean, transaction?: Object, deletedCount?: number}>}
+     */
+    unsplit: async (id) => {
+      const userId = await getUserId();
+      
+      // Get the original transaction
+      const { data: originalTxn, error: fetchError } = await supabase
+        .from('transactions')
+        .select('*')
+        .eq('id', id)
+        .eq('user_id', userId)
+        .single();
+
+      if (fetchError || !originalTxn) {
+        throw new Error(`Transaction not found`);
+      }
+
+      if (!originalTxn.is_split) {
+        throw new Error('Transaction is not split');
+      }
+
+      // Get all child split transactions
+      const { data: childTxns, error: childError } = await supabase
+        .from('transactions')
+        .select('id')
+        .eq('parent_transaction_id', id)
+        .eq('user_id', userId);
+
+      if (childError) {
+        throw new Error(`Failed to get split parts: ${childError.message}`);
+      }
+
+      // Restore original amount
+      const originalAmount = originalTxn.original_amount || Math.abs(originalTxn.amount);
+      const isNegative = parseFloat(originalTxn.amount) < 0;
+      const restoredAmount = isNegative ? -originalAmount : originalAmount;
+
+      // Update original transaction
+      const { data: restored, error: updateError } = await supabase
+        .from('transactions')
+        .update({
+          amount: restoredAmount,
+          is_split: false,
+          original_amount: null,
+          split_index: 0,
+          updated_at: new Date().toISOString(),
+          last_modified_by: userId
+        })
+        .eq('id', id)
+        .eq('user_id', userId)
+        .select()
+        .single();
+
+      if (updateError) {
+        throw new Error(`Failed to restore original: ${updateError.message}`);
+      }
+
+      // Delete child transactions
+      let deletedCount = 0;
+      if (childTxns && childTxns.length > 0) {
+        const { error: deleteError } = await supabase
+          .from('transactions')
+          .delete()
+          .in('id', childTxns.map(t => t.id));
+
+        if (!deleteError) {
+          deletedCount = childTxns.length;
+        }
+      }
+
+      return {
+        success: true,
+        data: {
+          transaction: transformTransaction(restored),
+          deletedCount
+        }
+      };
+    },
+
+    /**
+     * Get split parts for a transaction
+     * @param {string} id - Parent transaction ID
+     * @returns {Promise<{success: boolean, original?: Object, parts?: Array}>}
+     */
+    getSplitParts: async (id) => {
+      const userId = await getUserId();
+      
+      // Get original transaction
+      const { data: originalTxn, error: fetchError } = await supabase
+        .from('transactions')
+        .select('*')
+        .eq('id', id)
+        .eq('user_id', userId)
+        .single();
+
+      if (fetchError || !originalTxn) {
+        throw new Error('Transaction not found');
+      }
+
+      // Get child transactions
+      const { data: children, error: childError } = await supabase
+        .from('transactions')
+        .select('*')
+        .eq('parent_transaction_id', id)
+        .order('split_index', { ascending: true });
+
+      if (childError) {
+        throw new Error(`Failed to get split parts: ${childError.message}`);
+      }
+
+      return {
+        success: true,
+        data: {
+          original: transformTransaction(originalTxn),
+          parts: (children || []).map(transformTransaction),
+          totalParts: (children?.length || 0) + 1
+        }
+      };
+    },
+
+    /**
+     * Bulk split multiple transactions
+     * @param {Array<{transactionId: string, splitParts: Array}>} splits
+     * @returns {Promise<{success: boolean, results: Array}>}
+     */
+    bulkSplit: async (splits) => {
+      if (!Array.isArray(splits) || splits.length === 0) {
+        throw new Error('No splits provided');
+      }
+
+      const results = [];
+      let successCount = 0;
+      let errorCount = 0;
+
+      // Get transactions module reference for recursive call
+      const txnModule = supabaseClient.transactions;
+
+      for (const split of splits) {
+        try {
+          const result = await txnModule.split(split.transactionId, split.splitParts);
+          results.push({
+            transactionId: split.transactionId,
+            success: true,
+            ...result.data
+          });
+          successCount++;
+        } catch (error) {
+          results.push({
+            transactionId: split.transactionId,
+            success: false,
+            error: error.message
+          });
+          errorCount++;
+        }
+      }
+
+      return {
+        success: errorCount === 0,
+        data: {
+          message: `Completed ${successCount} of ${splits.length} splits`,
+          successCount,
+          errorCount,
+          results
+        }
+      };
     },
 
     getSummary: async (startDate, endDate, filters = {}) => {
@@ -1698,36 +2113,75 @@ export const supabaseClient = {
         original_description: t.originalDescription || t.description,
       }));
 
+      // Insert transactions in chunks to handle large imports
       let insertedTransactions = [];
       if (transactionsToInsert.length > 0) {
-        const { data: insertedData, error: insertError } = await supabase
-          .from('transactions')
-          .insert(transactionsToInsert)
-          .select('id, description, amount, date, category');
+        console.log(`[CSV Import] Inserting ${transactionsToInsert.length} transactions`);
+        
+        // For large imports, chunk the inserts
+        const insertChunks = chunkArray(transactionsToInsert, BATCH_SIZE);
+        console.log(`[CSV Import] Split into ${insertChunks.length} insert batches`);
+        
+        for (let i = 0; i < insertChunks.length; i++) {
+          const chunk = insertChunks[i];
+          const { data: insertedData, error: insertError } = await supabase
+            .from('transactions')
+            .insert(chunk)
+            .select('id, description, amount, date, category');
 
-        if (insertError) throw insertError;
-        insertedTransactions = insertedData || [];
+          if (insertError) {
+            console.error(`[CSV Import] Error inserting chunk ${i + 1}/${insertChunks.length}:`, insertError);
+            throw new Error(`Failed to insert transactions (batch ${i + 1}): ${insertError.message}`);
+          }
+          
+          insertedTransactions.push(...(insertedData || []));
+          console.log(`[CSV Import] Inserted chunk ${i + 1}/${insertChunks.length}: ${insertedData?.length || 0} transactions`);
+        }
       }
 
       const insertedIds = insertedTransactions.map(t => t.id);
+      console.log(`[CSV Import] Total inserted: ${insertedIds.length} transactions`);
 
       // Apply classification rules to newly imported transactions
       let classificationResult = { classified: 0, rules: 0 };
       if (insertedIds.length > 0) {
+        console.log(`[CSV Import] Applying classification rules to ${insertedIds.length} transactions`);
         classificationResult = await applyClassificationRules(userId, insertedIds);
-        console.log('Classification result:', classificationResult);
+        console.log('[CSV Import] Classification result:', classificationResult);
+        
+        // Check for classification errors
+        if (classificationResult.error) {
+          console.warn('[CSV Import] Classification had errors:', classificationResult.error);
+        }
       }
 
       // Get updated transaction data to see which are classified now
+      // Use chunking for large ID sets
       let unclassifiedTransactions = [];
       if (insertedIds.length > 0) {
-        const { data: updatedTransactions } = await supabase
-          .from('transactions')
-          .select('id, description, amount, date, category')
-          .in('id', insertedIds);
+        console.log(`[CSV Import] Fetching updated transaction data to count unclassified`);
+        
+        const idChunks = chunkArray(insertedIds, BATCH_SIZE);
+        let allUpdatedTransactions = [];
+        
+        for (const chunk of idChunks) {
+          const { data: updatedTransactions, error: fetchError } = await supabase
+            .from('transactions')
+            .select('id, description, amount, date, category')
+            .in('id', chunk);
+          
+          if (fetchError) {
+            console.error('[CSV Import] Error fetching updated transactions:', fetchError);
+            // Continue with partial data rather than failing completely
+          } else {
+            allUpdatedTransactions.push(...(updatedTransactions || []));
+          }
+        }
+        
+        console.log(`[CSV Import] Fetched ${allUpdatedTransactions.length} transactions for verification`);
         
         // Filter to only unclassified (no category)
-        unclassifiedTransactions = (updatedTransactions || [])
+        unclassifiedTransactions = allUpdatedTransactions
           .filter(t => !t.category || t.category.trim() === '')
           .map(t => ({
             id: t.id,
@@ -1738,6 +2192,7 @@ export const supabaseClient = {
       }
 
       const classifiedCount = insertedIds.length - unclassifiedTransactions.length;
+      console.log(`[CSV Import] Final counts: ${classifiedCount} classified, ${unclassifiedTransactions.length} unclassified`);
 
       return {
         success: true,
@@ -1750,6 +2205,7 @@ export const supabaseClient = {
           unclassified: unclassifiedTransactions.length,
           unclassifiedTransactions: unclassifiedTransactions,
           rulesApplied: classificationResult.rules,
+          classificationError: classificationResult.error || null,
         },
       };
     },

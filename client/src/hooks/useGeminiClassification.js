@@ -237,9 +237,9 @@ async function saveGeminiRules(results, userId) {
       .eq('user_id', userId)
       .eq('pattern', result.vendor.toUpperCase())
       .eq('amount_direction', amountDirection)
-      .single();
+      .maybeSingle(); // Use maybeSingle to avoid 406 error when no row exists
 
-    if (checkError && checkError.code !== 'PGRST116') {
+    if (checkError) {
       console.error('Error checking existing rule:', checkError);
     }
 

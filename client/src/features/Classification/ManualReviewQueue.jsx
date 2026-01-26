@@ -9,7 +9,7 @@ import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../../services/supabase';
 import { useAuth } from '../../context/AuthContext';
-import { IRS_CATEGORIES, IRS_CATEGORY_LABELS } from '../../../../shared/constants/categories';
+import { CATEGORY_GROUPS, getSubcategories } from '../../../../shared/constants/categories';
 import { saveClassificationRule, CLASSIFICATION_SOURCE } from '../../services/classificationService';
 import LoadingSpinner from '../../components/LoadingSpinner';
 
@@ -63,11 +63,10 @@ function TransactionCard({ transaction, onClassify, isProcessing }) {
   const [createRule, setCreateRule] = useState(false);
   const [rulePattern, setRulePattern] = useState('');
 
-  // Get subcategories for selected category
+  // Get subcategories for selected category (selectedCategory is now the VALUE like 'Gross Receipts or Sales')
   const subcategories = useMemo(() => {
     if (!selectedCategory) return [];
-    const categoryInfo = IRS_CATEGORIES[selectedCategory];
-    return categoryInfo?.subcategories || [];
+    return getSubcategories(selectedCategory);
   }, [selectedCategory]);
 
   // Extract potential vendor pattern from description
@@ -129,8 +128,12 @@ function TransactionCard({ transaction, onClassify, isProcessing }) {
             className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
           >
             <option value="">Select category...</option>
-            {Object.entries(IRS_CATEGORY_LABELS).map(([key, label]) => (
-              <option key={key} value={key}>{label}</option>
+            {Object.entries(CATEGORY_GROUPS).map(([group, cats]) => (
+              <optgroup key={group} label={group.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}>
+                {cats.filter(cat => cat !== 'Uncategorized').map(cat => (
+                  <option key={cat} value={cat}>{cat}</option>
+                ))}
+              </optgroup>
             ))}
           </select>
         </div>
@@ -249,8 +252,12 @@ function BulkClassificationBar({
         className="rounded-md border-blue-300 text-sm"
       >
         <option value="">Select category...</option>
-        {Object.entries(IRS_CATEGORY_LABELS).map(([key, label]) => (
-          <option key={key} value={key}>{label}</option>
+        {Object.entries(CATEGORY_GROUPS).map(([group, cats]) => (
+          <optgroup key={group} label={group.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}>
+            {cats.filter(cat => cat !== 'Uncategorized').map(cat => (
+              <option key={cat} value={cat}>{cat}</option>
+            ))}
+          </optgroup>
         ))}
       </select>
 

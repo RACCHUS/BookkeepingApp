@@ -16,6 +16,8 @@
 
 export const DEFAULT_VENDORS = {
   // ===== # =====
+  '7-ELEVEN': { category: 'CAR_TRUCK_EXPENSES', subcategory: 'Fuel/Gas', vendor: '7-Eleven' },
+  '7 ELEVEN': { category: 'CAR_TRUCK_EXPENSES', subcategory: 'Fuel/Gas', vendor: '7-Eleven' },
   '24 HOUR FITNESS': { category: 'DUES_MEMBERSHIPS', subcategory: null, vendor: '24 Hour Fitness' },
   '84 LUMBER': { category: 'MATERIALS_SUPPLIES', subcategory: 'Manufacturing Materials', vendor: '84 Lumber' },
   
@@ -26,6 +28,10 @@ export const DEFAULT_VENDORS = {
   'AETNA': { category: 'EMPLOYEE_BENEFIT_PROGRAMS', subcategory: 'Health Insurance', vendor: 'Aetna' },
   'AIRBNB': { category: 'TRAVEL', subcategory: null, vendor: 'Airbnb' },
   'ALLSTATE': { category: 'INSURANCE_OTHER', subcategory: null, vendor: 'Allstate' },
+  // Auto finance companies - MUST be before generic bank entries
+  'ALLY AUTO': { category: 'CAR_TRUCK_EXPENSES', subcategory: 'Auto Loan Payment', vendor: 'Ally Auto Finance' },
+  'ALLY FINANCIAL AUTO': { category: 'CAR_TRUCK_EXPENSES', subcategory: 'Auto Loan Payment', vendor: 'Ally Auto Finance' },
+  'ALLY BANK AUTO': { category: 'CAR_TRUCK_EXPENSES', subcategory: 'Auto Loan Payment', vendor: 'Ally Auto Finance' },
   'AMAZON PRIME': { category: 'DUES_MEMBERSHIPS', subcategory: null, vendor: 'Amazon Prime' },
   'AMAZON WEB': { category: 'WEB_HOSTING', subcategory: null, vendor: 'Amazon Web Services' },
   'AMERICAN AIRLINES': { category: 'TRAVEL', subcategory: null, vendor: 'American Airlines' },
@@ -61,9 +67,18 @@ export const DEFAULT_VENDORS = {
   'BURGER KING': { category: 'MEALS', subcategory: null, vendor: 'Burger King' },
   
   // ===== C =====
+  'CHECK': { category: 'OTHER_EXPENSES', subcategory: null, vendor: 'Check Payment' },
+  'CHECK #': { category: 'OTHER_EXPENSES', subcategory: null, vendor: 'Check Payment' },
   'CALENDLY': { category: 'SOFTWARE_SUBSCRIPTIONS', subcategory: null, vendor: 'Calendly' },
   'CANVA': { category: 'SOFTWARE_SUBSCRIPTIONS', subcategory: null, vendor: 'Canva' },
+  // Capital One - specific products FIRST (more specific match wins)
+  'CAPITAL ONE AUTO': { category: 'CAR_TRUCK_EXPENSES', subcategory: 'Auto Loan Payment', vendor: 'Capital One Auto Finance' },
+  'CAPITAL ONE AUTO FINANCE': { category: 'CAR_TRUCK_EXPENSES', subcategory: 'Auto Loan Payment', vendor: 'Capital One Auto Finance' },
+  'CAPITALONE AUTO': { category: 'CAR_TRUCK_EXPENSES', subcategory: 'Auto Loan Payment', vendor: 'Capital One Auto Finance' },
+  'CAP ONE AUTO': { category: 'CAR_TRUCK_EXPENSES', subcategory: 'Auto Loan Payment', vendor: 'Capital One Auto Finance' },
+  // Capital One generic (credit card fees, bank fees)
   'CAPITAL ONE': { category: 'BANK_FEES', subcategory: null, vendor: 'Capital One' },
+  'CAPITAL ONE CARD': { category: 'CREDIT_CARD_PAYMENT', subcategory: null, vendor: 'Capital One' },
   'CASH WITHDRAWAL': { category: 'OWNER_DRAWS', subcategory: null, vendor: 'Cash Withdrawal' },
   'CENTURYLINK': { category: 'UTILITIES', subcategory: null, vendor: 'CenturyLink' },
   'CHASE BANK': { category: 'BANK_FEES', subcategory: null, vendor: 'Chase' },
@@ -135,6 +150,9 @@ export const DEFAULT_VENDORS = {
   'FIVE GUYS': { category: 'MEALS', subcategory: null, vendor: 'Five Guys' },
   'FLOOR & DECOR': { category: 'MATERIALS_SUPPLIES', subcategory: 'Manufacturing Materials', vendor: 'Floor & Decor' },
   'FLYING J': { category: 'CAR_TRUCK_EXPENSES', subcategory: 'Fuel/Gas', vendor: 'Flying J' },
+  // Auto finance - Ford
+  'FORD MOTOR CREDIT': { category: 'CAR_TRUCK_EXPENSES', subcategory: 'Auto Loan Payment', vendor: 'Ford Motor Credit' },
+  'FORD CREDIT': { category: 'CAR_TRUCK_EXPENSES', subcategory: 'Auto Loan Payment', vendor: 'Ford Motor Credit' },
   'FPL': { category: 'UTILITIES', subcategory: null, vendor: 'Florida Power & Light' },
   'FRONTIER': { category: 'UTILITIES', subcategory: null, vendor: 'Frontier Communications' },
   'FRONTIER AIRLINES': { category: 'TRAVEL', subcategory: null, vendor: 'Frontier Airlines' },
@@ -166,6 +184,9 @@ export const DEFAULT_VENDORS = {
   'HOLIDAY INN': { category: 'TRAVEL', subcategory: null, vendor: 'Holiday Inn' },
   'HOME DEPOT': { category: 'MATERIALS_SUPPLIES', subcategory: 'Manufacturing Materials', vendor: 'Home Depot' },
   'HOMEDEPOT': { category: 'MATERIALS_SUPPLIES', subcategory: 'Manufacturing Materials', vendor: 'Home Depot' },
+  // Auto finance - Honda
+  'HONDA FINANCIAL': { category: 'CAR_TRUCK_EXPENSES', subcategory: 'Auto Loan Payment', vendor: 'Honda Financial Services' },
+  'AMERICAN HONDA FINANCE': { category: 'CAR_TRUCK_EXPENSES', subcategory: 'Auto Loan Payment', vendor: 'Honda Financial Services' },
   'HOSTGATOR': { category: 'WEB_HOSTING', subcategory: null, vendor: 'HostGator' },
   'HOTELS.COM': { category: 'TRAVEL', subcategory: null, vendor: 'Hotels.com' },
   'HUBSPOT': { category: 'SOFTWARE_SUBSCRIPTIONS', subcategory: null, vendor: 'HubSpot' },
@@ -205,6 +226,7 @@ export const DEFAULT_VENDORS = {
   
   // ===== M =====
   'MAILCHIMP': { category: 'SOFTWARE_SUBSCRIPTIONS', subcategory: null, vendor: 'Mailchimp' },
+  'MARATHON': { category: 'CAR_TRUCK_EXPENSES', subcategory: 'Fuel/Gas', vendor: 'Marathon' },
   'MARATHON GAS': { category: 'CAR_TRUCK_EXPENSES', subcategory: 'Fuel/Gas', vendor: 'Marathon' },
   'MARATHON PETROLEUM': { category: 'CAR_TRUCK_EXPENSES', subcategory: 'Fuel/Gas', vendor: 'Marathon' },
   'MARRIOTT': { category: 'TRAVEL', subcategory: null, vendor: 'Marriott' },
@@ -311,6 +333,7 @@ export const DEFAULT_VENDORS = {
   'STRIPE PAYMENTS': { category: 'COMMISSIONS_FEES', subcategory: null, vendor: 'Stripe' },
   'SUBWAY': { category: 'MEALS', subcategory: null, vendor: 'Subway' },
   'SUNOCO': { category: 'CAR_TRUCK_EXPENSES', subcategory: 'Fuel/Gas', vendor: 'Sunoco' },
+  'SUNSHINE': { category: 'CAR_TRUCK_EXPENSES', subcategory: 'Fuel/Gas', vendor: 'Sunshine Gasoline' },
   'SUNPASS': { category: 'CAR_TRUCK_EXPENSES', subcategory: 'Parking & Tolls', vendor: 'SunPass' },
   'SUNTRUST': { category: 'BANK_FEES', subcategory: null, vendor: 'SunTrust' },
   
@@ -326,6 +349,9 @@ export const DEFAULT_VENDORS = {
   'TOAST INC': { category: 'COMMISSIONS_FEES', subcategory: null, vendor: 'Toast' },
   'TOAST TAB': { category: 'COMMISSIONS_FEES', subcategory: null, vendor: 'Toast' },
   'TOASTTAB': { category: 'COMMISSIONS_FEES', subcategory: null, vendor: 'Toast' },
+  // Auto finance companies - Toyota, Honda, Ford, etc.
+  'TOYOTA FINANCIAL': { category: 'CAR_TRUCK_EXPENSES', subcategory: 'Auto Loan Payment', vendor: 'Toyota Financial Services' },
+  'TOYOTA MOTOR CREDIT': { category: 'CAR_TRUCK_EXPENSES', subcategory: 'Auto Loan Payment', vendor: 'Toyota Financial Services' },
   'TRAVELERS': { category: 'INSURANCE_OTHER', subcategory: null, vendor: 'Travelers' },
   'TRUE VALUE': { category: 'MATERIALS_SUPPLIES', subcategory: 'Manufacturing Materials', vendor: 'True Value' },
   'TRUIST': { category: 'BANK_FEES', subcategory: null, vendor: 'Truist' },

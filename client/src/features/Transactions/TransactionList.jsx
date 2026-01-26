@@ -96,6 +96,7 @@ import TransactionBulkPanel from './TransactionBulkPanel';
 import TransactionFilterPanel from './TransactionFilterPanel';
 import TransactionSortPanel from './TransactionSortPanel';
 import CompactTransactionRow from '../../components/CompactTransactionRow';
+import SplitTransactionModal from '../../components/SplitTransactionModal';
 
 const TransactionList = () => {
   const { user, loading: authLoading } = useAuth(); // Add authentication context with loading state
@@ -369,6 +370,11 @@ const TransactionList = () => {
   const [modalMode, setModalMode] = useState('edit'); // 'edit' or 'create'
   const [isBulkEntryOpen, setIsBulkEntryOpen] = useState(false);
   const [bulkEntryLoading, setBulkEntryLoading] = useState(false);
+
+  // Split transaction modal state
+  const [isSplitModalOpen, setIsSplitModalOpen] = useState(false);
+  const [splittingTransaction, setSplittingTransaction] = useState(null);
+  const [isSplitting, setIsSplitting] = useState(false);
 
   // Statement/PDF filter state
   const [statements, setStatements] = useState([]);
@@ -712,6 +718,26 @@ const TransactionList = () => {
     }
   });
 
+  // Split transaction mutation
+  const splitMutation = useMutation({
+    mutationFn: ({ transactionId, splitParts }) => api.transactions.split(transactionId, splitParts),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['transactions']);
+      queryClient.invalidateQueries(['recent-transactions']);
+      queryClient.invalidateQueries(['transaction-summary']);
+      queryClient.invalidateQueries([ALL_TRANSACTIONS_KEY]);
+      setIsSplitModalOpen(false);
+      setSplittingTransaction(null);
+      setIsSplitting(false);
+      toast.success('Transaction split successfully');
+    },
+    onError: (error) => {
+      console.error('Split transaction error:', error);
+      toast.error(error.message || 'Failed to split transaction');
+      setIsSplitting(false);
+    }
+  });
+
   // Handler for linking selected transactions to upload
   const handleLinkToUpload = () => {
     if (selectedTransactions.size === 0) {
@@ -804,6 +830,36 @@ const TransactionList = () => {
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setSelectedTransaction(null);
+  };
+
+  // Split transaction handlers
+  const handleSplitTransaction = (transaction) => {
+    if (!transaction || !transaction.id) {
+      toast.error('Cannot split this transaction');
+      return;
+    }
+    // Don't allow splitting a split child transaction
+    if (transaction.parent_transaction_id) {
+      toast.error('Cannot split a transaction that is already a split part');
+      return;
+    }
+    setSplittingTransaction(transaction);
+    setIsSplitModalOpen(true);
+  };
+
+  const handleCloseSplitModal = () => {
+    setIsSplitModalOpen(false);
+    setSplittingTransaction(null);
+  };
+
+  const handleSplit = async (splitParts) => {
+    if (!splittingTransaction) return;
+    
+    setIsSplitting(true);
+    splitMutation.mutate({
+      transactionId: splittingTransaction.id,
+      splitParts
+    });
   };
 
   const handleSaveTransaction = async (transactionData) => {
@@ -1598,6 +1654,7 @@ const TransactionList = () => {
                   onCancelCategoryEdit={handleCancelCategoryEdit}
                   onEdit={handleEditTransaction}
                   onDelete={handleDelete}
+                  onSplit={handleSplitTransaction}
                   deletingId={deletingId}
                   visibleColumns={visibleColumns}
                   columnWidths={columnWidths}
@@ -1675,6 +1732,15 @@ const TransactionList = () => {
         isLoading={bulkEntryLoading || bulkCreateMutation.isPending}
         companies={companies}
         payees={payees}
+      />
+
+      {/* Split Transaction Modal */}
+      <SplitTransactionModal
+        isOpen={isSplitModalOpen}
+        onClose={handleCloseSplitModal}
+        transaction={splittingTransaction}
+        onSplit={handleSplit}
+        isLoading={isSplitting}
       />
     </div>
   );
