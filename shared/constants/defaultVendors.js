@@ -73,7 +73,10 @@ export const DEFAULT_VENDORS = {
   'CHECK #': { category: 'Other Expenses', subcategory: null, vendor: 'Check Payment' },
   'CHECK DEPOSIT': { category: 'Gross Receipts or Sales', subcategory: null, vendor: 'Check Deposit' },
   'REMOTE DEPOSIT': { category: 'Gross Receipts or Sales', subcategory: null, vendor: 'Check Deposit' },
+  'REMOTE ONLINE DEPOSIT': { category: 'Gross Receipts or Sales', subcategory: null, vendor: 'Check Deposit' },
   'MOBILE DEPOSIT': { category: 'Gross Receipts or Sales', subcategory: null, vendor: 'Check Deposit' },
+  // ACH income patterns - company payments
+  'ORIG CO NAME:': { category: 'Gross Receipts or Sales', subcategory: null, vendor: 'ACH Payment' },
   'CALENDLY': { category: 'SOFTWARE_SUBSCRIPTIONS', subcategory: null, vendor: 'Calendly' },
   'CANVA': { category: 'SOFTWARE_SUBSCRIPTIONS', subcategory: null, vendor: 'Canva' },
   // Capital One - specific products FIRST (more specific match wins)
@@ -198,6 +201,7 @@ export const DEFAULT_VENDORS = {
   'AMERICAN HONDA FINANCE': { category: 'CAR_TRUCK_EXPENSES', subcategory: 'Auto Loan Payment', vendor: 'Honda Financial Services' },
   'HOSTGATOR': { category: 'WEB_HOSTING', subcategory: null, vendor: 'HostGator' },
   'HOTELS.COM': { category: 'TRAVEL', subcategory: null, vendor: 'Hotels.com' },
+  'HSMV': { category: 'TAXES_LICENSES', subcategory: 'Vehicle Registration', vendor: 'FL DMV' },
   'HUBSPOT': { category: 'SOFTWARE_SUBSCRIPTIONS', subcategory: null, vendor: 'HubSpot' },
   'HYATT': { category: 'TRAVEL', subcategory: null, vendor: 'Hyatt' },
   
@@ -276,6 +280,7 @@ export const DEFAULT_VENDORS = {
   'OLIVE GARDEN': { category: 'MEALS', subcategory: null, vendor: 'Olive Garden' },
   'OPENAI': { category: 'SOFTWARE_SUBSCRIPTIONS', subcategory: null, vendor: 'OpenAI' },
   'OREILLY': { category: 'CAR_TRUCK_EXPENSES', subcategory: 'Tires and Parts', vendor: "O'Reilly Auto Parts" },
+  'OVIDIOS': { category: 'CAR_TRUCK_EXPENSES', subcategory: 'Tires and Parts', vendor: 'Ovidios Tires' },
   'OVERDRAFT FEE': { category: 'BANK_FEES', subcategory: null, vendor: 'Bank Fee' },
   
   // ===== P =====
