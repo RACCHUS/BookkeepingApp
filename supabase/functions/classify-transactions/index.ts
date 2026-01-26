@@ -173,28 +173,29 @@ STRICT CLASSIFICATION RULES:
 VEHICLE & AUTO LOANS (Important - read full description!):
 4. "AUTO", "AUTO FINANCE", "AUTO LOAN", "CAR PAYMENT", "VEHICLE LOAN" = Car and Truck Expenses (even if bank name like "Capital One Auto")
 5. Auto insurance (GEICO, Progressive, State Farm, Allstate + "auto") = Insurance (Other than Health)
-6. GAS STATIONS (Wawa, Speedway, Sunoco, Shell, BP, Exxon, etc.): <$15 = Meals, >=$15 = Car and Truck Expenses
+6. GAS STATIONS (Wawa, Speedway, Sunoco, Shell, BP, Exxon, RaceTrac, Cumberland, Marathon, Citgo, Valero, 7-Eleven, etc.): <$15 = Meals, >=$15 = Car and Truck Expenses
 7. Auto parts, tires, oil change, car wash = Car and Truck Expenses
+8. FLORIDA GAS STATIONS: Descriptions with "[NAME] [NUMBER] [CITY] FL" or "[ADDRESS] [CITY] FL [ID]" patterns are gas stations. Examples: "SUNSHINE 63 SUNRISE FL", "2185 N UNIVERSITY SUNRISE FL", "MICHELLE FUEL PO SUNRISE FL" = Gas Stations (use <$15/$15+ rule)
 
 BANK TRANSACTIONS (distinguish by context):
-8. "SERVICE FEE", "MONTHLY FEE", "OVERDRAFT", "NSF FEE", "WIRE FEE" = Bank Fees
-9. Credit card PAYMENT (paying your card balance) = Credit Card Payment (NEUTRAL)
-10. Bank to bank transfers = Transfer Between Accounts (NEUTRAL)
-11. Only use Bank Fees for actual fees charged BY the bank, not for payments TO financial institutions
+9. "SERVICE FEE", "MONTHLY FEE", "OVERDRAFT", "NSF FEE", "WIRE FEE" = Bank Fees
+10. Credit card PAYMENT (paying your card balance) = Credit Card Payment (NEUTRAL)
+11. Bank to bank transfers = Transfer Between Accounts (NEUTRAL)
+12. Only use Bank Fees for actual fees charged BY the bank, not for payments TO financial institutions
 
 DEPOSITS & INCOME:
-12. ATM CASH DEPOSIT = Owner Contribution/Capital (NOT income) - NEUTRAL
-13. TRANSFER FROM another account = Owner Contribution/Capital or Transfer Between Accounts - NEUTRAL
-14. ACH/wire from COMPANIES (property managers, clients, businesses) = Gross Receipts or Sales
-15. CHECK DEPOSIT, REMOTE DEPOSIT = Gross Receipts or Sales (customer payment)
-16. Generic DEPOSIT without company name = Owner Contribution/Capital - NEUTRAL
+13. ATM CASH DEPOSIT = Owner Contribution/Capital (NOT income) - NEUTRAL
+14. TRANSFER FROM another account = Owner Contribution/Capital or Transfer Between Accounts - NEUTRAL
+15. ACH/wire from COMPANIES (property managers, clients, businesses) = Gross Receipts or Sales
+16. CHECK DEPOSIT, REMOTE DEPOSIT = Gross Receipts or Sales (customer payment)
+17. Generic DEPOSIT without company name = Owner Contribution/Capital - NEUTRAL
 
 OTHER:
-17. ATM WITHDRAWAL = Owner Draws/Distributions (EXPENSE)
-18. Restaurants, fast food, TST* (Toast POS) = Meals
-19. Hardware stores (Home Depot, Lowe's, AC Supply, Gemaire) = Materials and Supplies
-20. Travel is ONLY for hotels, flights, lodging - NOT gas stations
-21. Amazon, Walmart can be Office Expenses, Supplies, or Materials depending on context
+18. ATM WITHDRAWAL = Owner Draws/Distributions (EXPENSE)
+19. Restaurants, fast food, TST* (Toast POS) = Meals
+20. Hardware stores (Home Depot, Lowe's, AC Supply, Gemaire) = Materials and Supplies
+21. Travel is ONLY for hotels, flights, lodging - NOT gas stations
+22. Amazon, Walmart can be Office Expenses, Supplies, or Materials depending on context
 
 TRANSACTIONS TO CLASSIFY (id|description|amount|type):
 ${transactionLines}
