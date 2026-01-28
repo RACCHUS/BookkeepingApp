@@ -584,6 +584,145 @@ describe('supabaseClient', () => {
         expect(chainMock.eq).toHaveBeenCalledWith('type', 'vendor');
         expect(result.success).toBe(true);
       });
+
+      it('should calculate totalPaid from transactions for vendors', async () => {
+        const mockVendors = [
+          { id: 'v1', name: 'Vendor A', type: 'vendor', is_active: true },
+          { id: 'v2', name: 'Vendor B', type: 'vendor', is_active: true },
+        ];
+        const mockTransactions = [
+          { payee_id: 'v1', amount: -500 },
+          { payee_id: 'v1', amount: -300 },
+          { payee_id: 'v2', amount: -1000 },
+        ];
+        
+        // First call returns vendors, second call returns transactions
+        let callCount = 0;
+        supabase.from.mockImplementation((table) => {
+          callCount++;
+          if (table === 'payees') {
+            return createChainMock(mockVendors);
+          } else if (table === 'transactions') {
+            return createChainMock(mockTransactions);
+          }
+          return createChainMock([]);
+        });
+        
+        const result = await supabaseClient.payees.getVendors();
+        
+        expect(result.success).toBe(true);
+        expect(result.vendors).toHaveLength(2);
+        // Vendor A: 500 + 300 = 800
+        expect(result.vendors.find(v => v.id === 'v1').totalPaid).toBe(800);
+        // Vendor B: 1000
+        expect(result.vendors.find(v => v.id === 'v2').totalPaid).toBe(1000);
+      });
+
+      it('should handle transaction query errors gracefully', async () => {
+        const mockVendors = [
+          { id: 'v1', name: 'Vendor A', type: 'vendor', is_active: true },
+        ];
+        
+        // First call returns vendors, second call throws error
+        supabase.from.mockImplementation((table) => {
+          if (table === 'payees') {
+            return createChainMock(mockVendors);
+          } else if (table === 'transactions') {
+            return createChainMock(null, { message: 'DB error' });
+          }
+          return createChainMock([]);
+        });
+        
+        // Should not throw, just return vendors with 0 totalPaid
+        const result = await supabaseClient.payees.getVendors();
+        
+        expect(result.success).toBe(true);
+        expect(result.vendors[0].totalPaid).toBe(0);
+      });
+    });
+
+    describe('getEmployees', () => {
+      it('should fetch employees (payees with type employee)', async () => {
+        const mockEmployees = [
+          { id: '1', name: 'Employee A', type: 'employee', is_active: true },
+        ];
+        
+        const chainMock = createChainMock(mockEmployees);
+        supabase.from.mockReturnValue(chainMock);
+        
+        const result = await supabaseClient.payees.getEmployees();
+        
+        expect(supabase.from).toHaveBeenCalledWith('payees');
+        expect(chainMock.eq).toHaveBeenCalledWith('type', 'employee');
+        expect(result.success).toBe(true);
+      });
+
+      it('should calculate totalPaid from transactions for employees', async () => {
+        const mockEmployees = [
+          { id: 'e1', name: 'John', type: 'employee', is_active: true },
+          { id: 'e2', name: 'Jane', type: 'employee', is_active: true },
+        ];
+        const mockTransactions = [
+          { payee_id: 'e1', amount: -2000 },
+          { payee_id: 'e1', amount: -1500 },
+          { payee_id: 'e2', amount: -3000 },
+        ];
+        
+        supabase.from.mockImplementation((table) => {
+          if (table === 'payees') {
+            return createChainMock(mockEmployees);
+          } else if (table === 'transactions') {
+            return createChainMock(mockTransactions);
+          }
+          return createChainMock([]);
+        });
+        
+        const result = await supabaseClient.payees.getEmployees();
+        
+        expect(result.success).toBe(true);
+        expect(result.employees).toHaveLength(2);
+        // John: 2000 + 1500 = 3500
+        expect(result.employees.find(e => e.id === 'e1').totalPaid).toBe(3500);
+        // Jane: 3000
+        expect(result.employees.find(e => e.id === 'e2').totalPaid).toBe(3000);
+      });
+
+      it('should handle empty employee list', async () => {
+        const chainMock = createChainMock([]);
+        supabase.from.mockReturnValue(chainMock);
+        
+        const result = await supabaseClient.payees.getEmployees();
+        
+        expect(result.success).toBe(true);
+        expect(result.employees).toHaveLength(0);
+      });
+
+      it('should handle invalid amount values gracefully', async () => {
+        const mockEmployees = [
+          { id: 'e1', name: 'John', type: 'employee', is_active: true },
+        ];
+        const mockTransactions = [
+          { payee_id: 'e1', amount: -1000 },
+          { payee_id: 'e1', amount: 'invalid' }, // Invalid amount
+          { payee_id: 'e1', amount: null },
+          { payee_id: 'e1', amount: undefined },
+        ];
+        
+        supabase.from.mockImplementation((table) => {
+          if (table === 'payees') {
+            return createChainMock(mockEmployees);
+          } else if (table === 'transactions') {
+            return createChainMock(mockTransactions);
+          }
+          return createChainMock([]);
+        });
+        
+        const result = await supabaseClient.payees.getEmployees();
+        
+        expect(result.success).toBe(true);
+        // Only the valid -1000 should be counted
+        expect(result.employees[0].totalPaid).toBe(1000);
+      });
     });
   });
 

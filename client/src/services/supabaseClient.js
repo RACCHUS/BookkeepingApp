@@ -1458,18 +1458,31 @@ export const supabaseClient = {
       let transactionTotals = {};
       
       if (vendorIds.length > 0) {
-        const { data: txData } = await supabase
-          .from('transactions')
-          .select('payee_id, amount')
-          .eq('user_id', userId)
-          .in('payee_id', vendorIds);
-        
-        // Sum amounts by payee_id
-        (txData || []).forEach(tx => {
-          if (tx.payee_id) {
-            transactionTotals[tx.payee_id] = (transactionTotals[tx.payee_id] || 0) + Math.abs(parseFloat(tx.amount) || 0);
+        try {
+          const { data: txData, error: txError } = await supabase
+            .from('transactions')
+            .select('payee_id, amount')
+            .eq('user_id', userId)
+            .in('payee_id', vendorIds);
+          
+          if (txError) {
+            console.error('Error fetching vendor transaction totals:', txError);
+            // Continue without totals rather than failing entirely
+          } else {
+            // Sum amounts by payee_id
+            (txData || []).forEach(tx => {
+              if (tx.payee_id) {
+                const amount = parseFloat(tx.amount);
+                if (!isNaN(amount)) {
+                  transactionTotals[tx.payee_id] = (transactionTotals[tx.payee_id] || 0) + Math.abs(amount);
+                }
+              }
+            });
           }
-        });
+        } catch (txErr) {
+          console.error('Exception fetching vendor transaction totals:', txErr);
+          // Continue without totals
+        }
       }
 
       // Add totalPaid to each vendor
@@ -1503,18 +1516,31 @@ export const supabaseClient = {
       let transactionTotals = {};
       
       if (employeeIds.length > 0) {
-        const { data: txData } = await supabase
-          .from('transactions')
-          .select('payee_id, amount')
-          .eq('user_id', userId)
-          .in('payee_id', employeeIds);
-        
-        // Sum amounts by payee_id
-        (txData || []).forEach(tx => {
-          if (tx.payee_id) {
-            transactionTotals[tx.payee_id] = (transactionTotals[tx.payee_id] || 0) + Math.abs(parseFloat(tx.amount) || 0);
+        try {
+          const { data: txData, error: txError } = await supabase
+            .from('transactions')
+            .select('payee_id, amount')
+            .eq('user_id', userId)
+            .in('payee_id', employeeIds);
+          
+          if (txError) {
+            console.error('Error fetching employee transaction totals:', txError);
+            // Continue without totals rather than failing entirely
+          } else {
+            // Sum amounts by payee_id
+            (txData || []).forEach(tx => {
+              if (tx.payee_id) {
+                const amount = parseFloat(tx.amount);
+                if (!isNaN(amount)) {
+                  transactionTotals[tx.payee_id] = (transactionTotals[tx.payee_id] || 0) + Math.abs(amount);
+                }
+              }
+            });
           }
-        });
+        } catch (txErr) {
+          console.error('Exception fetching employee transaction totals:', txErr);
+          // Continue without totals
+        }
       }
 
       // Add totalPaid to each employee
