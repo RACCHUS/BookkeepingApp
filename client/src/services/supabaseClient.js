@@ -3582,20 +3582,35 @@ function formatReportContent(data) {
 
   let html = '';
 
+  // Get summary values - check both nested summary object and top-level
+  const summary = data.summary || {};
+  const totalIncome = summary.totalIncome ?? summary.grossIncome ?? data.totalIncome;
+  const totalExpenses = summary.totalExpenses ?? data.totalExpenses;
+  const totalTransfers = summary.totalTransfers ?? data.totalTransfers;
+  const netIncome = summary.netIncome ?? data.netIncome;
+  const netProfit = summary.netProfit ?? data.netProfit;
+  const margin = summary.margin ?? data.margin;
+
   // Summary box for totals
-  if (data.totalIncome !== undefined || data.totalExpenses !== undefined) {
+  if (totalIncome !== undefined || totalExpenses !== undefined) {
     html += '<div class="summary-box">';
-    if (data.totalIncome !== undefined) {
-      html += `<div class="summary-row"><span>Total Income</span><span class="amount positive">$${data.totalIncome.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span></div>`;
+    if (totalIncome !== undefined) {
+      html += `<div class="summary-row"><span>Gross Income</span><span class="amount positive">$${totalIncome.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span></div>`;
     }
-    if (data.totalExpenses !== undefined) {
-      html += `<div class="summary-row"><span>Total Expenses</span><span class="amount negative">$${data.totalExpenses.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span></div>`;
+    if (totalExpenses !== undefined) {
+      html += `<div class="summary-row"><span>Total Expenses</span><span class="amount negative">$${totalExpenses.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span></div>`;
     }
-    if (data.netIncome !== undefined) {
-      html += `<div class="summary-row"><span>Net Income</span><span class="amount ${data.netIncome >= 0 ? 'positive' : 'negative'}">$${data.netIncome.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span></div>`;
+    if (totalTransfers !== undefined && totalTransfers > 0) {
+      html += `<div class="summary-row"><span>Transfers (Neutral)</span><span class="amount" style="color: #3b82f6;">$${totalTransfers.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span></div>`;
     }
-    if (data.netProfit !== undefined) {
-      html += `<div class="summary-row"><span>Net Profit</span><span class="amount ${data.netProfit >= 0 ? 'positive' : 'negative'}">$${data.netProfit.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span></div>`;
+    if (netIncome !== undefined) {
+      html += `<div class="summary-row"><span>Net Income</span><span class="amount ${netIncome >= 0 ? 'positive' : 'negative'}">$${netIncome.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span></div>`;
+    }
+    if (netProfit !== undefined && netProfit !== netIncome) {
+      html += `<div class="summary-row"><span>Net Profit</span><span class="amount ${netProfit >= 0 ? 'positive' : 'negative'}">$${netProfit.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span></div>`;
+    }
+    if (margin !== undefined) {
+      html += `<div class="summary-row"><span>Margin</span><span class="amount ${margin >= 0 ? 'positive' : 'negative'}">${margin.toFixed(1)}%</span></div>`;
     }
     html += '</div>';
   }
