@@ -306,7 +306,7 @@ describe('classifyLocal - User Rules', () => {
     const transaction = { description: 'PURCHASE AT MY FAVORITE VENDOR 123' };
     const result = classifyLocal(transaction, userRules);
     
-    expect(result.classification.category).toBe('SUPPLIES');
+    expect(result.classification.category).toBe('Supplies (Not Inventory)');
     expect(result.classification.subcategory).toBe('Custom Supplies');
     expect(result.classification.source).toBe(CLASSIFICATION_SOURCE.USER_RULE);
     expect(result.classification.ruleId).toBe('rule-1');
@@ -316,7 +316,7 @@ describe('classifyLocal - User Rules', () => {
     const transaction = { description: 'EXACT MATCH TEST' };
     const result = classifyLocal(transaction, userRules);
     
-    expect(result.classification.category).toBe('OTHER_EXPENSES');
+    expect(result.classification.category).toBe('Other Expenses');
     expect(result.classification.source).toBe(CLASSIFICATION_SOURCE.USER_RULE);
   });
 
@@ -324,7 +324,7 @@ describe('classifyLocal - User Rules', () => {
     const transaction = { description: 'PREFIX SOMETHING ELSE' };
     const result = classifyLocal(transaction, userRules);
     
-    expect(result.classification.category).toBe('ADVERTISING');
+    expect(result.classification.category).toBe('Advertising');
     expect(result.classification.source).toBe(CLASSIFICATION_SOURCE.USER_RULE);
   });
 
@@ -344,7 +344,7 @@ describe('classifyLocal - User Rules', () => {
     const transaction = { description: 'SHELL OIL 12345', amount: -45.00 };
     const result = classifyLocal(transaction, overrideRules);
     
-    expect(result.classification.category).toBe('OTHER_EXPENSES');
+    expect(result.classification.category).toBe('Other Expenses');
     expect(result.classification.subcategory).toBe('Fleet Fuel');
     expect(result.classification.source).toBe(CLASSIFICATION_SOURCE.USER_RULE);
   });
@@ -540,7 +540,7 @@ describe('classifyLocal - Amount Direction Filtering', () => {
     };
     const result = classifyLocal(transaction, directionRules);
     
-    expect(result.classification.category).toBe('RENT_LEASE_OTHER');
+    expect(result.classification.category).toBe('Rent or Lease (Other Business Property)');
     expect(result.classification.subcategory).toBe('Equipment Rental');
     expect(result.classification.ruleId).toBe('rule-expense');
   });
@@ -578,7 +578,7 @@ describe('classifyLocal - Amount Direction Filtering', () => {
     };
     const result = classifyLocal(transaction, directionRules);
     
-    expect(result.classification.category).toBe('OFFICE_EXPENSES');
+    expect(result.classification.category).toBe('Office Expenses');
     expect(result.classification.ruleId).toBe('rule-any');
   });
 
@@ -589,7 +589,7 @@ describe('classifyLocal - Amount Direction Filtering', () => {
     };
     const result = classifyLocal(transaction, directionRules);
     
-    expect(result.classification.category).toBe('OFFICE_EXPENSES');
+    expect(result.classification.category).toBe('Office Expenses');
     expect(result.classification.ruleId).toBe('rule-any');
   });
 
@@ -600,7 +600,7 @@ describe('classifyLocal - Amount Direction Filtering', () => {
     };
     const result = classifyLocal(transaction, directionRules);
     
-    expect(result.classification.category).toBe('OFFICE_EXPENSES');
+    expect(result.classification.category).toBe('Office Expenses');
     expect(result.classification.ruleId).toBe('rule-no-direction');
   });
 
