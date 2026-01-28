@@ -1453,10 +1453,35 @@ export const supabaseClient = {
 
       if (error) throw error;
 
+      // Calculate total paid for each vendor from transactions
+      const vendorIds = (data || []).map(p => p.id);
+      let transactionTotals = {};
+      
+      if (vendorIds.length > 0) {
+        const { data: txData } = await supabase
+          .from('transactions')
+          .select('payee_id, amount')
+          .eq('user_id', userId)
+          .in('payee_id', vendorIds);
+        
+        // Sum amounts by payee_id
+        (txData || []).forEach(tx => {
+          if (tx.payee_id) {
+            transactionTotals[tx.payee_id] = (transactionTotals[tx.payee_id] || 0) + Math.abs(parseFloat(tx.amount) || 0);
+          }
+        });
+      }
+
+      // Add totalPaid to each vendor
+      const vendorsWithTotals = (data || []).map(p => ({
+        ...transformPayee(p),
+        totalPaid: transactionTotals[p.id] || 0
+      }));
+
       return {
         success: true,
-        vendors: (data || []).map(transformPayee),
-        data: { vendors: (data || []).map(transformPayee) }
+        vendors: vendorsWithTotals,
+        data: { vendors: vendorsWithTotals }
       };
     },
 
@@ -1473,10 +1498,35 @@ export const supabaseClient = {
 
       if (error) throw error;
 
+      // Calculate total paid for each employee from transactions
+      const employeeIds = (data || []).map(p => p.id);
+      let transactionTotals = {};
+      
+      if (employeeIds.length > 0) {
+        const { data: txData } = await supabase
+          .from('transactions')
+          .select('payee_id, amount')
+          .eq('user_id', userId)
+          .in('payee_id', employeeIds);
+        
+        // Sum amounts by payee_id
+        (txData || []).forEach(tx => {
+          if (tx.payee_id) {
+            transactionTotals[tx.payee_id] = (transactionTotals[tx.payee_id] || 0) + Math.abs(parseFloat(tx.amount) || 0);
+          }
+        });
+      }
+
+      // Add totalPaid to each employee
+      const employeesWithTotals = (data || []).map(p => ({
+        ...transformPayee(p),
+        totalPaid: transactionTotals[p.id] || 0
+      }));
+
       return {
         success: true,
-        employees: (data || []).map(transformPayee),
-        data: { employees: (data || []).map(transformPayee) }
+        employees: employeesWithTotals,
+        data: { employees: employeesWithTotals }
       };
     },
 

@@ -48,7 +48,7 @@ const PayeeList = ({ payees: payeesProp = [], isLoading, type, onEdit, onDelete 
               Status
             </th>
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-              YTD Paid
+              Total Paid
             </th>
             <th className="relative px-6 py-3">
               <span className="sr-only">Actions</span>
@@ -115,7 +115,7 @@ const PayeeList = ({ payees: payeesProp = [], isLoading, type, onEdit, onDelete 
                 </span>
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                ${(payee.ytdPaid || 0).toFixed(2)}
+                ${(payee.totalPaid || payee.ytdPaid || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                 <div className="flex items-center justify-end gap-2">
