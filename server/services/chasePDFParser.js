@@ -488,34 +488,55 @@ class ChasePDFParser {
       transactionCount: transactions.length,
       totalIncome: 0,
       totalExpenses: 0,
+      totalTransfers: 0,
       netIncome: 0,
       categorySummary: {},
+      categoryBreakdown: {},
       sectionSummary: {},
       availableSections: this.getAvailableSections(transactions),
       needsReview: 0
     };
 
     transactions.forEach(transaction => {
-      if (transaction.type === 'income') {
-        summary.totalIncome += transaction.amount;
-      } else {
-        summary.totalExpenses += transaction.amount;
+      const amount = parseFloat(transaction.amount) || 0;
+      const category = transaction.category || 'Uncategorized';
+      
+      // Transfers are neutral - don't affect income/expense totals
+      if (transaction.type === 'transfer') {
+        summary.totalTransfers += Math.abs(amount);
+      } else if (transaction.type === 'income') {
+        summary.totalIncome += amount;
+      } else if (transaction.type === 'expense') {
+        summary.totalExpenses += Math.abs(amount);
       }
 
       if (transaction.needsReview) {
         summary.needsReview++;
       }
 
-      // Category summary
-      if (!summary.categorySummary[transaction.category]) {
-        summary.categorySummary[transaction.category] = {
+      // Category summary (legacy format)
+      if (!summary.categorySummary[category]) {
+        summary.categorySummary[category] = {
           total: 0,
           count: 0,
           type: transaction.type
         };
       }
-      summary.categorySummary[transaction.category].total += transaction.amount;
-      summary.categorySummary[transaction.category].count++;
+      summary.categorySummary[category].total += Math.abs(amount);
+      summary.categorySummary[category].count++;
+      
+      // Category breakdown (new detailed format)
+      if (!summary.categoryBreakdown[category]) {
+        summary.categoryBreakdown[category] = { income: 0, expenses: 0, transfers: 0, count: 0 };
+      }
+      summary.categoryBreakdown[category].count++;
+      if (transaction.type === 'transfer') {
+        summary.categoryBreakdown[category].transfers += Math.abs(amount);
+      } else if (transaction.type === 'income') {
+        summary.categoryBreakdown[category].income += amount;
+      } else if (transaction.type === 'expense') {
+        summary.categoryBreakdown[category].expenses += Math.abs(amount);
+      }
 
       // Section summary
       if (transaction.sectionCode) {

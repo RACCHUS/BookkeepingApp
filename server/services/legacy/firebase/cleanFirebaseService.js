@@ -674,32 +674,49 @@ class FirebaseService {
     const summary = {
       totalIncome: 0,
       totalExpenses: 0,
+      totalTransfers: 0,
       netIncome: 0,
       transactionCount: transactions.length,
-      categories: {}
+      categories: {},
+      categoryBreakdown: {}
     };
 
     transactions.forEach(transaction => {
-      const amount = parseFloat(transaction.amount);
+      const amount = parseFloat(transaction.amount) || 0;
+      const category = transaction.category || 'Uncategorized';
       
-      if (transaction.type === 'income') {
-        summary.totalIncome += amount;
-      } else if (transaction.type === 'expense') {
-        summary.totalExpenses += amount;
-      }
-
-      // Category breakdown
-      if (!summary.categories[transaction.category]) {
-        summary.categories[transaction.category] = {
+      // Initialize category tracking
+      if (!summary.categories[category]) {
+        summary.categories[category] = {
           total: 0,
           count: 0,
           type: transaction.type
         };
       }
-      summary.categories[transaction.category].total += amount;
-      summary.categories[transaction.category].count += 1;
+      if (!summary.categoryBreakdown[category]) {
+        summary.categoryBreakdown[category] = { income: 0, expenses: 0, transfers: 0, count: 0 };
+      }
+      
+      summary.categories[category].count += 1;
+      summary.categoryBreakdown[category].count++;
+      
+      // Transfers are neutral - don't affect income/expense totals
+      if (transaction.type === 'transfer') {
+        summary.totalTransfers += Math.abs(amount);
+        summary.categoryBreakdown[category].transfers += Math.abs(amount);
+        summary.categories[category].total += Math.abs(amount);
+      } else if (transaction.type === 'income') {
+        summary.totalIncome += amount;
+        summary.categoryBreakdown[category].income += amount;
+        summary.categories[category].total += amount;
+      } else if (transaction.type === 'expense') {
+        summary.totalExpenses += Math.abs(amount);
+        summary.categoryBreakdown[category].expenses += Math.abs(amount);
+        summary.categories[category].total += Math.abs(amount);
+      }
     });
 
+    // Net income excludes transfers
     summary.netIncome = summary.totalIncome - summary.totalExpenses;
 
     const mode = this.isInitialized ? 'Firebase' : 'Mock';

@@ -280,7 +280,7 @@ class SupabaseAdapter extends DatabaseAdapter {
   async getTransactionSummary(userId, filters = {}) {
     let query = this.supabase
       .from('transactions')
-      .select('amount, type')
+      .select('amount, type, category')
       .eq('user_id', userId);
 
     if (filters.companyId) {
@@ -299,20 +299,39 @@ class SupabaseAdapter extends DatabaseAdapter {
 
     let totalIncome = 0;
     let totalExpenses = 0;
+    let totalTransfers = 0;
+    const categoryBreakdown = {};
 
     for (const t of data || []) {
-      if (t.type === 'income') {
-        totalIncome += parseFloat(t.amount) || 0;
+      const amount = parseFloat(t.amount) || 0;
+      const category = t.category || 'Uncategorized';
+      
+      // Track by category
+      if (!categoryBreakdown[category]) {
+        categoryBreakdown[category] = { income: 0, expenses: 0, transfers: 0, count: 0 };
+      }
+      categoryBreakdown[category].count++;
+      
+      // Transfers are neutral - don't affect income/expense totals
+      if (t.type === 'transfer') {
+        totalTransfers += Math.abs(amount);
+        categoryBreakdown[category].transfers += Math.abs(amount);
+      } else if (t.type === 'income') {
+        totalIncome += amount;
+        categoryBreakdown[category].income += amount;
       } else if (t.type === 'expense') {
-        totalExpenses += Math.abs(parseFloat(t.amount) || 0);
+        totalExpenses += Math.abs(amount);
+        categoryBreakdown[category].expenses += Math.abs(amount);
       }
     }
 
     return {
       totalIncome,
       totalExpenses,
-      netIncome: totalIncome - totalExpenses,
-      transactionCount: (data || []).length
+      totalTransfers,
+      netIncome: totalIncome - totalExpenses, // Transfers excluded from net income
+      transactionCount: (data || []).length,
+      categoryBreakdown
     };
   }
 

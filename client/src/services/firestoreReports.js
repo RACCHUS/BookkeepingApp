@@ -4,6 +4,7 @@ import { db } from './firebase';
 
 /**
  * Get transaction summary for a date range, company, and upload
+ * Uses transaction.type field for proper income/expense/transfer classification
  * @param {object} filters { startDate, endDate, companyId, uploadId }
  * @returns {Promise<object>} summary
  */
@@ -24,22 +25,58 @@ export async function getTransactionSummary(filters = {}) {
   }
   const snapshot = await getDocs(q);
   const transactions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-  let totalIncome = 0, totalExpenses = 0, netIncome = 0, transactionCount = transactions.length;
+  
+  let totalIncome = 0;
+  let totalExpenses = 0;
+  let totalTransfers = 0;
+  const transactionCount = transactions.length;
   const categoryBreakdown = {};
+  
   transactions.forEach(tx => {
-    if (typeof tx.amount === 'number') {
-      if (tx.amount > 0) totalIncome += tx.amount;
-      else totalExpenses += Math.abs(tx.amount);
-      netIncome += tx.amount;
+    const amount = parseFloat(tx.amount) || 0;
+    const category = tx.category || 'Uncategorized';
+    
+    // Initialize category tracking
+    if (!categoryBreakdown[category]) {
+      categoryBreakdown[category] = { income: 0, expenses: 0, transfers: 0, total: 0, count: 0 };
     }
-    if (tx.category) {
-      categoryBreakdown[tx.category] = (categoryBreakdown[tx.category] || 0) + tx.amount;
+    categoryBreakdown[category].count++;
+    
+    // Use transaction type field for proper classification
+    // Transfers are neutral - don't affect income/expense totals
+    if (tx.type === 'transfer') {
+      totalTransfers += Math.abs(amount);
+      categoryBreakdown[category].transfers += Math.abs(amount);
+      categoryBreakdown[category].total += Math.abs(amount);
+    } else if (tx.type === 'income') {
+      totalIncome += amount;
+      categoryBreakdown[category].income += amount;
+      categoryBreakdown[category].total += amount;
+    } else if (tx.type === 'expense') {
+      totalExpenses += Math.abs(amount);
+      categoryBreakdown[category].expenses += Math.abs(amount);
+      categoryBreakdown[category].total += Math.abs(amount);
+    } else {
+      // Fallback for legacy data without type field - use amount sign
+      if (amount > 0) {
+        totalIncome += amount;
+        categoryBreakdown[category].income += amount;
+      } else {
+        totalExpenses += Math.abs(amount);
+        categoryBreakdown[category].expenses += Math.abs(amount);
+      }
+      categoryBreakdown[category].total += Math.abs(amount);
     }
   });
+  
+  // Net income excludes transfers
+  const netIncome = totalIncome - totalExpenses;
+  
   return {
     summary: {
       totalIncome,
       totalExpenses,
+      totalTransfers,
       netIncome,
       transactionCount,
       categoryBreakdown

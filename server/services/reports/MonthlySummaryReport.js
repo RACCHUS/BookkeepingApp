@@ -60,6 +60,7 @@ class MonthlySummaryReport extends BaseReportGenerator {
 
   /**
    * Process transactions into monthly buckets
+   * NOTE: Transfer transactions are tracked separately and excluded from income/expense totals
    * @param {Array} transactions - Transaction list
    * @returns {Array} Monthly data array
    */
@@ -88,6 +89,10 @@ class MonthlySummaryReport extends BaseReportGenerator {
             total: 0,
             categories: {}
           },
+          transfers: {
+            total: 0,
+            categories: {}
+          },
           netIncome: 0,
           transactionCount: 0
         });
@@ -96,16 +101,22 @@ class MonthlySummaryReport extends BaseReportGenerator {
       const monthData = monthlyMap.get(monthKey);
       const amount = Math.abs(parseFloat(transaction.amount) || 0);
       const category = transaction.category || 'Uncategorized';
-      const isIncome = transaction.type === 'income' || this.isIncomeCategory(category);
-
-      if (isIncome) {
+      
+      // Use transaction type field for proper classification
+      // Transfers are neutral - don't affect income/expense totals
+      if (transaction.type === 'transfer') {
+        monthData.transfers.total += amount;
+        monthData.transfers.categories[category] = (monthData.transfers.categories[category] || 0) + amount;
+      } else if (transaction.type === 'income' || this.isIncomeCategory(category)) {
         monthData.income.total += amount;
         monthData.income.categories[category] = (monthData.income.categories[category] || 0) + amount;
       } else {
+        // Default to expense for type='expense' or unknown types
         monthData.expenses.total += amount;
         monthData.expenses.categories[category] = (monthData.expenses.categories[category] || 0) + amount;
       }
 
+      // Net income excludes transfers
       monthData.netIncome = monthData.income.total - monthData.expenses.total;
       monthData.transactionCount++;
     });
@@ -138,19 +149,29 @@ class MonthlySummaryReport extends BaseReportGenerator {
 
   /**
    * Aggregate categories by transaction type across all transactions
+   * NOTE: Transfer transactions are excluded from both income and expense aggregations
    * @param {Array} transactions - Transaction list
-   * @param {string} type - 'income' or 'expense'
+   * @param {string} type - 'income', 'expense', or 'transfer'
    * @returns {Object} Category totals
    */
   aggregateCategoriesByType(transactions, type) {
     const categories = {};
 
     transactions.forEach(transaction => {
+      // Skip transfers when aggregating income/expense (unless specifically requesting transfers)
+      if (transaction.type === 'transfer' && type !== 'transfer') {
+        return;
+      }
+      
       const category = transaction.category || 'Uncategorized';
-      const isIncome = transaction.type === 'income' || this.isIncomeCategory(category);
       const amount = Math.abs(parseFloat(transaction.amount) || 0);
-
-      if ((type === 'income' && isIncome) || (type === 'expense' && !isIncome)) {
+      
+      // Use explicit type field for classification
+      if (type === 'transfer' && transaction.type === 'transfer') {
+        categories[category] = (categories[category] || 0) + amount;
+      } else if (type === 'income' && (transaction.type === 'income' || this.isIncomeCategory(category))) {
+        categories[category] = (categories[category] || 0) + amount;
+      } else if (type === 'expense' && transaction.type !== 'income' && transaction.type !== 'transfer') {
         categories[category] = (categories[category] || 0) + amount;
       }
     });

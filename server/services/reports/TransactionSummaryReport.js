@@ -64,6 +64,12 @@ export class TransactionSummaryReport extends BaseReportGenerator {
       ['Total Expenses:', `$${Math.abs(summary.totalExpenses || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`],
       ['Net Income:', `$${Math.abs(summary.netIncome || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, summary.netIncome >= 0 ? 'green' : 'red']
     ];
+    
+    // Add transfers line if present (neutral transactions)
+    if (summary.totalTransfers && summary.totalTransfers > 0) {
+      // Insert before Net Income
+      summaryData.splice(3, 0, ['Total Transfers:', `$${Math.abs(summary.totalTransfers).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 'blue']);
+    }
 
     summaryData.forEach(([label, value, color]) => {
       doc.fontSize(11)
@@ -71,7 +77,8 @@ export class TransactionSummaryReport extends BaseReportGenerator {
          .text(label, 70, doc.y, { continued: true, width: 200 });
 
       if (color) {
-        doc.fillColor(color === 'green' ? '#059669' : '#DC2626');
+        const colorMap = { green: '#059669', red: '#DC2626', blue: '#2563EB' };
+        doc.fillColor(colorMap[color] || '#000000');
       }
       
       doc.font('Helvetica-Bold')
@@ -91,20 +98,50 @@ export class TransactionSummaryReport extends BaseReportGenerator {
 
     doc.moveDown(0.5);
 
-    // Sort categories by absolute amount (descending)
+    // Handle both old format (number) and new format (object with income/expenses/transfers)
     const sortedCategories = Object.entries(categoryBreakdown)
-      .sort(([,a], [,b]) => Math.abs(b) - Math.abs(a));
+      .map(([category, data]) => {
+        // Support both old { category: amount } and new { category: { income, expenses, transfers } } format
+        if (typeof data === 'number') {
+          return { category, amount: data, type: data > 0 ? 'income' : 'expense' };
+        } else if (typeof data === 'object') {
+          const income = data.income || 0;
+          const expenses = data.expenses || 0;
+          const transfers = data.transfers || 0;
+          // Determine primary type based on which has the highest value
+          if (transfers > income && transfers > expenses) {
+            return { category, amount: transfers, type: 'transfer' };
+          } else if (income >= expenses) {
+            return { category, amount: income - expenses, type: income > 0 ? 'income' : 'expense' };
+          } else {
+            return { category, amount: -(expenses - income), type: 'expense' };
+          }
+        }
+        return { category, amount: 0, type: 'expense' };
+      })
+      .sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount));
 
-    sortedCategories.forEach(([category, amount]) => {
-      const isIncome = amount > 0;
-      const displayAmount = `${isIncome ? '+' : '-'}$${Math.abs(amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    sortedCategories.forEach(({ category, amount, type }) => {
+      let prefix = '';
+      let color = '#DC2626'; // Default red for expenses
+      
+      if (type === 'transfer') {
+        prefix = '↔';
+        color = '#2563EB'; // Blue for transfers
+      } else if (type === 'income' || amount > 0) {
+        prefix = '+';
+        color = '#059669'; // Green for income
+      } else {
+        prefix = '-';
+      }
+      
+      const displayAmount = `${prefix}$${Math.abs(amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
       
       doc.fontSize(10)
          .font('Helvetica')
          .text(category, 70, doc.y, { continued: true, width: 300 });
 
-      // Green for income, red for expenses
-      doc.fillColor(isIncome ? '#059669' : '#DC2626')
+      doc.fillColor(color)
          .font('Helvetica-Bold')
          .text(displayAmount, { align: 'right' });
 
@@ -160,8 +197,18 @@ export class TransactionSummaryReport extends BaseReportGenerator {
       // Check if we need a new page
       this.checkPageBreak(doc, 50);
 
+      // Determine display formatting based on transaction type
       const isIncome = transaction.type === 'income';
-      const displayAmount = `${isIncome ? '+' : '-'}$${Math.abs(transaction.amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      const isTransfer = transaction.type === 'transfer';
+      let prefix = isIncome ? '+' : '-';
+      let color = isIncome ? this.config.colors.income : this.config.colors.expense;
+      
+      if (isTransfer) {
+        prefix = '↔';
+        color = '#2563EB'; // Blue for transfers
+      }
+      
+      const displayAmount = `${prefix}$${Math.abs(transaction.amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
       const date = new Date(transaction.date).toLocaleDateString();
       const rowY = doc.y;
       
@@ -171,7 +218,7 @@ export class TransactionSummaryReport extends BaseReportGenerator {
          .text(transaction.description?.substring(0, 40) || 'N/A', 135, rowY, { width: 200 })
          .text(transaction.category || 'Uncategorized', 340, rowY, { width: 120 });
 
-      doc.fillColor(isIncome ? this.config.colors.income : this.config.colors.expense)
+      doc.fillColor(color)
          .font('Helvetica-Bold')
          .text(displayAmount, 465, rowY, { width: 80, align: 'right' });
 
