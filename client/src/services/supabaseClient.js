@@ -2827,18 +2827,22 @@ export const supabaseClient = {
       let totalIncome = 0;
       let totalExpenses = 0;
 
+      const transferByCategory = {};
+      let totalTransfers = 0;
+
       for (const tx of transactions || []) {
         const category = tx.category || 'Uncategorized';
         const amount = parseFloat(tx.amount) || 0;
+        const absAmount = Math.abs(amount);
         
-        // Use same logic as getSummary for consistency
-        if (tx.type === 'income' || tx.type === 'deposit') {
-          const absAmount = Math.abs(amount);
+        // Transfers are neutral - don't affect P&L
+        if (tx.type === 'transfer') {
+          transferByCategory[category] = (transferByCategory[category] || 0) + absAmount;
+          totalTransfers += absAmount;
+        } else if (tx.type === 'income' || tx.type === 'deposit') {
           incomeByCategory[category] = (incomeByCategory[category] || 0) + absAmount;
           totalIncome += absAmount;
-        } else {
-          // Expenses - use absolute value
-          const absAmount = Math.abs(amount);
+        } else if (tx.type === 'expense') {
           expenseByCategory[category] = (expenseByCategory[category] || 0) + absAmount;
           totalExpenses += absAmount;
         }
@@ -2851,6 +2855,11 @@ export const supabaseClient = {
       })).sort((a, b) => b.amount - a.amount);
 
       const expenseBreakdown = Object.entries(expenseByCategory).map(([category, amount]) => ({
+        category,
+        amount
+      })).sort((a, b) => b.amount - a.amount);
+
+      const transferBreakdown = Object.entries(transferByCategory).map(([category, amount]) => ({
         category,
         amount
       })).sort((a, b) => b.amount - a.amount);
@@ -2868,6 +2877,7 @@ export const supabaseClient = {
             grossIncome: totalIncome,
             totalIncome: totalIncome,
             totalExpenses: totalExpenses,
+            totalTransfers: totalTransfers, // Added - transfers are neutral
             netIncome: netIncome,
             margin: margin,
             transactionCount: transactions?.length || 0,
@@ -2883,6 +2893,12 @@ export const supabaseClient = {
             breakdown: expenseBreakdown,
             byCategory: expenseByCategory, 
             total: totalExpenses 
+          },
+          // Transfer breakdown (neutral - not in P&L)
+          transfers: {
+            breakdown: transferBreakdown,
+            byCategory: transferByCategory,
+            total: totalTransfers
           },
           netIncome: netIncome,
           transactionCount: transactions?.length || 0,
@@ -2940,11 +2956,18 @@ export const supabaseClient = {
       const contractorPayments = {};
       let totalIncome = 0;
       let totalExpenses = 0;
+      let totalTransfers = 0;
 
       for (const tx of transactions || []) {
         const category = tx.category || 'Other Expenses';
         const amount = parseFloat(tx.amount) || 0;
         const absAmount = Math.abs(amount);
+        
+        // Skip transfers - they don't affect tax calculations
+        if (tx.type === 'transfer') {
+          totalTransfers += absAmount;
+          continue;
+        }
         
         if (!categoryTotals[category]) {
           categoryTotals[category] = { total: 0, count: 0, transactions: [] };
@@ -2956,7 +2979,7 @@ export const supabaseClient = {
         // Use same logic as getSummary for consistency
         if (tx.type === 'income' || tx.type === 'deposit') {
           totalIncome += absAmount;
-        } else {
+        } else if (tx.type === 'expense') {
           totalExpenses += absAmount;
           
           // Track contractor payments for 1099 identification
@@ -3054,7 +3077,7 @@ export const supabaseClient = {
         .from('transactions')
         .select('*')
         .eq('user_id', userId)
-        .lt('amount', 0); // Only expenses (negative amounts)
+        .eq('type', 'expense'); // Only expense type transactions, not transfers
 
       if (params.startDate) query = query.gte('date', params.startDate);
       if (params.endDate) query = query.lte('date', params.endDate);
