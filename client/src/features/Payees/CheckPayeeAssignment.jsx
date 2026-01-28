@@ -62,7 +62,7 @@ const CheckPayeeAssignment = ({ onAssignmentComplete }) => {
     (t.vendorId || t.vendorName)
   );
   const transactions = viewMode === 'unassigned' ? unassignedTransactions : assignedTransactions;
-  const payeesRaw = payeesData?.payees;
+  const payeesRaw = payeesData?.data?.payees || payeesData?.payees;
   const payees = Array.isArray(payeesRaw) ? payeesRaw : [];
 
   // Mutation for bulk payee assignment

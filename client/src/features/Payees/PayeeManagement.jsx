@@ -31,7 +31,7 @@ const PayeeManagement = () => {
     queryFn: () => api.payees.getTransactionsWithoutPayees({ paymentMethod: 'check' })
   });
 
-  const payeesRaw = payeesData?.payees || payeesData?.employees || payeesData?.vendors;
+  const payeesRaw = payeesData?.data?.payees || payeesData?.payees || payeesData?.employees || payeesData?.vendors;
   const payees = Array.isArray(payeesRaw) ? payeesRaw : [];
   const unassignedTxns = unassignedChecks?.transactions;
   const unassignedCheckCount = Array.isArray(unassignedTxns) ? unassignedTxns.length : 0;
